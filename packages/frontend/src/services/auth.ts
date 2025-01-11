@@ -9,6 +9,11 @@ export const authService = {
 		if (error) throw error;
 		return data;
 	},
+	async isAuthenticated() {
+		const { data, error } = await supabase.auth.getSession();
+		if (error) throw error;
+		return data.sessio;
+	},
 
 	async signIn(email: string, password: string) {
 		const { data, error } = await supabase.auth.signInWithPassword({

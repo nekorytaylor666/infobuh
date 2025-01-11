@@ -2,13 +2,11 @@ import type { Config } from "drizzle-kit";
 
 export default {
 	schema: "./src/db/schema.ts",
+	schemaFilter: ["public"],
 	out: "./src/db/migrations",
-	driver: "pg",
+	dialect: "postgresql",
 	dbCredentials: {
-		host: process.env.DB_HOST || "localhost",
-		port: Number(process.env.DB_PORT) || 5432,
-		user: process.env.DB_USER || "postgres",
-		password: process.env.DB_PASSWORD || "postgres",
-		database: process.env.DB_NAME || "accounting_kz",
+		// biome-ignore lint/style/noNonNullAssertion: env variables are set in .env
+		url: process.env.DATABASE_URL!,
 	},
 } satisfies Config;

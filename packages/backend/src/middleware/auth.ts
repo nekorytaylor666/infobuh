@@ -1,24 +1,39 @@
-import { Context } from "hono";
-import { supabase } from "../lib/supabase";
+import { Context, Next } from "hono";
+import { HTTPException } from "hono/http-exception";
+import { createClient } from "@supabase/supabase-js";
 
-export async function authMiddleware(c: Context, next: () => Promise<void>) {
+const supabaseUrl = process.env.SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+export async function authMiddleware(c: Context, next: Next) {
 	const authHeader = c.req.header("Authorization");
 
 	if (!authHeader) {
-		return c.json({ error: "No authorization header" }, 401);
+		throw new HTTPException(401, { message: "No authorization header" });
 	}
 
 	const token = authHeader.replace("Bearer ", "");
 
-	const {
-		data: { user },
-		error,
-	} = await supabase.auth.getUser(token);
+	try {
+		const {
+			data: { user },
+			error,
+		} = await supabase.auth.getUser(token);
 
-	if (error || !user) {
-		return c.json({ error: "Invalid token" }, 401);
+		if (error || !user) {
+			throw new HTTPException(401, { message: "Invalid token" });
+		}
+
+		// Add user ID to context
+		c.set("userId", user.id);
+
+		await next();
+	} catch (error) {
+		if (error instanceof HTTPException) {
+			throw error;
+		}
+		throw new HTTPException(401, { message: "Invalid token" });
 	}
-
-	c.set("user", user);
-	await next();
 }
