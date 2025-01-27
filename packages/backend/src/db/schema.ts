@@ -11,6 +11,7 @@ import {
 	boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 const authSchema = pgSchema("auth");
 
@@ -77,6 +78,8 @@ export const legalEntities = pgTable("legal_entities", {
 	updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const legalEntityZodSchema = createSelectSchema(legalEntities);
+
 export const banks = pgTable("banks", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	legalEntityId: uuid("legal_entity_id")
@@ -106,6 +109,12 @@ export const employees = pgTable("employees", {
 	createdAt: timestamp("created_at").defaultNow(),
 	updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const employeeZodSchema = createSelectSchema(employees);
+export const employeeInsertSchema = createInsertSchema(employees);
+
+export type Employee = typeof employees.$inferSelect;
+export type LegalEntity = typeof legalEntities.$inferSelect;
 
 export const legalEntitiesRelations = relations(
 	legalEntities,

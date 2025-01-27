@@ -12,14 +12,14 @@ export function ProfileForm() {
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="name">Full Name</Label>
+        <Label htmlFor="name">Полное имя</Label>
         <Input id="name" {...register("name")} error={errors.name?.message} />
         {errors.name && (
           <p className="text-sm text-destructive mt-1">{errors.name.message}</p>
         )}
       </div>
       <div>
-        <Label htmlFor="pfp">Profile Picture URL</Label>
+        <Label htmlFor="pfp">URL профиля</Label>
         <Input id="pfp" {...register("pfp")} />
       </div>
     </div>

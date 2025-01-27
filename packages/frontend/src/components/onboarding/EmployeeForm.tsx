@@ -79,19 +79,19 @@ export function EmployeeForm({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Role</Label>
+                <Label>Роль</Label>
                 <div className="mt-1">{employee.role}</div>
               </div>
               <div>
-                <Label>IIN</Label>
+                <Label>ИИН</Label>
                 <div className="mt-1">{employee.iin}</div>
               </div>
               <div>
-                <Label>Address</Label>
+                <Label>Адрес</Label>
                 <div className="mt-1">{employee.address}</div>
               </div>
               <div>
-                <Label>Date of Birth</Label>
+                <Label>Дата рождения</Label>
                 <div className="mt-1">{employee.dateOfBirth}</div>
               </div>
               <div>
@@ -99,11 +99,11 @@ export function EmployeeForm({
                 <div className="mt-1">{employee.udosId}</div>
               </div>
               <div>
-                <Label>UDOS Date Given</Label>
+                <Label>Дата выдачи UDOS</Label>
                 <div className="mt-1">{employee.udosDateGiven}</div>
               </div>
               <div>
-                <Label>UDOS Who Gives</Label>
+                <Label>Кто выдает UDOS</Label>
                 <div className="mt-1">{employee.udosWhoGives}</div>
               </div>
             </div>
@@ -112,10 +112,10 @@ export function EmployeeForm({
       </div>
 
       <div className="space-y-4 border-t pt-4">
-        <h3 className="font-medium">Add New Employee</h3>
+        <h3 className="font-medium">Добавить нового сотрудника</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="fullName">Full Name</Label>
+            <Label htmlFor="fullName">Полное имя</Label>
             <Input
               id="fullName"
               name="fullName"
@@ -124,7 +124,7 @@ export function EmployeeForm({
             />
           </div>
           <div>
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">Роль</Label>
             <Input
               id="role"
               name="role"
@@ -133,7 +133,7 @@ export function EmployeeForm({
             />
           </div>
           <div>
-            <Label htmlFor="iin">IIN</Label>
+            <Label htmlFor="iin">ИИН</Label>
             <Input
               id="iin"
               name="iin"
@@ -142,7 +142,7 @@ export function EmployeeForm({
             />
           </div>
           <div>
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="address">Адрес</Label>
             <Input
               id="address"
               name="address"
@@ -151,7 +151,7 @@ export function EmployeeForm({
             />
           </div>
           <div>
-            <Label htmlFor="dateOfBirth">Date of Birth</Label>
+            <Label htmlFor="dateOfBirth">Дата рождения</Label>
             <Input
               id="dateOfBirth"
               name="dateOfBirth"
@@ -161,7 +161,7 @@ export function EmployeeForm({
             />
           </div>
           <div>
-            <Label htmlFor="udosId">UDOS ID</Label>
+            <Label htmlFor="udosId">Номер удостоверения личности</Label>
             <Input
               id="udosId"
               name="udosId"
@@ -170,7 +170,9 @@ export function EmployeeForm({
             />
           </div>
           <div>
-            <Label htmlFor="udosDateGiven">UDOS Date Given</Label>
+            <Label htmlFor="udosDateGiven">
+              Дата выдачи удостоверения личности
+            </Label>
             <Input
               id="udosDateGiven"
               name="udosDateGiven"
@@ -180,7 +182,9 @@ export function EmployeeForm({
             />
           </div>
           <div>
-            <Label htmlFor="udosWhoGives">UDOS Who Gives</Label>
+            <Label htmlFor="udosWhoGives">
+              Кто выдает удостоверение личности
+            </Label>
             <Input
               id="udosWhoGives"
               name="udosWhoGives"
@@ -189,7 +193,7 @@ export function EmployeeForm({
             />
           </div>
           <div>
-            <Label htmlFor="pfp">Profile Picture URL (Optional)</Label>
+            <Label htmlFor="pfp">URL профиля (по желанию)</Label>
             <Input
               id="pfp"
               name="pfp"
@@ -204,7 +208,7 @@ export function EmployeeForm({
           disabled={!newEmployee.fullName || !newEmployee.role}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Employee
+          Добавить сотрудника
         </Button>
       </div>
     </div>

@@ -162,7 +162,7 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="mt-2 text-gray-500">Loading...</p>
+          <p className="mt-2 text-gray-500">Загрузка...</p>
         </div>
       </div>
     );
@@ -179,7 +179,7 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
           <>
             <CompanyForm />
             <div className="mt-4 text-sm text-muted-foreground">
-              * Banks and employees can be added later
+              * Банки и сотрудники могут быть добавлены позже
             </div>
           </>
         )}
@@ -215,7 +215,7 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
                 onClick={handleSkip}
                 disabled={submitMutation.isPending}
               >
-                Skip
+                Пропустить
               </Button>
             )}
             <Button
@@ -224,7 +224,7 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
               onClick={handleNext}
               disabled={submitMutation.isPending}
             >
-              {step === "employees" ? "Complete Setup" : "Continue"}
+              {step === "employees" ? "Завершить настройку" : "Продолжить"}
             </Button>
           </div>
         </div>

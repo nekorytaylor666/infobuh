@@ -1,6 +1,27 @@
+import axios from "axios";
 import { supabase } from "./supabase";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Create custom axios instance
+export const api = axios.create({
+	baseURL: API_URL,
+});
+
+// Add Supabase auth header interceptor
+api.interceptors.request.use(async (config) => {
+	const {
+		data: { session },
+		error,
+	} = await supabase.auth.getSession();
+
+	if (session?.access_token) {
+		config.headers.Authorization = `Bearer ${session.access_token}`;
+	}
+
+	return config;
+});
+
 interface Bank {
 	name: string;
 	bik: string;
@@ -49,61 +70,23 @@ interface OnboardingStatus {
 export async function getOnboardingStatus(
 	userId: string,
 ): Promise<OnboardingStatus> {
-	const {
-		data: { session },
-	} = await supabase.auth.getSession();
-
-	const response = await fetch(`${API_URL}/auth/onboarding/status/${userId}`, {
-		headers: {
-			Authorization: `Bearer ${session?.access_token}`,
-		},
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || "Failed to get onboarding status");
-	}
-
-	return response.json();
+	const response = await api.get<OnboardingStatus>(
+		`/auth/onboarding/status/${userId}`,
+	);
+	return response.data;
 }
 
 export async function submitOnboarding(userId: string, data: OnboardingData) {
-	const {
-		data: { session },
-	} = await supabase.auth.getSession();
-
-	const response = await fetch(`${API_URL}/auth/onboarding/${userId}`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${session?.access_token}`,
-		},
-		body: JSON.stringify(data),
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || "Failed to complete onboarding");
-	}
-
-	return response.json();
+	const response = await api.post(`/auth/onboarding/${userId}`, data);
+	return response.data;
 }
 
 export async function getLegalEntity() {
-	const {
-		data: { session },
-	} = await supabase.auth.getSession();
+	const response = await api.get("/legal-entity/current");
+	return response.data;
+}
 
-	const response = await fetch(`${API_URL}/legal-entity/current`, {
-		headers: {
-			Authorization: `Bearer ${session?.access_token}`,
-		},
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || "Failed to get legal entity");
-	}
-
-	return response.json();
+export async function getEmployees(legalEntityId: string) {
+	const response = await api.get(`/employees/${legalEntityId}`);
+	return response.data;
 }

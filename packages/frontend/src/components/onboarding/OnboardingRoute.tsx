@@ -105,12 +105,12 @@ export function OnboardingRoute() {
           aria-hidden="true"
         >
           <span className="mt-0.5 text-lg font-semibold text-gray-900 dark:text-gray-50">
-            Accounting KZ
+            ИнфоБух
           </span>
         </div>
         <StepProgress currentStep={currentStep} />
         <Button variant="ghost" className="ml-auto w-fit" asChild>
-          <a href="/dashboard">Skip to dashboard</a>
+          <a href="/dashboard">Пропустить</a>
         </Button>
       </header>
       <main className="container mx-auto max-w-lg mb-20 mt-28 px-4">

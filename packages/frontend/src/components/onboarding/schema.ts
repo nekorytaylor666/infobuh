@@ -1,36 +1,36 @@
 import { z } from "zod";
 
 const BankSchema = z.object({
-	name: z.string().min(1, "Bank name is required"),
-	bik: z.string().min(1, "BIK is required"),
-	account: z.string().min(1, "Account number is required"),
+	name: z.string().min(1, "Введите название банка"),
+	bik: z.string().min(1, "Введите БИК"),
+	account: z.string().min(1, "Введите номер счета"),
 });
 
 const EmployeeSchema = z.object({
-	fullName: z.string().min(1, "Full name is required"),
+	fullName: z.string().min(1, "Введите ФИО"),
 	pfp: z.string().optional(),
-	role: z.string().min(1, "Role is required"),
-	address: z.string().min(1, "Address is required"),
-	iin: z.string().length(12, "IIN must be 12 characters"),
-	dateOfBirth: z.string().min(1, "Date of birth is required"),
-	udosId: z.string().min(1, "UDOS ID is required"),
-	udosDateGiven: z.string().min(1, "UDOS date is required"),
-	udosWhoGives: z.string().min(1, "UDOS issuer is required"),
+	role: z.string().min(1, "Введите должность"),
+	address: z.string().min(1, "Введите адрес"),
+	iin: z.string().length(12, "ИИН должен содержать 12 символов"),
+	dateOfBirth: z.string().min(1, "Введите дату рождения"),
+	udosId: z.string().min(1, "Введите номер удостоверения"),
+	udosDateGiven: z.string().min(1, "Введите дату выдачи"),
+	udosWhoGives: z.string().min(1, "Введите кем выдано"),
 });
 
 export const onboardingSchema = z.object({
-	name: z.string().min(1, "Full name is required"),
+	name: z.string().min(1, "Введите ФИО"),
 	image: z.string().optional(),
 	legalEntity: z.object({
-		name: z.string().min(1, "Company name is required"),
+		name: z.string().min(1, "Введите название компании"),
 		image: z.string().optional(),
-		type: z.string().min(1, "Company type is required"),
-		address: z.string().min(1, "Address is required"),
-		phone: z.string().min(1, "Phone number is required"),
-		oked: z.string().min(1, "OKED code is required"),
-		bin: z.string().length(12, "BIN must be 12 characters"),
-		registrationDate: z.string().min(1, "Registration date is required"),
-		ugd: z.string().min(1, "UGD code is required"),
+		type: z.string().min(1, "Введите тип компании"),
+		address: z.string().min(1, "Введите адрес"),
+		phone: z.string().min(1, "Введите номер телефона"),
+		oked: z.string().min(1, "Введите код ОКЭД"),
+		bin: z.string().length(12, "БИН должен содержать 12 символов"),
+		registrationDate: z.string().min(1, "Введите дату регистрации"),
+		ugd: z.string().min(1, "Введите код УГД"),
 	}),
 	banks: z.array(BankSchema).optional().default([]),
 	employees: z.array(EmployeeSchema).optional().default([]),

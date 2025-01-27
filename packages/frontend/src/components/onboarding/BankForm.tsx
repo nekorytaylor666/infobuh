@@ -51,15 +51,15 @@ export function BankForm({ banks, onChange, error }: BankFormProps) {
           >
             <div className="flex-1 grid grid-cols-3 gap-4">
               <div>
-                <Label>Bank Name</Label>
+                <Label>Название банка</Label>
                 <div className="mt-1">{bank.name}</div>
               </div>
               <div>
-                <Label>BIK</Label>
+                <Label>БИК</Label>
                 <div className="mt-1">{bank.bik}</div>
               </div>
               <div>
-                <Label>Account</Label>
+                <Label>Счет</Label>
                 <div className="mt-1">{bank.account}</div>
               </div>
             </div>
@@ -76,10 +76,10 @@ export function BankForm({ banks, onChange, error }: BankFormProps) {
       </div>
 
       <div className="space-y-4 border-t pt-4">
-        <h3 className="font-medium">Add New Bank</h3>
+        <h3 className="font-medium">Добавить новый банк</h3>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="name">Bank Name</Label>
+            <Label htmlFor="name">Название банка</Label>
             <Input
               id="name"
               name="name"
@@ -89,7 +89,7 @@ export function BankForm({ banks, onChange, error }: BankFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="bik">BIK</Label>
+            <Label htmlFor="bik">БИК</Label>
             <Input
               id="bik"
               name="bik"
@@ -99,7 +99,7 @@ export function BankForm({ banks, onChange, error }: BankFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="account">Account</Label>
+            <Label htmlFor="account">Счет</Label>
             <Input
               id="account"
               name="account"
@@ -115,7 +115,7 @@ export function BankForm({ banks, onChange, error }: BankFormProps) {
           disabled={!newBank.name || !newBank.bik || !newBank.account}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Bank
+          Добавить банк
         </Button>
       </div>
     </div>

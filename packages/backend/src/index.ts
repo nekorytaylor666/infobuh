@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import { openAPISpecs } from "hono-openapi";
 import authRouter from "./routes/auth";
 import legalEntityRouter from "./routes/legal-entity";
+import employeesRouter from "./routes/employees";
 import { apiReference } from "@scalar/hono-api-reference";
 import { createDbClient, type HonoEnv } from "./db";
 import { authMiddleware } from "./middleware/auth";
@@ -24,25 +25,6 @@ const app = new Hono<HonoEnv>();
 
 // app.use("*", logger());
 app.use("*", cors());
-
-app.use("*", authMiddleware);
-// Add environment variables to context
-app.use("*", async (c, next) => {
-	c.env.DATABASE_URL = process.env.DATABASE_URL as string;
-	c.env.db = dbClient;
-	await next();
-});
-
-app.route("/auth", authRouter);
-app.route("/legal-entity", legalEntityRouter);
-
-app.get("/", (c) => {
-	return c.json({ message: "Hello from Hono!" });
-});
-
-const port = Number(process.env.PORT) || 3000;
-console.log(`Server is running on port ${port}`);
-
 app.get(
 	"/openapi",
 	openAPISpecs(app, {
@@ -61,7 +43,6 @@ app.get(
 		},
 	}),
 );
-
 app.get(
 	"/docs",
 	apiReference({
@@ -71,6 +52,25 @@ app.get(
 		},
 	}),
 );
+app.use("*", authMiddleware);
+// Add environment variables to context
+app.use("*", async (c, next) => {
+	c.env.DATABASE_URL = process.env.DATABASE_URL as string;
+	c.env.db = dbClient;
+	await next();
+});
+
+app.route("/auth", authRouter);
+app.route("/legal-entity", legalEntityRouter);
+app.route("/employees", employeesRouter);
+
+app.get("/", (c) => {
+	return c.json({ message: "Hello from Hono!" });
+});
+
+const port = Number(process.env.PORT) || 3000;
+console.log(`Server is running on port ${port}`);
+
 serve({
 	fetch: app.fetch,
 	port,

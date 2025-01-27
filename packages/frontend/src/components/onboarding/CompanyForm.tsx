@@ -12,7 +12,7 @@ export function CompanyForm() {
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="legalEntity.name">Company Name</Label>
+        <Label htmlFor="legalEntity.name">Название компании</Label>
         <Input
           id="legalEntity.name"
           {...register("legalEntity.name")}
@@ -25,7 +25,7 @@ export function CompanyForm() {
         )}
       </div>
       <div>
-        <Label htmlFor="legalEntity.type">Company Type</Label>
+        <Label htmlFor="legalEntity.type">Тип компании</Label>
         <Input
           id="legalEntity.type"
           {...register("legalEntity.type")}
@@ -33,7 +33,7 @@ export function CompanyForm() {
         />
       </div>
       <div>
-        <Label htmlFor="legalEntity.bin">BIN</Label>
+        <Label htmlFor="legalEntity.bin">БИН</Label>
         <Input
           id="legalEntity.bin"
           {...register("legalEntity.bin")}
@@ -41,7 +41,7 @@ export function CompanyForm() {
         />
       </div>
       <div>
-        <Label htmlFor="legalEntity.address">Address</Label>
+        <Label htmlFor="legalEntity.address">Адрес</Label>
         <Input
           id="legalEntity.address"
           {...register("legalEntity.address")}
@@ -49,7 +49,7 @@ export function CompanyForm() {
         />
       </div>
       <div>
-        <Label htmlFor="legalEntity.phone">Phone</Label>
+        <Label htmlFor="legalEntity.phone">Телефон</Label>
         <Input
           id="legalEntity.phone"
           {...register("legalEntity.phone")}
@@ -57,7 +57,7 @@ export function CompanyForm() {
         />
       </div>
       <div>
-        <Label htmlFor="legalEntity.oked">OKED</Label>
+        <Label htmlFor="legalEntity.oked">ОКЭД</Label>
         <Input
           id="legalEntity.oked"
           {...register("legalEntity.oked")}
@@ -65,7 +65,7 @@ export function CompanyForm() {
         />
       </div>
       <div>
-        <Label htmlFor="legalEntity.registrationDate">Registration Date</Label>
+        <Label htmlFor="legalEntity.registrationDate">Дата регистрации</Label>
         <Input
           id="legalEntity.registrationDate"
           type="date"
@@ -74,7 +74,7 @@ export function CompanyForm() {
         />
       </div>
       <div>
-        <Label htmlFor="legalEntity.ugd">UGD</Label>
+        <Label htmlFor="legalEntity.ugd">УГД</Label>
         <Input
           id="legalEntity.ugd"
           {...register("legalEntity.ugd")}
@@ -82,7 +82,7 @@ export function CompanyForm() {
         />
       </div>
       <div>
-        <Label htmlFor="legalEntity.image">Company Logo URL</Label>
+        <Label htmlFor="legalEntity.image">URL логотипа компании</Label>
         <Input
           id="legalEntity.image"
           {...register("legalEntity.image")}
