@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-
 // biome-ignore lint/style/noNonNullAssertion: env variables are set in .env
 const supabaseUrl = process.env.SUPABASE_URL!;
 // biome-ignore lint/style/noNonNullAssertion: env variables are set in .env

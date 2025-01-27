@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { getLegalEntity } from "@/lib/api";
 
 export interface Bank {
 	id: string;
@@ -22,7 +22,7 @@ export interface LegalEntity {
 
 export const legalEntityService = {
 	getCurrent: async () => {
-		const response = await api.get<LegalEntity>("/legal-entity/current");
-		return response.data;
+		const response = await getLegalEntity();
+		return response;
 	},
 };

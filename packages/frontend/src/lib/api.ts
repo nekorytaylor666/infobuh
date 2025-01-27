@@ -1,5 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL;
+import { supabase } from "./supabase";
 
+const API_URL = import.meta.env.VITE_API_URL;
 interface Bank {
 	name: string;
 	bik: string;
@@ -48,7 +49,15 @@ interface OnboardingStatus {
 export async function getOnboardingStatus(
 	userId: string,
 ): Promise<OnboardingStatus> {
-	const response = await fetch(`${API_URL}/auth/onboarding/status/${userId}`);
+	const {
+		data: { session },
+	} = await supabase.auth.getSession();
+
+	const response = await fetch(`${API_URL}/auth/onboarding/status/${userId}`, {
+		headers: {
+			Authorization: `Bearer ${session?.access_token}`,
+		},
+	});
 
 	if (!response.ok) {
 		const error = await response.json();
@@ -59,10 +68,15 @@ export async function getOnboardingStatus(
 }
 
 export async function submitOnboarding(userId: string, data: OnboardingData) {
+	const {
+		data: { session },
+	} = await supabase.auth.getSession();
+
 	const response = await fetch(`${API_URL}/auth/onboarding/${userId}`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
+			Authorization: `Bearer ${session?.access_token}`,
 		},
 		body: JSON.stringify(data),
 	});
@@ -70,6 +84,25 @@ export async function submitOnboarding(userId: string, data: OnboardingData) {
 	if (!response.ok) {
 		const error = await response.json();
 		throw new Error(error.error || "Failed to complete onboarding");
+	}
+
+	return response.json();
+}
+
+export async function getLegalEntity() {
+	const {
+		data: { session },
+	} = await supabase.auth.getSession();
+
+	const response = await fetch(`${API_URL}/legal-entity/current`, {
+		headers: {
+			Authorization: `Bearer ${session?.access_token}`,
+		},
+	});
+
+	if (!response.ok) {
+		const error = await response.json();
+		throw new Error(error.error || "Failed to get legal entity");
 	}
 
 	return response.json();

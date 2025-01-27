@@ -8,6 +8,7 @@ import authRouter from "./routes/auth";
 import legalEntityRouter from "./routes/legal-entity";
 import { apiReference } from "@scalar/hono-api-reference";
 import { createDbClient, type HonoEnv } from "./db";
+import { authMiddleware } from "./middleware/auth";
 
 // Load environment variables
 config({ path: ".env" });
@@ -21,9 +22,10 @@ const dbClient = createDbClient(process.env.DATABASE_URL);
 
 const app = new Hono<HonoEnv>();
 
-app.use("*", logger());
+// app.use("*", logger());
 app.use("*", cors());
 
+app.use("*", authMiddleware);
 // Add environment variables to context
 app.use("*", async (c, next) => {
 	c.env.DATABASE_URL = process.env.DATABASE_URL as string;

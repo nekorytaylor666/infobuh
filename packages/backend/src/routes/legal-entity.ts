@@ -6,16 +6,13 @@ import { eq } from "drizzle-orm";
 const legalEntityRouter = new Hono<HonoEnv>();
 
 legalEntityRouter.get("/current", async (c) => {
-	const userId = c.get("userId");
+	const userId = c.get("userId") as string;
 	if (!userId) {
 		return c.json({ error: "Unauthorized" }, 401);
 	}
 
 	const userLegalEntity = await c.env.db.query.legalEntities.findFirst({
 		where: eq(legalEntities.profileId, userId),
-		with: {
-			banks: true,
-		},
 	});
 
 	if (!userLegalEntity) {

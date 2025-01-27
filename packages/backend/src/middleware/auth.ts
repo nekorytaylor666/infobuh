@@ -1,13 +1,14 @@
 import { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { env } from "hono/adapter";
 
 export async function authMiddleware(c: Context, next: Next) {
+	console.log(env(c));
+	const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = env(c);
+	console.log(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+	const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
 	const authHeader = c.req.header("Authorization");
 
 	if (!authHeader) {
@@ -26,6 +27,7 @@ export async function authMiddleware(c: Context, next: Next) {
 			throw new HTTPException(401, { message: "Invalid token" });
 		}
 
+		console.log(user);
 		// Add user ID to context
 		c.set("userId", user.id);
 

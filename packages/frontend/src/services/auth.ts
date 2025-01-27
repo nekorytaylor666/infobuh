@@ -12,7 +12,7 @@ export const authService = {
 	async isAuthenticated() {
 		const { data, error } = await supabase.auth.getSession();
 		if (error) throw error;
-		return data.sessio;
+		return data.session;
 	},
 
 	async signIn(email: string, password: string) {
