@@ -121,7 +121,6 @@ export function EmployeeForm({
               name="fullName"
               value={newEmployee.fullName}
               onChange={handleNewEmployeeChange}
-              required
             />
           </div>
           <div>
@@ -131,7 +130,6 @@ export function EmployeeForm({
               name="role"
               value={newEmployee.role}
               onChange={handleNewEmployeeChange}
-              required
             />
           </div>
           <div>
@@ -141,7 +139,6 @@ export function EmployeeForm({
               name="iin"
               value={newEmployee.iin}
               onChange={handleNewEmployeeChange}
-              required
             />
           </div>
           <div>
@@ -151,7 +148,6 @@ export function EmployeeForm({
               name="address"
               value={newEmployee.address}
               onChange={handleNewEmployeeChange}
-              required
             />
           </div>
           <div>
@@ -162,7 +158,6 @@ export function EmployeeForm({
               type="date"
               value={newEmployee.dateOfBirth}
               onChange={handleNewEmployeeChange}
-              required
             />
           </div>
           <div>
@@ -172,7 +167,6 @@ export function EmployeeForm({
               name="udosId"
               value={newEmployee.udosId}
               onChange={handleNewEmployeeChange}
-              required
             />
           </div>
           <div>
@@ -183,7 +177,6 @@ export function EmployeeForm({
               type="date"
               value={newEmployee.udosDateGiven}
               onChange={handleNewEmployeeChange}
-              required
             />
           </div>
           <div>
@@ -193,7 +186,6 @@ export function EmployeeForm({
               name="udosWhoGives"
               value={newEmployee.udosWhoGives}
               onChange={handleNewEmployeeChange}
-              required
             />
           </div>
           <div>

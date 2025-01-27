@@ -1,13 +1,10 @@
-import * as React from "react";
+import * as React from "react"
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-const Input = React.forwardRef<
-  HTMLInputElement,
-  React.ComponentProps<"input"> & { error?: string }
->(({ className, type, error, ...props }, ref) => {
-  return (
-    <div>
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, ...props }, ref) => {
+    return (
       <input
         type={type}
         className={cn(
@@ -17,10 +14,9 @@ const Input = React.forwardRef<
         ref={ref}
         {...props}
       />
-      {error && <p className="text-sm text-destructive mt-1">{error}</p>}
-    </div>
-  );
-});
-Input.displayName = "Input";
+    )
+  }
+)
+Input.displayName = "Input"
 
-export { Input };
+export { Input }

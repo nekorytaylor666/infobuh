@@ -1,17 +1,38 @@
+import { config } from "dotenv";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { db } from "./db";
 import { openAPISpecs } from "hono-openapi";
 import authRouter from "./routes/auth";
+import legalEntityRouter from "./routes/legal-entity";
 import { apiReference } from "@scalar/hono-api-reference";
+import { createDbClient, type HonoEnv } from "./db";
 
-const app = new Hono();
+// Load environment variables
+config({ path: ".env" });
+
+if (!process.env.DATABASE_URL) {
+	throw new Error("DATABASE_URL is not set");
+}
+
+// Create database client
+const dbClient = createDbClient(process.env.DATABASE_URL);
+
+const app = new Hono<HonoEnv>();
 
 app.use("*", logger());
 app.use("*", cors());
+
+// Add environment variables to context
+app.use("*", async (c, next) => {
+	c.env.DATABASE_URL = process.env.DATABASE_URL as string;
+	c.env.db = dbClient;
+	await next();
+});
+
 app.route("/auth", authRouter);
+app.route("/legal-entity", legalEntityRouter);
 
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });

@@ -1,13 +1,17 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
+import type { Context } from "hono";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 
-const pool = new Pool({
-	host: process.env.DB_HOST || "localhost",
-	port: Number(process.env.DB_PORT) || 5432,
-	user: process.env.DB_USER || "postgres",
-	password: process.env.DB_PASSWORD || "postgres",
-	database: process.env.DB_NAME || "accounting_kz",
-});
+export type HonoEnv = {
+	Bindings: {
+		DATABASE_URL: string;
+		db: PostgresJsDatabase<typeof schema>;
+	};
+};
 
-export const db = drizzle(pool, { schema });
+export const createDbClient = (url: string) => {
+	const client = postgres(url, { prepare: false });
+	return drizzle(client, { schema });
+};

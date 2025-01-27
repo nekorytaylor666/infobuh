@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
-import { Card } from "../ui/card";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { useNavigate } from "@tanstack/react-router";
 import { BankForm } from "./BankForm";
 import { EmployeeForm } from "./EmployeeForm";
+import { ProfileForm } from "./ProfileForm";
+import { CompanyForm } from "./CompanyForm";
 import { toast } from "sonner";
 import { useAuth } from "../../lib/auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -16,15 +15,27 @@ import { getOnboardingStatus, submitOnboarding } from "../../lib/api";
 
 type OnboardingStep = "profile" | "company" | "banks" | "employees";
 
-export function OnboardingForm() {
+interface OnboardingFormProps {
+  onStepChange: (step: OnboardingStep) => void;
+}
+
+export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState<OnboardingStep>("profile");
 
+  useEffect(() => {
+    onStepChange(step);
+  }, [step, onStepChange]);
+
   // Query onboarding status
-  const { data: status, isLoading } = useQuery({
-    queryKey: ["onboardingStatus"],
-    queryFn: getOnboardingStatus,
+  const { isLoading } = useQuery({
+    queryKey: ["onboardingStatus", user?.id],
+    queryFn: () => {
+      if (!user?.id) throw new Error("User ID is required");
+      return getOnboardingStatus(user.id);
+    },
+    enabled: !!user?.id,
     onSuccess: (data) => {
       if (data.isComplete) {
         navigate({ to: "/dashboard" });
@@ -34,15 +45,17 @@ export function OnboardingForm() {
     },
   });
 
+  const formRef = useRef<HTMLFormElement>(null);
+
   // Form setup
   const methods = useForm<OnboardingData>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      fullname: "",
-      pfp: "",
+      name: "",
+      image: "",
       legalEntity: {
         name: "",
-        pfp: "",
+        image: "",
         type: "",
         address: "",
         phone: "",
@@ -50,24 +63,30 @@ export function OnboardingForm() {
         bin: "",
         registrationDate: "",
         ugd: "",
-        banks: [],
-        employees: [],
       },
+      banks: [],
+      employees: [],
     },
   });
 
   const {
-    register,
     handleSubmit,
+
     formState: { errors },
     trigger,
-    watch,
     setValue,
   } = methods;
 
   // Submit mutation
   const submitMutation = useMutation({
-    mutationFn: submitOnboarding,
+    mutationFn: async (data: OnboardingData) => {
+      console.log(data);
+      if (!user?.id) throw new Error("User ID is required");
+      return submitOnboarding(user.id, {
+        ...data,
+        email: user.email || data.email,
+      });
+    },
     onSuccess: () => {
       toast.success("Your account has been created successfully");
       navigate({ to: "/dashboard" });
@@ -82,7 +101,7 @@ export function OnboardingForm() {
   const handleNext = async () => {
     switch (step) {
       case "profile": {
-        const isValid = await trigger(["fullname"]);
+        const isValid = await trigger(["name"]);
         if (isValid) setStep("company");
         break;
       }
@@ -97,16 +116,20 @@ export function OnboardingForm() {
           "legalEntity.registrationDate",
           "legalEntity.ugd",
         ]);
-        if (isValid) setStep("banks");
+        if (isValid) {
+          setStep("banks");
+        }
         break;
       }
       case "banks": {
-        const banks = watch("legalEntity.banks");
-        if (banks.length > 0) setStep("employees");
+        setStep("employees");
         break;
       }
       case "employees": {
-        handleSubmit((data) => submitMutation.mutateAsync(data))();
+        console.log(methods.getValues());
+        console.log(methods.formState.isValid);
+        console.log(methods.formState.errors);
+        formRef.current?.requestSubmit();
         break;
       }
     }
@@ -126,110 +149,13 @@ export function OnboardingForm() {
     }
   };
 
-  const renderProfileForm = () => (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="fullname">Full Name</Label>
-        <Input
-          id="fullname"
-          {...register("fullname")}
-          error={errors.fullname?.message}
-        />
-        {errors.fullname && (
-          <p className="text-sm text-destructive mt-1">
-            {errors.fullname.message}
-          </p>
-        )}
-      </div>
-      <div>
-        <Label htmlFor="pfp">Profile Picture URL</Label>
-        <Input id="pfp" {...register("pfp")} />
-      </div>
-    </div>
-  );
-
-  const renderCompanyForm = () => (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="legalEntity.name">Company Name</Label>
-        <Input
-          id="legalEntity.name"
-          {...register("legalEntity.name")}
-          error={errors.legalEntity?.name?.message}
-        />
-        {errors.legalEntity?.name && (
-          <p className="text-sm text-destructive mt-1">
-            {errors.legalEntity.name.message}
-          </p>
-        )}
-      </div>
-      <div>
-        <Label htmlFor="legalEntity.type">Company Type</Label>
-        <Input
-          id="legalEntity.type"
-          {...register("legalEntity.type")}
-          error={errors.legalEntity?.message}
-        />
-      </div>
-      <div>
-        <Label htmlFor="legalEntity.bin">BIN</Label>
-        <Input
-          id="legalEntity.bin"
-          {...register("legalEntity.bin")}
-          error={errors.legalEntity?.bin?.message}
-        />
-      </div>
-      <div>
-        <Label htmlFor="legalEntity.address">Address</Label>
-        <Input
-          id="legalEntity.address"
-          {...register("legalEntity.address")}
-          error={errors.legalEntity?.address?.message}
-        />
-      </div>
-      <div>
-        <Label htmlFor="legalEntity.phone">Phone</Label>
-        <Input
-          id="legalEntity.phone"
-          {...register("legalEntity.phone")}
-          error={errors.legalEntity?.phone?.message}
-        />
-      </div>
-      <div>
-        <Label htmlFor="legalEntity.oked">OKED</Label>
-        <Input
-          id="legalEntity.oked"
-          {...register("legalEntity.oked")}
-          error={errors.legalEntity?.oked?.message}
-        />
-      </div>
-      <div>
-        <Label htmlFor="legalEntity.registrationDate">Registration Date</Label>
-        <Input
-          id="legalEntity.registrationDate"
-          type="date"
-          {...register("legalEntity.registrationDate")}
-          error={errors.legalEntity?.registrationDate?.message}
-        />
-      </div>
-      <div>
-        <Label htmlFor="legalEntity.ugd">UGD</Label>
-        <Input
-          id="legalEntity.ugd"
-          {...register("legalEntity.ugd")}
-          error={errors.legalEntity?.ugd?.message}
-        />
-      </div>
-      <div>
-        <Label htmlFor="legalEntity.pfp">Company Logo URL</Label>
-        <Input
-          id="legalEntity.pfp"
-          {...register("legalEntity.pfp")}
-          error={errors.legalEntity?.pfp?.message}
-        />
-      </div>
-    </div>
-  );
+  const handleSkip = () => {
+    if (step === "banks") {
+      setStep("employees");
+    } else if (step === "employees") {
+      formRef.current?.requestSubmit();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -243,71 +169,66 @@ export function OnboardingForm() {
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold">
-          {step === "profile"
-            ? "Your Profile"
-            : step === "company"
-              ? "Company Information"
-              : step === "banks"
-                ? "Bank Details"
-                : "Employee Information"}
-        </h2>
-        <p className="text-gray-500">
-          Step{" "}
-          {step === "profile"
-            ? "1"
-            : step === "company"
-              ? "2"
-              : step === "banks"
-                ? "3"
-                : "4"}{" "}
-          of 4
-        </p>
-      </div>
+    <FormProvider {...methods}>
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit((data) => submitMutation.mutate(data))}
+      >
+        {step === "profile" && <ProfileForm />}
+        {step === "company" && (
+          <>
+            <CompanyForm />
+            <div className="mt-4 text-sm text-muted-foreground">
+              * Banks and employees can be added later
+            </div>
+          </>
+        )}
+        {step === "banks" && (
+          <BankForm
+            banks={methods.watch("banks")}
+            onChange={(banks) => setValue("banks", banks)}
+          />
+        )}
+        {step === "employees" && (
+          <EmployeeForm
+            employees={methods.watch("employees")}
+            onChange={(employees) => setValue("employees", employees)}
+          />
+        )}
 
-      <FormProvider {...methods}>
-        <form onSubmit={(e) => e.preventDefault()}>
-          {step === "profile" && renderProfileForm()}
-          {step === "company" && renderCompanyForm()}
-          {step === "banks" && (
-            <BankForm
-              banks={watch("legalEntity.banks")}
-              onChange={(banks) => setValue("legalEntity.banks", banks)}
-              error={errors.legalEntity?.banks?.message}
-            />
+        <div className="mt-8 flex justify-between">
+          {step !== "profile" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBack}
+              disabled={submitMutation.isPending}
+            >
+              Back
+            </Button>
           )}
-          {step === "employees" && (
-            <EmployeeForm
-              employees={watch("legalEntity.employees")}
-              onChange={(employees) =>
-                setValue("legalEntity.employees", employees)
-              }
-              error={errors.legalEntity?.employees?.message}
-            />
-          )}
-
-          <div className="mt-6 flex justify-between">
-            {step !== "profile" && (
-              <Button type="button" variant="outline" onClick={handleBack}>
-                Back
+          <div className="flex gap-2">
+            {(step === "banks" || step === "employees") && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSkip}
+                disabled={submitMutation.isPending}
+              >
+                Skip
               </Button>
             )}
             <Button
               type="button"
+              className={step === "profile" ? "w-full" : ""}
               onClick={handleNext}
               disabled={submitMutation.isPending}
             >
-              {step === "employees"
-                ? submitMutation.isPending
-                  ? "Creating Account..."
-                  : "Submit"
-                : "Next"}
+              {step === "employees" ? "Complete Setup" : "Continue"}
             </Button>
           </div>
-        </form>
-      </FormProvider>
-    </Card>
+        </div>
+      </form>
+    </FormProvider>
   );
 }

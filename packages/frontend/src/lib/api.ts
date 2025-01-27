@@ -48,9 +48,7 @@ interface OnboardingStatus {
 export async function getOnboardingStatus(
 	userId: string,
 ): Promise<OnboardingStatus> {
-	const response = await fetch(`${API_URL}/auth/onboarding/status/${userId}`, {
-		credentials: "include",
-	});
+	const response = await fetch(`${API_URL}/auth/onboarding/status/${userId}`);
 
 	if (!response.ok) {
 		const error = await response.json();
@@ -60,14 +58,13 @@ export async function getOnboardingStatus(
 	return response.json();
 }
 
-export async function submitOnboarding(data: OnboardingData) {
-	const response = await fetch(`${API_URL}/auth/onboarding`, {
+export async function submitOnboarding(userId: string, data: OnboardingData) {
+	const response = await fetch(`${API_URL}/auth/onboarding/${userId}`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(data),
-		credentials: "include",
 	});
 
 	if (!response.ok) {
