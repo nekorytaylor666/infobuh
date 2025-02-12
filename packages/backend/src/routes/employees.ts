@@ -13,18 +13,6 @@ import { eq } from "drizzle-orm";
 
 const router = new Hono<HonoEnv>();
 
-const EmployeeSchema = z.object({
-	fullName: z.string().min(1).describe("Employee full name"),
-	pfp: z.string().optional().describe("Employee profile picture URL"),
-	role: z.string().min(1).describe("Employee role"),
-	address: z.string().min(1).describe("Employee address"),
-	iin: z.string().min(12).max(12).describe("Employee IIN"),
-	dateOfBirth: z.string().describe("Employee date of birth"),
-	udosId: z.string().min(1).describe("Employee UDOS ID"),
-	udosDateGiven: z.string().describe("Date when UDOS was given"),
-	udosWhoGives: z.string().min(1).describe("Who gave the UDOS"),
-});
-
 // Get all employees for a legal entity
 router.get(
 	"/:legalEntityId",
@@ -86,6 +74,7 @@ router.get(
 			const employee = await c.env.db.query.employees.findFirst({
 				where: eq(employees.id, id),
 			});
+			console.log(employee);
 
 			if (!employee) {
 				return c.json({ error: "Employee not found" }, 404);
@@ -125,7 +114,7 @@ router.post(
 	zValidator("json", employeeInsertSchema),
 	async (c) => {
 		try {
-			const legalEntityId = c.req.param("legalEntityId");
+			const legalEntityId = c.req.param("legalEntityId") as string;
 			const data = await c.req.json();
 			const validatedData = employeeInsertSchema.parse(data);
 
@@ -133,9 +122,7 @@ router.post(
 				.insert(employees)
 				.values({
 					...validatedData,
-					legalEntityId,
-					dateOfBirth: new Date(validatedData.dateOfBirth).toISOString(),
-					udosDateGiven: new Date(validatedData.udosDateGiven).toISOString(),
+					legalEntityId: legalEntityId,
 				})
 				.returning();
 

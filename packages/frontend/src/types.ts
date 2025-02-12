@@ -1,3 +1,1 @@
-import type { Employee as BackendEmployee } from "../../backend/src/db/schema";
-
-export type Employee = BackendEmployee;
+export type { Employee, Bank } from "../../backend/src/db/schema";

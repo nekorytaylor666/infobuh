@@ -1,5 +1,6 @@
 import axios from "axios";
 import { supabase } from "./supabase";
+import { LegalEntity } from "../../../backend/src/db/schema";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -82,11 +83,18 @@ export async function submitOnboarding(userId: string, data: OnboardingData) {
 }
 
 export async function getLegalEntity() {
-	const response = await api.get("/legal-entity/current");
+	const response = await api.get<LegalEntity>("/legal-entity/current");
 	return response.data;
 }
 
 export async function getEmployees(legalEntityId: string) {
 	const response = await api.get(`/employees/${legalEntityId}`);
+	return response.data;
+}
+
+export async function getEmployee(legalEntityId: string, employeeId: string) {
+	const response = await api.get<Employee>(
+		`/employees/${legalEntityId}/${employeeId}`,
+	);
 	return response.data;
 }

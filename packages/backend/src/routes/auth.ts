@@ -16,15 +16,6 @@ import { eq } from "drizzle-orm";
 
 const router = new Hono<HonoEnv>();
 
-const querySchema = z
-	.object({
-		userId: z
-			.string()
-			.uuid()
-			.openapi({ example: "123e4567-e89b-12d3-a456-426614174000" }),
-	})
-	.openapi({ ref: "Query" });
-
 const BankSchema = z.object({
 	name: z.string().min(1).describe("Bank name"),
 	bik: z.string().min(1).describe("Bank BIK"),

@@ -1,60 +1,64 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { Button } from '../../../components/ui/button'
-import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "../../../components/ui/button";
+import { Plus } from "lucide-react";
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from '../../../components/ui/sheet'
-import { useLegalEntity } from '../../../hooks/use-legal-entity'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import { DataTable } from '@/components/ui/DataTable'
-import { columns } from '@/components/employees/_components/columns'
-import { EmployeeForm } from '@/components/employees/_components/employee-form'
-import type { Employee } from '@/types'
+} from "../../../components/ui/sheet";
+import { useLegalEntity } from "../../../hooks/use-legal-entity";
+import {
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { DataTable } from "@/components/ui/DataTable";
+import { columns } from "@/components/employees/_components/columns";
+import { EmployeeForm } from "@/components/employees/_components/employee-form";
+import type { Employee } from "@/types";
 
-export const Route = createFileRoute('/dashboard/employees/')({
+export const Route = createFileRoute("/dashboard/employees/")({
   component: EmployeesPage,
   pendingComponent: () => <div>Loading...</div>,
-})
+});
 
 function EmployeesPage() {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const { legalEntity } = useLegalEntity();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null,
-  )
-  const { legalEntity } = useLegalEntity()
-  const queryClient = useQueryClient()
+    null
+  );
+  const queryClient = useQueryClient();
 
-  const { data: employees = [], isFetching } = useQuery({
-    queryKey: ['employees', legalEntity?.id],
+  const { data: employees = [], isLoading } = useQuery({
+    queryKey: ["employees", legalEntity?.id],
     queryFn: () =>
       api
         .get<Employee[]>(`/employees/${legalEntity?.id}`)
         .then((res) => res.data),
+    staleTime: 1000 * 60 * 5, // 5 minutes
     enabled: !!legalEntity?.id,
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-  })
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
 
   const handleAddEmployee = () => {
-    setSelectedEmployee(null)
-    setIsDrawerOpen(true)
-  }
+    setSelectedEmployee(null);
+    setIsDrawerOpen(true);
+  };
 
   const handleEditEmployee = (employee: Employee) => {
-    setSelectedEmployee(employee)
-    setIsDrawerOpen(true)
-  }
+    setSelectedEmployee(employee);
+    setIsDrawerOpen(true);
+  };
 
   const handleCloseDrawer = () => {
-    setIsDrawerOpen(false)
-    setSelectedEmployee(null)
-  }
+    setIsDrawerOpen(false);
+    setSelectedEmployee(null);
+  };
 
   if (!legalEntity) {
     return (
@@ -63,7 +67,10 @@ function EmployeesPage() {
           Пожалуйста, сначала выберите юридическое лицо
         </p>
       </div>
-    )
+    );
+  }
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -75,12 +82,11 @@ function EmployeesPage() {
           Добавить сотрудника
         </Button>
       </div>
-
       <DataTable
         columns={columns}
         data={employees}
         onRowClick={(row) => handleEditEmployee(row.original)}
-        isLoading={isFetching}
+        isLoading={isLoading}
       />
 
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
@@ -88,8 +94,8 @@ function EmployeesPage() {
           <SheetHeader>
             <SheetTitle>
               {selectedEmployee
-                ? 'Редактировать сотрудника'
-                : 'Добавить сотрудника'}
+                ? "Редактировать сотрудника"
+                : "Добавить сотрудника"}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-8">
@@ -102,5 +108,5 @@ function EmployeesPage() {
         </SheetContent>
       </Sheet>
     </div>
-  )
+  );
 }

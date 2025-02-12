@@ -23,15 +23,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Link } from "@tanstack/react-router";
+import type { NavItem } from "./config";
 
 export function NavProjects({
   projects,
 }: {
-  projects: {
-    name: string;
-    url: string;
-    icon: LucideIcon;
-  }[];
+  projects: ReadonlyArray<NavItem>;
 }) {
   const { isMobile } = useSidebar();
 
@@ -40,11 +37,11 @@ export function NavProjects({
       <SidebarGroupLabel>Проекты</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map((item) => (
-          <SidebarMenuItem key={item.name}>
+          <SidebarMenuItem key={item.children}>
             <SidebarMenuButton asChild>
-              <Link to={item.url}>
+              <Link to={item.to}>
                 <item.icon />
-                <span>{item.name}</span>
+                <span>{item.children}</span>
               </Link>
             </SidebarMenuButton>
             <DropdownMenu>

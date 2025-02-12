@@ -9,6 +9,7 @@ import {
 	jsonb,
 	date,
 	boolean,
+	integer,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
@@ -92,6 +93,8 @@ export const banks = pgTable("banks", {
 	updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export type Bank = typeof banks.$inferSelect;
+
 export const employees = pgTable("employees", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	legalEntityId: uuid("legal_entity_id")
@@ -114,6 +117,7 @@ export const employeeZodSchema = createSelectSchema(employees);
 export const employeeInsertSchema = createInsertSchema(employees);
 
 export type Employee = typeof employees.$inferSelect;
+
 export type LegalEntity = typeof legalEntities.$inferSelect;
 
 export const legalEntitiesRelations = relations(

@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -15,24 +15,19 @@ import {
 } from "@/components/ui/sidebar";
 import { getOnboardingStatus } from "@/lib/api";
 import { authService } from "@/services/auth";
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router";
 
 export const Route = createFileRoute("/dashboard")({
   component: RouteComponent,
-  beforeLoad: async () => {
-    const session = await authService.getSession();
-    if (!session) {
+  beforeLoad: async ({ context }) => {
+    console.log(context.auth.user);
+    if (!context.auth.user && !context.auth.loading) {
       throw redirect({ to: "/auth/login" });
-    }
-
-    const onboardingStatus = await getOnboardingStatus(session.user.id);
-    const isComplete = onboardingStatus.isComplete;
-    console.log(onboardingStatus);
-    if (!isComplete) {
-      throw redirect({
-        to: "/onboarding",
-        search: { userId: session.user.id },
-      });
     }
   },
 });
@@ -49,7 +44,7 @@ function RouteComponent() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">Главная</BreadcrumbLink>
+                  <Link to="/dashboard">Главная</Link>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
