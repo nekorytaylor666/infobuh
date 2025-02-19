@@ -22,32 +22,32 @@ export type NavItem = LinkProps & {
 export const data = {
 	navMain: [
 		{
-			to: "/about",
+			to: "/dashboard/documents",
 			icon: FileText,
 			children: "Документы",
 			items: [
 				{
-					to: "/about",
+					to: "/dashboard/documents/invoices",
 					children: "Накладные",
 					icon: FileText,
 				},
 				{
-					to: "/about",
+					to: "/dashboard/documents/avrs",
 					children: "АВР",
 					icon: FileText,
 				},
 				{
-					to: "/about",
+					to: "/dashboard/documents/invoices",
 					children: "Счета-фактуры",
 					icon: FileText,
 				},
 				{
-					to: "/about",
+					to: "/dashboard/documents/contracts",
 					children: "Договоры",
 					icon: FileText,
 				},
 				{
-					to: "/about",
+					to: "/dashboard/documents/checks",
 					children: "Акты сверки",
 					icon: FileText,
 				},

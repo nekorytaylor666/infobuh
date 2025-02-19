@@ -22,7 +22,6 @@ import type { Employee } from "@/types";
 
 export const Route = createFileRoute("/dashboard/employees/")({
   component: EmployeesPage,
-  pendingComponent: () => <div>Loading...</div>,
 });
 
 function EmployeesPage() {

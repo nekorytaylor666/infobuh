@@ -10,6 +10,9 @@ import employeesRouter from "./routes/employees";
 import { apiReference } from "@scalar/hono-api-reference";
 import { createDbClient, type HonoEnv } from "./db";
 import { authMiddleware } from "./middleware/auth";
+import { documentsRouter } from "./routes/documents";
+import { createClient } from "@supabase/supabase-js";
+import { supabase } from "./lib/supabase";
 
 // Load environment variables
 config({ path: ".env" });
@@ -52,18 +55,21 @@ app.get(
 		},
 	}),
 );
-app.use("*", authMiddleware);
-// Add environment variables to context
 app.use("*", async (c, next) => {
 	c.env.DATABASE_URL = process.env.DATABASE_URL as string;
 	c.env.db = dbClient;
+	c.env.supabase = supabase;
+
 	await next();
 });
+app.route("/documents", documentsRouter);
+
+app.use("*", authMiddleware);
+// Add environment variables to context
 
 app.route("/auth", authRouter);
 app.route("/legal-entity", legalEntityRouter);
 app.route("/employees", employeesRouter);
-
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
 });

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { cx } from "@/lib/utils";
 import * as React from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
 import { DataTablePagination } from "./DataTablePagination";
 
@@ -16,6 +17,7 @@ import { DataTableBulkEditor } from "./TableBulkEditor";
 import {
   type ColumnDef,
   type Row,
+  type SortingState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -39,11 +41,14 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   const pageSize = 20;
   const [rowSelection, setRowSelection] = React.useState({});
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+
   const table = useReactTable({
     data,
     columns,
     state: {
       rowSelection,
+      sorting,
     },
     initialState: {
       pagination: {
@@ -57,6 +62,8 @@ export function DataTable<TData>({
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    enableSorting: true,
   });
 
   return (
@@ -75,13 +82,32 @@ export function DataTable<TData>({
                       key={header.id}
                       className={cx(
                         "whitespace-nowrap py-1",
-                        header.column.columnDef.meta?.className
+                        header.column.columnDef.meta?.className,
+                        header.column.getCanSort() &&
+                          "cursor-pointer select-none"
                       )}
+                      onClick={header.column.getToggleSortingHandler()}
                     >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                      <div className="flex items-center gap-2">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {header.column.getCanSort() && (
+                          <div className="flex flex-col">
+                            {header.column.getIsSorted() === "asc" ? (
+                              <ArrowUp className="h-4 w-4 text-gray-900 dark:text-gray-50" />
+                            ) : header.column.getIsSorted() === "desc" ? (
+                              <ArrowDown className="h-4 w-4 text-gray-900 dark:text-gray-50" />
+                            ) : (
+                              <div className="flex flex-col opacity-0 group-hover:opacity-100">
+                                <ArrowUp className="h-3 w-3 text-gray-400" />
+                                <ArrowDown className="h-3 w-3 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </TableHeaderCell>
                   ))}
                 </TableRow>

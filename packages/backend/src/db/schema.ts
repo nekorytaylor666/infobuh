@@ -120,6 +120,75 @@ export type Employee = typeof employees.$inferSelect;
 
 export type LegalEntity = typeof legalEntities.$inferSelect;
 
+export const documents = pgTable("documents", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	name: varchar("name", { length: 256 }).notNull(),
+	type: varchar("type", { length: 50 }).notNull(), // 'file' or 'folder'
+	mimeType: varchar("mime_type", { length: 100 }), // null for folders
+	size: integer("size"), // null for folders
+	parentId: uuid("parent_id").references((): any => documents.id, {
+		onDelete: "cascade",
+	}), // null for root items
+	path: text("path").notNull(), // full path for easy navigation
+	storageKey: text("storage_key"), // Supabase storage key, null for folders
+	legalEntityId: uuid("legal_entity_id")
+		.references(() => legalEntities.id, { onDelete: "cascade" })
+		.notNull(),
+	createdById: uuid("created_by_id")
+		.references(() => profile.id)
+		.notNull(),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Document = typeof documents.$inferSelect;
+
+export const documentPermissions = pgTable("document_permissions", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	documentId: uuid("document_id")
+		.references(() => documents.id, { onDelete: "cascade" })
+		.notNull(),
+	profileId: uuid("profile_id")
+		.references(() => profile.id, { onDelete: "cascade" })
+		.notNull(),
+	permission: varchar("permission", { length: 20 }).notNull(), // 'read', 'write', 'admin'
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type DocumentPermission = typeof documentPermissions.$inferSelect;
+
+export const documentsRelations = relations(documents, ({ one, many }) => ({
+	parent: one(documents, {
+		fields: [documents.parentId],
+		references: [documents.id],
+	}),
+	children: many(documents),
+	legalEntity: one(legalEntities, {
+		fields: [documents.legalEntityId],
+		references: [legalEntities.id],
+	}),
+	createdBy: one(profile, {
+		fields: [documents.createdById],
+		references: [profile.id],
+	}),
+	permissions: many(documentPermissions),
+}));
+
+export const documentPermissionsRelations = relations(
+	documentPermissions,
+	({ one }) => ({
+		document: one(documents, {
+			fields: [documentPermissions.documentId],
+			references: [documents.id],
+		}),
+		profile: one(profile, {
+			fields: [documentPermissions.profileId],
+			references: [profile.id],
+		}),
+	}),
+);
+
 export const legalEntitiesRelations = relations(
 	legalEntities,
 	({ one, many }) => ({
@@ -129,6 +198,7 @@ export const legalEntitiesRelations = relations(
 		}),
 		banks: many(banks),
 		employees: many(employees),
+		documents: many(documents),
 	}),
 );
 
