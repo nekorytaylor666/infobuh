@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Uppy from "@uppy/core";
 import Tus from "@uppy/tus";
 import { createClient } from "@supabase/supabase-js";
+import type { UppyFile } from "@uppy/core";
 
 interface UseUppyWithSupabaseOptions {
 	bucketName: string;
@@ -16,6 +17,7 @@ export const useUppyWithSupabase = ({
 }: UseUppyWithSupabaseOptions) => {
 	const [uppy] = useState(() => new Uppy());
 	const supabase = createClient(supabaseUrl, supabaseAnonKey);
+	const tusPluginId = useRef(`Tus-${Math.random().toString(36).substring(7)}`);
 
 	useEffect(() => {
 		const initializeUppy = async () => {
@@ -23,9 +25,8 @@ export const useUppyWithSupabase = ({
 				data: { session },
 			} = await supabase.auth.getSession();
 
-			const tusId = `Tus-${Math.random().toString(36).substring(7)}`;
 			uppy.use(Tus, {
-				id: tusId,
+				id: tusPluginId.current,
 				endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
 				retryDelays: [0, 3000, 5000, 10000, 20000],
 				headers: {
@@ -44,28 +45,37 @@ export const useUppyWithSupabase = ({
 				onError: (error) => console.error("Upload error:", error),
 			});
 
-			uppy.on("file-added", (file) => {
+			const handleFileAdded = (
+				file: UppyFile<Record<string, unknown>, Record<string, unknown>>,
+			) => {
 				file.meta = {
 					...file.meta,
 					bucketName,
 					objectName: file.name,
 					contentType: file.type,
 				};
-				console.log("File added:", file);
-			});
+			};
+
+			uppy.on("file-added", handleFileAdded);
+
+			return () => {
+				uppy.off("file-added", handleFileAdded);
+			};
 		};
 
-		initializeUppy();
+		const cleanup = initializeUppy();
 
 		return () => {
-			try {
-				const plugin = uppy.getPlugin("Tus");
-				if (plugin) {
-					uppy.removePlugin(plugin);
+			cleanup.then(() => {
+				try {
+					const plugin = uppy.getPlugin(tusPluginId.current);
+					if (plugin) {
+						uppy.removePlugin(plugin);
+					}
+				} catch (error) {
+					console.warn("Error removing Tus plugin:", error);
 				}
-			} catch (error) {
-				console.warn("Error removing Tus plugin:", error);
-			}
+			});
 		};
 	}, [uppy, bucketName, supabaseUrl, supabaseAnonKey, supabase]);
 

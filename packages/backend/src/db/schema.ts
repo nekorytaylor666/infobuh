@@ -121,27 +121,26 @@ export type Employee = typeof employees.$inferSelect;
 export type LegalEntity = typeof legalEntities.$inferSelect;
 
 export const documents = pgTable("documents", {
-	id: uuid("id").primaryKey().defaultRandom(),
-	name: varchar("name", { length: 256 }).notNull(),
-	type: varchar("type", { length: 50 }).notNull(), // 'file' or 'folder'
-	mimeType: varchar("mime_type", { length: 100 }), // null for folders
-	size: integer("size"), // null for folders
-	parentId: uuid("parent_id").references((): any => documents.id, {
-		onDelete: "cascade",
-	}), // null for root items
-	path: text("path").notNull(), // full path for easy navigation
-	storageKey: text("storage_key"), // Supabase storage key, null for folders
+	id: uuid("id").defaultRandom().primaryKey(),
+	name: varchar("name", { length: 255 }).notNull(),
+	type: varchar("type", { length: 50 }).notNull(), // "file" or "folder"
+	size: varchar("size", { length: 50 }), // Optional for folders
+	path: text("path"), // Storage path for files
+	parentId: uuid("parent_id").references((): any => documents.id), // For folder structure
 	legalEntityId: uuid("legal_entity_id")
-		.references(() => legalEntities.id, { onDelete: "cascade" })
+		.references(() => legalEntities.id)
 		.notNull(),
-	createdById: uuid("created_by_id")
+	ownerId: uuid("owner_id")
 		.references(() => profile.id)
 		.notNull(),
-	createdAt: timestamp("created_at").defaultNow(),
-	updatedAt: timestamp("updated_at").defaultNow(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export type Document = typeof documents.$inferSelect;
+export type DocumentWithOwner = typeof documents.$inferSelect & {
+	createdBy: typeof profile.$inferSelect;
+};
 
 export const documentPermissions = pgTable("document_permissions", {
 	id: uuid("id").primaryKey().defaultRandom(),
@@ -169,7 +168,7 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
 		references: [legalEntities.id],
 	}),
 	createdBy: one(profile, {
-		fields: [documents.createdById],
+		fields: [documents.ownerId],
 		references: [profile.id],
 	}),
 	permissions: many(documentPermissions),

@@ -3,6 +3,7 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronRight } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const treeVariants = cva(
   "group hover:before:opacity-100 before:absolute before:rounded-lg before:left-0 px-2 before:w-full before:opacity-0 before:bg-accent/70 before:h-[2rem] before:-z-10"
@@ -15,9 +16,9 @@ const selectedTreeVariants = cva(
 interface TreeDataItem {
   id: string;
   name: string;
-  icon?: any;
-  selectedIcon?: any;
-  openIcon?: any;
+  icon?: React.ComponentType<{ className?: string }>;
+  selectedIcon?: React.ComponentType<{ className?: string }>;
+  openIcon?: React.ComponentType<{ className?: string }>;
   children?: TreeDataItem[];
   actions?: React.ReactNode;
   onClick?: () => void;
@@ -31,10 +32,10 @@ interface TreeDataItem {
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   data: TreeDataItem[] | TreeDataItem;
   initialSelectedItemId?: string;
-  onSelectChange?: (item: TreeDataItem | undefined) => void;
+  onSelect?: (item: TreeDataItem) => void;
   expandAll?: boolean;
-  defaultNodeIcon?: any;
-  defaultLeafIcon?: any;
+  defaultNodeIcon?: React.ComponentType<{ className?: string }>;
+  defaultLeafIcon?: React.ComponentType<{ className?: string }>;
 };
 
 const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
@@ -42,7 +43,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
     {
       data,
       initialSelectedItemId,
-      onSelectChange,
+      onSelect,
       expandAll,
       defaultLeafIcon,
       defaultNodeIcon,
@@ -58,11 +59,11 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
     const handleSelectChange = React.useCallback(
       (item: TreeDataItem | undefined) => {
         setSelectedItemId(item?.id);
-        if (onSelectChange) {
-          onSelectChange(item);
+        if (onSelect) {
+          onSelect(item as TreeDataItem);
         }
       },
-      [onSelectChange]
+      [onSelect]
     );
 
     const expandedItemIds = React.useMemo(() => {
@@ -117,8 +118,8 @@ type TreeItemProps = TreeProps & {
   selectedItemId?: string;
   handleSelectChange: (item: TreeDataItem | undefined) => void;
   expandedItemIds: string[];
-  defaultNodeIcon?: any;
-  defaultLeafIcon?: any;
+  defaultNodeIcon?: React.ComponentType<{ className?: string }>;
+  defaultLeafIcon?: React.ComponentType<{ className?: string }>;
 };
 
 const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
@@ -199,8 +200,8 @@ const TreeNode = ({
   handleSelectChange: (item: TreeDataItem | undefined) => void;
   expandedItemIds: string[];
   selectedItemId?: string;
-  defaultNodeIcon?: any;
-  defaultLeafIcon?: any;
+  defaultNodeIcon?: React.ComponentType<{ className?: string }>;
+  defaultLeafIcon?: React.ComponentType<{ className?: string }>;
 }) => {
   const [value, setValue] = React.useState(
     expandedItemIds.includes(item.id) ? [item.id] : []
@@ -223,10 +224,10 @@ const TreeNode = ({
             item.onClick?.();
           }}
         >
-          <div className="flex items-center min-w-0 ">
+          <div className="flex items-center min-w-0 relative">
             <ChevronRight
               className={cn(
-                "h-4 w-4 shrink-0 transition-transform duration-200 text-accent-foreground/50 mr-1 ",
+                "h-4 w-4 shrink-0 transition-transform duration-200 text-accent-foreground/50 mr-1 absolute -left-5",
                 value.includes(item.id) && "rotate-90"
               )}
             />
@@ -247,7 +248,7 @@ const TreeNode = ({
             </TreeActions>
           </div>
         </AccordionTrigger>
-        <AccordionContent className="ml-4 border-l">
+        <AccordionContent className="ml-4 ">
           <TreeItem
             data={item.children ? item.children : item}
             selectedItemId={selectedItemId}
@@ -269,7 +270,7 @@ const TreeLeaf = React.forwardRef<
     item: TreeDataItem;
     selectedItemId?: string;
     handleSelectChange: (item: TreeDataItem | undefined) => void;
-    defaultLeafIcon?: any;
+    defaultLeafIcon?: React.ComponentType<{ className?: string }>;
   }
 >(
   (
@@ -306,7 +307,16 @@ const TreeLeaf = React.forwardRef<
           />
           <span className="text-sm truncate">{item.name}</span>
         </div>
-        <div className="text-sm text-muted-foreground ">
+        <div className="flex items-center text-sm text-muted-foreground">
+          <Avatar className="size-8 mr-2">
+            <AvatarImage
+              src={item.metadata?.owner}
+              alt={item.metadata?.owner}
+            />
+            <AvatarFallback>
+              {item.metadata?.owner?.toString().charAt(0)}
+            </AvatarFallback>
+          </Avatar>
           {item.metadata?.owner}
         </div>
         <div className="text-sm text-muted-foreground">
@@ -352,7 +362,7 @@ const TreeIcon = ({
   item: TreeDataItem;
   isOpen?: boolean;
   isSelected?: boolean;
-  default?: any;
+  default?: React.ComponentType<{ className?: string }>;
 }) => {
   let Icon = defaultIcon;
   if (isSelected && item.selectedIcon) {

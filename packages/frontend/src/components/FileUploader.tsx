@@ -12,12 +12,15 @@ import {
   RiFileTextLine,
 } from "@remixicon/react";
 import { Progress } from "@/components/ui/progress";
+import type { UppyFile } from "@uppy/core";
 
 interface FileUploaderProps {
   supabaseUrl: string;
   supabaseAnonKey: string;
   bucketName: string;
-  onUploadComplete?: (file: any) => void;
+  onUploadComplete?: (
+    file: UppyFile<Record<string, unknown>, Record<string, unknown>>
+  ) => void;
   onUploadError?: (error: Error) => void;
 }
 
@@ -132,14 +135,6 @@ export function FileUploader({
       },
     });
 
-    uppy.on("upload-success", (file, response) => {
-      onUploadComplete?.(file);
-    });
-
-    uppy.on("upload-error", (file, error) => {
-      onUploadError?.(error);
-    });
-
     return () => {
       try {
         const plugin = uppy.getPlugin(dashboardId);
@@ -149,6 +144,30 @@ export function FileUploader({
       } catch (error) {
         console.warn("Error removing Dashboard plugin:", error);
       }
+    };
+  }, [uppy]);
+
+  // Handle upload success and error events
+  useEffect(() => {
+    const handleUploadSuccess = (
+      file: UppyFile<Record<string, unknown>, Record<string, unknown>>
+    ) => {
+      onUploadComplete?.(file);
+    };
+
+    const handleUploadError = (
+      file: UppyFile<Record<string, unknown>, Record<string, unknown>>,
+      error: Error
+    ) => {
+      onUploadError?.(error);
+    };
+
+    uppy.on("upload-success", handleUploadSuccess);
+    uppy.on("upload-error", handleUploadError);
+
+    return () => {
+      uppy.off("upload-success", handleUploadSuccess);
+      uppy.off("upload-error", handleUploadError);
     };
   }, [uppy, onUploadComplete, onUploadError]);
 
