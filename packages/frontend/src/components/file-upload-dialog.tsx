@@ -15,7 +15,8 @@ interface FileUploadDialogProps {
   supabaseAnonKey: string;
   parentId?: string | null;
   onUploadComplete: (
-    file: UppyFile<Record<string, unknown>, Record<string, unknown>>
+    file: UppyFile<Record<string, unknown>, Record<string, unknown>>,
+    parentId?: string | null
   ) => void;
   onUploadError: (error: Error) => void;
   trigger?: React.ReactNode;
@@ -24,16 +25,16 @@ interface FileUploadDialogProps {
 export function FileUploadDialog({
   supabaseUrl,
   supabaseAnonKey,
-  parentId,
   onUploadComplete,
   onUploadError,
   trigger,
+  parentId,
 }: FileUploadDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
         {trigger || (
-          <Button>
+          <Button size="sm">
             <Upload className="mr-2 h-4 w-4" />
             Загрузить файл
           </Button>
@@ -41,14 +42,19 @@ export function FileUploadDialog({
       </DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Загрузить файлы{parentId ? " в папку" : ""}</DialogTitle>
+          <DialogTitle>Загрузить файлы</DialogTitle>
         </DialogHeader>
         <div className="p-4">
           <FileUploader
             supabaseUrl={supabaseUrl}
             supabaseAnonKey={supabaseAnonKey}
             bucketName="documents"
-            onUploadComplete={onUploadComplete}
+            onUploadComplete={(file) => {
+              onUploadComplete(file);
+              if (parentId) {
+                onUploadComplete(file, parentId);
+              }
+            }}
             onUploadError={onUploadError}
           />
         </div>

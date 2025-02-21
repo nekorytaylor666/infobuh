@@ -20,12 +20,14 @@ interface TreeDataItem {
   selectedIcon?: React.ComponentType<{ className?: string }>;
   openIcon?: React.ComponentType<{ className?: string }>;
   children?: TreeDataItem[];
+
   actions?: React.ReactNode;
   onClick?: () => void;
   metadata?: {
     owner?: React.ReactNode;
     uploadTime?: React.ReactNode;
     size?: string;
+    signatures?: number;
   };
 }
 
@@ -33,6 +35,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   data: TreeDataItem[] | TreeDataItem;
   initialSelectedItemId?: string;
   onSelect?: (item: TreeDataItem) => void;
+  onMouseEnter?: (item: TreeDataItem) => void;
   expandAll?: boolean;
   defaultNodeIcon?: React.ComponentType<{ className?: string }>;
   defaultLeafIcon?: React.ComponentType<{ className?: string }>;
@@ -44,6 +47,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
       data,
       initialSelectedItemId,
       onSelect,
+      onMouseEnter,
       expandAll,
       defaultLeafIcon,
       defaultNodeIcon,
@@ -106,6 +110,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
           expandedItemIds={expandedItemIds}
           defaultLeafIcon={defaultLeafIcon}
           defaultNodeIcon={defaultNodeIcon}
+          onMouseEnter={onMouseEnter}
           {...props}
         />
       </div>
@@ -120,6 +125,7 @@ type TreeItemProps = TreeProps & {
   expandedItemIds: string[];
   defaultNodeIcon?: React.ComponentType<{ className?: string }>;
   defaultLeafIcon?: React.ComponentType<{ className?: string }>;
+  onMouseEnter?: (item: TreeDataItem) => void;
 };
 
 const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
@@ -132,11 +138,12 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
       expandedItemIds,
       defaultNodeIcon,
       defaultLeafIcon,
+      onMouseEnter,
       ...props
     },
     ref
   ) => {
-    if (!(data instanceof Array)) {
+    if (!Array.isArray(data)) {
       data = [data];
     }
     return (
@@ -152,6 +159,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                   handleSelectChange={handleSelectChange}
                   defaultNodeIcon={defaultNodeIcon}
                   defaultLeafIcon={defaultLeafIcon}
+                  onMouseEnter={onMouseEnter}
                 />
               ) : (
                 <TreeLeaf
@@ -159,6 +167,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                   selectedItemId={selectedItemId}
                   handleSelectChange={handleSelectChange}
                   defaultLeafIcon={defaultLeafIcon}
+                  onMouseEnter={onMouseEnter}
                 />
               )}
             </li>
@@ -195,6 +204,7 @@ const TreeNode = ({
   selectedItemId,
   defaultNodeIcon,
   defaultLeafIcon,
+  onMouseEnter,
 }: {
   item: TreeDataItem;
   handleSelectChange: (item: TreeDataItem | undefined) => void;
@@ -202,6 +212,7 @@ const TreeNode = ({
   selectedItemId?: string;
   defaultNodeIcon?: React.ComponentType<{ className?: string }>;
   defaultLeafIcon?: React.ComponentType<{ className?: string }>;
+  onMouseEnter?: (item: TreeDataItem) => void;
 }) => {
   const [value, setValue] = React.useState(
     expandedItemIds.includes(item.id) ? [item.id] : []
@@ -223,6 +234,7 @@ const TreeNode = ({
             handleSelectChange(item);
             item.onClick?.();
           }}
+          onMouseEnter={() => onMouseEnter?.(item)}
         >
           <div className="flex items-center min-w-0 relative">
             <ChevronRight
@@ -256,6 +268,7 @@ const TreeNode = ({
             expandedItemIds={expandedItemIds}
             defaultLeafIcon={defaultLeafIcon}
             defaultNodeIcon={defaultNodeIcon}
+            onMouseEnter={onMouseEnter}
             className="ml-4"
           />
         </AccordionContent>
@@ -271,6 +284,7 @@ const TreeLeaf = React.forwardRef<
     selectedItemId?: string;
     handleSelectChange: (item: TreeDataItem | undefined) => void;
     defaultLeafIcon?: React.ComponentType<{ className?: string }>;
+    onMouseEnter?: (item: TreeDataItem) => void;
   }
 >(
   (
@@ -280,6 +294,7 @@ const TreeLeaf = React.forwardRef<
       selectedItemId,
       handleSelectChange,
       defaultLeafIcon,
+      onMouseEnter,
       ...props
     },
     ref
@@ -297,6 +312,7 @@ const TreeLeaf = React.forwardRef<
           handleSelectChange(item);
           item.onClick?.();
         }}
+        onMouseEnter={() => onMouseEnter?.(item)}
         {...props}
       >
         <div className="flex items-center min-w-0">
@@ -323,7 +339,11 @@ const TreeLeaf = React.forwardRef<
           {item.metadata?.uploadTime}
         </div>
         <div className="text-sm text-muted-foreground">
-          {item.metadata?.size}
+          {item.metadata?.signatures === 0
+            ? "Без подписей"
+            : `${item.metadata?.signatures} ${
+                item.metadata?.signatures === 1 ? "подпись" : "подписи"
+              }`}
         </div>
         <div className="flex justify-end">
           <TreeActions isSelected={selectedItemId === item.id}>

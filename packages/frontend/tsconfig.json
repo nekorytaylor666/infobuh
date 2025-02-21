@@ -8,7 +8,14 @@
     "moduleResolution": "Bundler",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@backend/*": ["../backend/src/*"]
     }
-  }
+  },
+  "include": ["."],
+  "references": [
+    {
+      "path": "../backend"
+    }
+  ]
 }

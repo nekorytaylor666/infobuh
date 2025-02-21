@@ -138,9 +138,42 @@ export const documents = pgTable("documents", {
 });
 
 export type Document = typeof documents.$inferSelect;
-export type DocumentWithOwner = typeof documents.$inferSelect & {
+export type DocumentWithOwnerSignature = typeof documents.$inferSelect & {
 	createdBy: typeof profile.$inferSelect;
+	signatures: (typeof documentSignatures.$inferSelect)[];
 };
+
+export const documentSignatures = pgTable("document_signatures", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	documentId: uuid("document_id")
+		.references(() => documents.id, { onDelete: "cascade" })
+		.notNull(),
+	signerId: uuid("signer_id")
+		.references(() => profile.id)
+		.notNull(),
+	cms: text("cms").notNull(),
+	signedAt: timestamp("signed_at").defaultNow().notNull(),
+});
+
+export type DocumentSignature = typeof documentSignatures.$inferSelect;
+export type DocumentSignatureWithSigner =
+	typeof documentSignatures.$inferSelect & {
+		signer: typeof profile.$inferSelect;
+	};
+
+export const documentSignaturesRelations = relations(
+	documentSignatures,
+	({ one }) => ({
+		document: one(documents, {
+			fields: [documentSignatures.documentId],
+			references: [documents.id],
+		}),
+		signer: one(profile, {
+			fields: [documentSignatures.signerId],
+			references: [profile.id],
+		}),
+	}),
+);
 
 export const documentPermissions = pgTable("document_permissions", {
 	id: uuid("id").primaryKey().defaultRandom(),
@@ -172,6 +205,7 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
 		references: [profile.id],
 	}),
 	permissions: many(documentPermissions),
+	signatures: many(documentSignatures),
 }));
 
 export const documentPermissionsRelations = relations(

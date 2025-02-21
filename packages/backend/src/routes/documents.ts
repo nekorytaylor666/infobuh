@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import { eq, and, desc } from "drizzle-orm";
 import type { HonoEnv } from "../db";
-import { documents } from "../db/schema";
+import { documents, documentSignatures } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
+import { createRemoteJWKSet, jwtVerify } from "jose";
+
+const NCALAYER_URL = "http://91.147.92.61:14579";
 
 export const documentsRouter = new Hono<HonoEnv>();
 
@@ -15,6 +18,11 @@ documentsRouter.get("/:legalEntityId", async (c) => {
 		orderBy: [desc(documents.createdAt)],
 		with: {
 			createdBy: true,
+			signatures: {
+				with: {
+					signer: true,
+				},
+			},
 		},
 	});
 
@@ -153,4 +161,125 @@ documentsRouter.delete("/:legalEntityId/:id", async (c) => {
 		);
 
 	return c.json({ success: true });
+});
+
+// Sign a document
+documentsRouter.post("/:legalEntityId/:id/sign", async (c) => {
+	const id = c.req.param("id");
+	const legalEntityId = c.req.param("legalEntityId");
+	const body = await c.req.json();
+	const { key, password, signerId } = body;
+
+	// First check if document exists
+	const doc = await c.env.db
+		.select()
+		.from(documents)
+		.where(
+			and(eq(documents.id, id), eq(documents.legalEntityId, legalEntityId)),
+		);
+
+	if (!doc.length) {
+		throw new HTTPException(404, { message: "Document not found" });
+	}
+
+	// Get the file from storage
+	const { data: fileData, error: storageError } = await c.env.supabase.storage
+		.from("documents")
+		.download(doc[0].name);
+
+	if (storageError || !fileData) {
+		throw new HTTPException(500, {
+			message: "Failed to get file from storage",
+		});
+	}
+
+	// Convert file to base64
+	const fileBuffer = await fileData.arrayBuffer();
+	const base64Data = Buffer.from(fileBuffer).toString("base64");
+
+	// Make request to NCALayer
+	const signRequest = {
+		data: base64Data,
+		signers: [
+			{
+				key,
+				password,
+				keyAlias: null,
+			},
+		],
+		withTsp: true,
+		tsaPolicy: "TSA_GOST_POLICY",
+		detached: false,
+	};
+
+	try {
+		const response = await fetch(`${NCALAYER_URL}/cms/sign`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(signRequest),
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => ({}));
+			throw new Error(
+				errorData.message ||
+					`NCALayer responded with status: ${response.status}`,
+			);
+		}
+
+		const result = await response.json();
+
+		if (!result.cms) {
+			throw new Error("No CMS data received from NCALayer");
+		}
+
+		// Create signature record
+		const signature = await c.env.db
+			.insert(documentSignatures)
+			.values({
+				documentId: id,
+				signerId,
+				cms: result.cms,
+				signedAt: new Date(),
+			})
+			.returning();
+
+		return c.json(signature[0]);
+	} catch (error) {
+		throw new HTTPException(500, {
+			message:
+				error instanceof Error ? error.message : "Failed to sign document",
+		});
+	}
+});
+
+// Get document signatures
+documentsRouter.get("/:legalEntityId/:id/signatures", async (c) => {
+	const id = c.req.param("id");
+	const legalEntityId = c.req.param("legalEntityId");
+
+	// First check if document exists
+	const doc = await c.env.db
+		.select()
+		.from(documents)
+		.where(
+			and(eq(documents.id, id), eq(documents.legalEntityId, legalEntityId)),
+		);
+
+	if (!doc.length) {
+		throw new HTTPException(404, { message: "Document not found" });
+	}
+
+	// Get signatures with signer info
+	const signatures = await c.env.db.query.documentSignatures.findMany({
+		where: eq(documentSignatures.documentId, id),
+		with: {
+			signer: true,
+		},
+		orderBy: [desc(documentSignatures.signedAt)],
+	});
+
+	return c.json(signatures);
 });
