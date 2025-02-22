@@ -13,6 +13,12 @@ import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
+import pdfRouter from "./routes/pdf";
+import pdfLibRouter from "./routes/pdfLib";
+import { prettyJSON } from "hono/pretty-json";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { env } from "hono/adapter";
 
 // Load environment variables
 config({ path: ".env" });
@@ -26,8 +32,23 @@ const dbClient = createDbClient(process.env.DATABASE_URL);
 
 const app = new Hono<HonoEnv>();
 
-// app.use("*", logger());
-app.use("*", cors());
+app.use("*", logger());
+app.use("*", prettyJSON());
+app.use(
+	"*",
+	cors({
+		origin: ["http://localhost:3000"],
+		credentials: true,
+	}),
+);
+
+// Create database connection
+const client = postgres(env.DATABASE_URL);
+app.use("*", async (c, next) => {
+	c.set("db", drizzle(client));
+	await next();
+});
+
 app.get(
 	"/openapi",
 	openAPISpecs(app, {
@@ -63,6 +84,9 @@ app.use("*", async (c, next) => {
 	await next();
 });
 app.route("/documents", documentsRouter);
+app.route("/pdf", pdfRouter);
+app.route("/api/pdf", pdfRouter);
+app.route("/api/pdf-lib", pdfLibRouter);
 
 app.use("*", authMiddleware);
 // Add environment variables to context
