@@ -50,10 +50,7 @@ export function FileUploadDialog({
             supabaseAnonKey={supabaseAnonKey}
             bucketName="documents"
             onUploadComplete={(file) => {
-              onUploadComplete(file);
-              if (parentId) {
-                onUploadComplete(file, parentId);
-              }
+              onUploadComplete(file, parentId);
             }}
             onUploadError={onUploadError}
           />

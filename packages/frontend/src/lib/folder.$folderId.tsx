@@ -1,27 +1,14 @@
-import {
-  createFileRoute,
-  useCanGoBack,
-  useRouter,
-} from "@tanstack/react-router";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useLegalEntity } from "@/hooks/use-legal-entity";
-import { useAuthContext } from "@/lib/auth";
-import type { DocumentWithOwnerSignature } from "@backend/db/schema";
 import { DocumentHeader } from "@/components/documents/components/document-header";
 import { DocumentTree } from "@/components/documents/components/document-tree";
 import { FileInformationSheet } from "@/components/documents/components/file-information-sheet";
-import { documentCache } from "@/components/documents/utils/document-cache";
-import { prefetchDocument } from "@/components/documents/utils/document-utils";
+import { DocumentBreadcrumb } from "@/components/documents/components/document-breadcrumb";
 import {
-  useDocuments,
   useRenameDocument,
   useUploadDocument,
-  useDocument,
 } from "@/components/documents/hooks/use-documents";
-import type { UppyFile } from "@uppy/core";
-import { Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Folder } from "lucide-react";
+import { useDocument } from "@/components/documents/hooks/use-documents";
+import { useDocuments } from "@/components/documents/hooks/use-documents";
+import { prefetchDocument } from "@/components/documents/utils/document-utils";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -30,18 +17,39 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { DocumentBreadcrumb } from "@/components/documents/components/document-breadcrumb";
+import { Button } from "@/components/ui/button";
+import { useLegalEntity } from "@/hooks/use-legal-entity";
+import { useAuthContext } from "@/lib/auth";
+import type { DocumentWithOwnerSignature } from "@backend/db/schema";
+import {
+  createFileRoute,
+  Link,
+  useCanGoBack,
+  useParams,
+  useRouter,
+  useSearch,
+} from "@tanstack/react-router";
+import type { UppyFile } from "@uppy/core";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import React from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useDocumentBreadcrumbs } from "@/components/documents/hooks/use-document-breadcrumbs";
-import { useNestedFolderBreadcrumbs } from "@/components/documents/hooks/use-nested-folder-breadcrumbs";
-import { useNavigate } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/dashboard/documents/")({
+export const Route = createFileRoute("/dashboard/documents/folder/$folderId")({
   component: DocumentsPage,
+  validateSearch: (search) => {
+    return {
+      folderName: search.folderName as string,
+    };
+  },
 });
 
 function DocumentsPage() {
   const params = Route.useParams();
+  const search = Route.useSearch();
+  const router = useRouter();
 
+  const folderId = params.folderId;
   const [selectedFile, setSelectedFile] =
     useState<DocumentWithOwnerSignature | null>(null);
   const [newFileName, setNewFileName] = useState("");
@@ -54,17 +62,16 @@ function DocumentsPage() {
     refetch,
   } = useDocuments(legalEntity?.id);
 
-  // If we're viewing a specific folder, fetch its details
-  const { data: currentFolder } = useDocument(null);
+  // If we're viewing a specific folder, fetch its details (for tree display only)
+  const { data: currentFolder } = useDocument(
+    folderId ? { documentId: folderId, legalEntityId: legalEntity?.id } : null
+  );
+
+  // Use search param directly for folder name
+  const folderName = search.folderName || "Документы";
 
   const uploadDocument = useUploadDocument();
   const renameDocument = useRenameDocument();
-
-  // Setup breadcrumb navigation
-  useDocumentBreadcrumbs(currentFolder, documents);
-
-  const navigate = useNavigate();
-  const nestedBreadcrumbs = useNestedFolderBreadcrumbs([], [], documents);
 
   // Prefetch documents when they are loaded
   useEffect(() => {
@@ -86,6 +93,22 @@ function DocumentsPage() {
     }
   }, [documents]);
 
+  // Setup breadcrumb navigation
+  const { navigateToParent } = useDocumentBreadcrumbs(currentFolder, documents);
+
+  // Listen for browser back button
+  useEffect(() => {
+    const handlePopState = () => {
+      // The navigation and breadcrumb updates will be handled by
+      // the history listener in useDocumentBreadcrumbs
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
   const handleUploadComplete = async (
     file: UppyFile<Record<string, unknown>, Record<string, unknown>>,
     parentId?: string | null
@@ -96,7 +119,7 @@ function DocumentsPage() {
       file,
       legalEntityId: legalEntity.id,
       ownerId: user.id,
-      parentId: parentId || undefined,
+      parentId: parentId || folderId || undefined,
     });
   };
 
@@ -113,56 +136,28 @@ function DocumentsPage() {
     setNewFileName("");
   };
 
-  // Add a function to handle switching to the nested folder path structure
-  const handleUseNestedStructure = useCallback(
-    (folderId: string) => {
-      const { path, names } = nestedBreadcrumbs.getFolderPath(folderId);
-
-      navigate({
-        to: "/dashboard/documents/folders/$folderPath",
-        params: { folderPath: path },
-        search: { folderNames: names },
-      });
-    },
-    [navigate, nestedBreadcrumbs]
-  );
-
   // If we're viewing a specific folder, fetch all documents but filter display in tree
   return (
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center p-6 border-b">
-        <h1 className="text-2xl font-bold">Документы</h1>
-
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              // Navigate to the empty folder path with root folder name
-              navigate({
-                to: "/dashboard/documents/folders/$folderPath",
-                params: { folderPath: "" },
-                search: { folderNames: "Документы" },
-              });
-            }}
-          >
-            <Folder className="mr-2 h-4 w-4" />
-            Использовать вложенную структуру
-          </Button>
-        </div>
-      </div>
+      <DocumentHeader
+        title={folderName}
+        onUploadComplete={handleUploadComplete}
+      />
 
       {/* Breadcrumbs */}
       <DocumentBreadcrumb />
 
-      {currentFolder && (
+      {folderId && (
         <div className="px-6 py-2">
-          <Link to="/dashboard/documents">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ChevronLeft className="h-4 w-4" />
-              Назад к списку документов
-            </Button>
-          </Link>
+          <Button
+            onClick={navigateToParent}
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Назад
+          </Button>
         </div>
       )}
 
@@ -177,6 +172,7 @@ function DocumentsPage() {
               documents={documents}
               onSelect={setSelectedFile}
               onUploadComplete={handleUploadComplete}
+              currentFolderId={folderId}
             />
           )}
         </div>

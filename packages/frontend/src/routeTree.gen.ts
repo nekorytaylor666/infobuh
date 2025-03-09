@@ -20,6 +20,7 @@ import { Route as AuthLoginImport } from './routes/auth/login'
 import { Route as DashboardEmployeesIndexImport } from './routes/dashboard/employees/index'
 import { Route as DashboardDocumentsIndexImport } from './routes/dashboard/documents/index'
 import { Route as DashboardEmployeesIdImport } from './routes/dashboard/employees/$id'
+import { Route as DashboardDocumentsFoldersFolderPathImport } from './routes/dashboard/documents/folders.$folderPath'
 
 // Create/Update Routes
 
@@ -76,6 +77,13 @@ const DashboardEmployeesIdRoute = DashboardEmployeesIdImport.update({
   path: '/employees/$id',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+
+const DashboardDocumentsFoldersFolderPathRoute =
+  DashboardDocumentsFoldersFolderPathImport.update({
+    id: '/documents/folders/$folderPath',
+    path: '/documents/folders/$folderPath',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 
 // Populate the FileRoutesByPath interface
 
@@ -144,6 +152,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardEmployeesIndexImport
       parentRoute: typeof DashboardRouteImport
     }
+    '/dashboard/documents/folders/$folderPath': {
+      id: '/dashboard/documents/folders/$folderPath'
+      path: '/documents/folders/$folderPath'
+      fullPath: '/dashboard/documents/folders/$folderPath'
+      preLoaderRoute: typeof DashboardDocumentsFoldersFolderPathImport
+      parentRoute: typeof DashboardRouteImport
+    }
   }
 }
 
@@ -153,12 +168,15 @@ interface DashboardRouteRouteChildren {
   DashboardEmployeesIdRoute: typeof DashboardEmployeesIdRoute
   DashboardDocumentsIndexRoute: typeof DashboardDocumentsIndexRoute
   DashboardEmployeesIndexRoute: typeof DashboardEmployeesIndexRoute
+  DashboardDocumentsFoldersFolderPathRoute: typeof DashboardDocumentsFoldersFolderPathRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardEmployeesIdRoute: DashboardEmployeesIdRoute,
   DashboardDocumentsIndexRoute: DashboardDocumentsIndexRoute,
   DashboardEmployeesIndexRoute: DashboardEmployeesIndexRoute,
+  DashboardDocumentsFoldersFolderPathRoute:
+    DashboardDocumentsFoldersFolderPathRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
@@ -175,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/employees/$id': typeof DashboardEmployeesIdRoute
   '/dashboard/documents': typeof DashboardDocumentsIndexRoute
   '/dashboard/employees': typeof DashboardEmployeesIndexRoute
+  '/dashboard/documents/folders/$folderPath': typeof DashboardDocumentsFoldersFolderPathRoute
 }
 
 export interface FileRoutesByTo {
@@ -187,6 +206,7 @@ export interface FileRoutesByTo {
   '/dashboard/employees/$id': typeof DashboardEmployeesIdRoute
   '/dashboard/documents': typeof DashboardDocumentsIndexRoute
   '/dashboard/employees': typeof DashboardEmployeesIndexRoute
+  '/dashboard/documents/folders/$folderPath': typeof DashboardDocumentsFoldersFolderPathRoute
 }
 
 export interface FileRoutesById {
@@ -200,6 +220,7 @@ export interface FileRoutesById {
   '/dashboard/employees/$id': typeof DashboardEmployeesIdRoute
   '/dashboard/documents/': typeof DashboardDocumentsIndexRoute
   '/dashboard/employees/': typeof DashboardEmployeesIndexRoute
+  '/dashboard/documents/folders/$folderPath': typeof DashboardDocumentsFoldersFolderPathRoute
 }
 
 export interface FileRouteTypes {
@@ -214,6 +235,7 @@ export interface FileRouteTypes {
     | '/dashboard/employees/$id'
     | '/dashboard/documents'
     | '/dashboard/employees'
+    | '/dashboard/documents/folders/$folderPath'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -225,6 +247,7 @@ export interface FileRouteTypes {
     | '/dashboard/employees/$id'
     | '/dashboard/documents'
     | '/dashboard/employees'
+    | '/dashboard/documents/folders/$folderPath'
   id:
     | '__root__'
     | '/'
@@ -236,6 +259,7 @@ export interface FileRouteTypes {
     | '/dashboard/employees/$id'
     | '/dashboard/documents/'
     | '/dashboard/employees/'
+    | '/dashboard/documents/folders/$folderPath'
   fileRoutesById: FileRoutesById
 }
 
@@ -283,7 +307,8 @@ export const routeTree = rootRoute
       "children": [
         "/dashboard/employees/$id",
         "/dashboard/documents/",
-        "/dashboard/employees/"
+        "/dashboard/employees/",
+        "/dashboard/documents/folders/$folderPath"
       ]
     },
     "/about": {
@@ -308,6 +333,10 @@ export const routeTree = rootRoute
     },
     "/dashboard/employees/": {
       "filePath": "dashboard/employees/index.tsx",
+      "parent": "/dashboard"
+    },
+    "/dashboard/documents/folders/$folderPath": {
+      "filePath": "dashboard/documents/folders.$folderPath.tsx",
       "parent": "/dashboard"
     }
   }

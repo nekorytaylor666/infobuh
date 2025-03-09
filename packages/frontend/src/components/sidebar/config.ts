@@ -25,33 +25,48 @@ export const data = {
 			to: "/dashboard/documents",
 			icon: FileText,
 			children: "Документы",
-			items: [
-				{
-					to: "/dashboard/documents/invoices",
-					children: "Накладные",
-					icon: FileText,
-				},
-				{
-					to: "/dashboard/documents/avrs",
-					children: "АВР",
-					icon: FileText,
-				},
-				{
-					to: "/dashboard/documents/invoices",
-					children: "Счета-фактуры",
-					icon: FileText,
-				},
-				{
-					to: "/dashboard/documents/contracts",
-					children: "Договоры",
-					icon: FileText,
-				},
-				{
-					to: "/dashboard/documents/checks",
-					children: "Акты сверки",
-					icon: FileText,
-				},
-			],
+			// items: [
+			// 	{
+			// 		to: "/dashboard/documents/folder/$folderId",
+			// 		children: "Накладные",
+			// 		params: {
+			// 			folderId: "invoices",
+			// 		},
+			// 		icon: FileText,
+			// 	},
+			// 	{
+			// 		to: "/dashboard/documents/folder/$folderId",
+			// 		children: "АВР",
+			// 		params: {
+			// 			folderId: "avrs",
+			// 		},
+			// 		icon: FileText,
+			// 	},
+			// 	{
+			// 		to: "/dashboard/documents/folder/$folderId",
+			// 		children: "Счета-фактуры",
+			// 		params: {
+			// 			folderId: "invoices",
+			// 		},
+			// 		icon: FileText,
+			// 	},
+			// 	{
+			// 		to: "/dashboard/documents/folder/$folderId",
+			// 		children: "Договоры",
+			// 		params: {
+			// 			folderId: "contracts",
+			// 		},
+			// 		icon: FileText,
+			// 	},
+			// 	{
+			// 		to: "/dashboard/documents/folder/$folderId",
+			// 		children: "Акты сверки",
+			// 		params: {
+			// 			folderId: "checks",
+			// 		},
+			// 		icon: FileText,
+			// 	},
+			// ],
 		},
 		{
 			to: "/dashboard/employees",

@@ -9,26 +9,28 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { DocumentWithOwneSignature } from "@backend/db/schema";
+import type { DocumentWithOwnerSignature } from "@backend/db/schema";
 import { FilePreview } from "./file-preview";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { calculateFileSize } from "../utils/file-utils";
 
 interface FileInformationSheetProps {
-  file: DocumentWithOwneSignature | null;
+  file: DocumentWithOwnerSignature | null;
   newFileName: string;
-  onFileNameChange: (name: string) => void;
+  onNewNameChange: (name: string) => void;
   onRename: () => void;
   onClose: () => void;
+  isRenaming?: boolean;
 }
 
 export function FileInformationSheet({
   file,
   newFileName,
-  onFileNameChange,
+  onNewNameChange,
   onRename,
   onClose,
+  isRenaming = false,
 }: FileInformationSheetProps) {
   return (
     <Sheet open={!!file} onOpenChange={(open) => !open && onClose()}>
@@ -57,14 +59,18 @@ export function FileInformationSheet({
                 <div className="flex items-center gap-2">
                   <Input
                     value={newFileName}
-                    onChange={(e) => onFileNameChange(e.target.value)}
+                    onChange={(e) => onNewNameChange(e.target.value)}
                     placeholder="Введите новое имя файла"
                   />
                   <Button
                     onClick={onRename}
-                    disabled={!newFileName.trim() || newFileName === file?.name}
+                    disabled={
+                      !newFileName.trim() ||
+                      newFileName === file?.name ||
+                      isRenaming
+                    }
                   >
-                    Переименовать
+                    {isRenaming ? "Переименование..." : "Переименовать"}
                   </Button>
                 </div>
               </div>
@@ -72,7 +78,7 @@ export function FileInformationSheet({
               <div className="space-y-2">
                 <h3 className="text-sm font-medium">Информация о файле</h3>
                 <div className="text-sm text-muted-foreground space-y-1">
-                  <p>Размер: {file && calculateFileSize(file.size || "0")}</p>
+                  <p>Размер: {file && calculateFileSize(file.size || 0)}</p>
                   <p>
                     Создан:{" "}
                     {file &&

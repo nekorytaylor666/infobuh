@@ -27,6 +27,27 @@ export const useDocuments = (legalEntityId?: string) => {
 	});
 };
 
+// Fetch a single document
+export const useDocument = (
+	params: { documentId: string; legalEntityId?: string } | null,
+) => {
+	return useQuery({
+		queryKey: params?.legalEntityId
+			? documentKeys.detail(params.legalEntityId, params.documentId)
+			: null,
+		queryFn: async () => {
+			if (!params?.legalEntityId) return null;
+
+			const response = await fetch(
+				`${API_URL}/documents/${params.legalEntityId}/${params.documentId}`,
+			);
+			if (!response.ok) throw new Error("Failed to fetch document");
+			return response.json() as Promise<DocumentWithOwnerSignature>;
+		},
+		enabled: !!params?.documentId && !!params?.legalEntityId,
+	});
+};
+
 // Upload document
 export const useUploadDocument = () => {
 	const queryClient = useQueryClient();
@@ -110,6 +131,52 @@ export const useRenameDocument = () => {
 		},
 		onError: () => {
 			toast.error("Failed to rename file");
+		},
+	});
+};
+
+// Create folder
+export const useCreateFolder = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			name,
+			legalEntityId,
+			ownerId,
+			parentId,
+		}: {
+			name: string;
+			legalEntityId: string;
+			ownerId: string;
+			parentId?: string | null;
+		}) => {
+			const response = await fetch(
+				`${API_URL}/documents/${legalEntityId}/folders`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						name,
+						ownerId,
+						parentId,
+					}),
+				},
+			);
+
+			if (!response.ok) throw new Error("Failed to create folder");
+			return response.json();
+		},
+		onSuccess: (_, { legalEntityId }) => {
+			queryClient.invalidateQueries({
+				queryKey: documentKeys.list(legalEntityId),
+			});
+			toast.success("Папка успешно создана");
+		},
+		onError: () => {
+			toast.error("Не удалось создать папку");
 		},
 	});
 };

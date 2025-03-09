@@ -6,7 +6,7 @@ import { EmployeeForm } from "./EmployeeForm";
 import { ProfileForm } from "./ProfileForm";
 import { CompanyForm } from "./CompanyForm";
 import { toast } from "sonner";
-import { useAuth } from "../../lib/auth";
+import { useAuthContext } from "../../lib/auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +21,7 @@ interface OnboardingFormProps {
 
 export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const [step, setStep] = useState<OnboardingStep>("profile");
 
   useEffect(() => {
@@ -36,13 +36,6 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
       return getOnboardingStatus(user.id);
     },
     enabled: !!user?.id,
-    onSuccess: (data) => {
-      if (data.isComplete) {
-        navigate({ to: "/dashboard" });
-      } else {
-        setStep(data.currentStep as OnboardingStep);
-      }
-    },
   });
 
   const formRef = useRef<HTMLFormElement>(null);

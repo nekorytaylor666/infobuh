@@ -1,22 +1,20 @@
-import { TreeView, type TreeDataItem } from "@/components/tree-view";
-import { Button } from "@/components/ui/button";
-import { FileUploadDialog } from "@/components/file-upload-dialog";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
-  MoreHorizontal,
   File,
   Folder,
-  Plus,
   FileText,
   Image,
   FileSpreadsheet,
   FileCode,
 } from "lucide-react";
-import type { Document, DocumentWithOwnerSignature } from "@backend/db/schema";
-import { calculateFileSize } from "../utils/file-utils";
+import type { DocumentWithOwnerSignature } from "@backend/db/schema";
 import { prefetchDocument } from "../utils/document-utils";
 import type { UppyFile } from "@uppy/core";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useBreadcrumb } from "@/contexts/BreadcrumbContext";
+import { useNestedFolderBreadcrumbs } from "../hooks/use-nested-folder-breadcrumbs";
+import { useCallback } from "react";
 
 interface DocumentTreeProps {
   documents: DocumentWithOwnerSignature[];
@@ -25,6 +23,8 @@ interface DocumentTreeProps {
     file: UppyFile<Record<string, unknown>, Record<string, unknown>>,
     parentId?: string | null
   ) => void;
+  currentFolderId?: string;
+  useNestedPaths?: boolean;
 }
 
 // Function to get appropriate icon based on file extension
@@ -59,129 +59,124 @@ export function DocumentTree({
   documents,
   onSelect,
   onUploadComplete,
+  currentFolderId,
+  useNestedPaths,
 }: DocumentTreeProps) {
-  // Convert flat documents array to tree structure
+  const navigate = useNavigate();
+  const nestedBreadcrumbs = useNestedFolderBreadcrumbs([], [], documents);
 
-  const buildDocumentTree = (
-    docs: DocumentWithOwnerSignature[]
-  ): TreeDataItem[] => {
-    const itemMap = new Map<string, TreeDataItem>();
-    const rootItems: TreeDataItem[] = [];
-    console.log(docs);
+  // Only show documents that belong to the current folder or root if no folder is selected
+  const filteredDocuments = documents.filter((doc) =>
+    currentFolderId
+      ? doc.parentId === currentFolderId
+      : doc.parentId === null || doc.parentId === undefined
+  );
 
-    // First pass: Create TreeDataItems for all documents
-    for (const doc of docs) {
-      const item: TreeDataItem = {
-        id: doc.id,
-        name: doc.name,
-        icon: doc.type === "folder" ? Folder : getFileIcon(doc.name),
-        children: doc.type === "folder" ? [] : undefined,
-        metadata:
-          doc.type === "file"
-            ? {
-                uploadTime: formatDistanceToNow(new Date(doc.createdAt), {
-                  addSuffix: true,
-                  locale: ru,
-                }),
-                signatures: doc.signatures.length,
-                owner: doc.createdBy?.email,
-              }
-            : undefined,
-        actions:
-          doc.type === "folder" ? (
-            <div className="flex items-center gap-2">
-              <FileUploadDialog
-                supabaseUrl={import.meta.env.VITE_SUPABASE_URL}
-                supabaseAnonKey={import.meta.env.VITE_SUPABASE_ANON_KEY}
-                parentId={doc.id}
-                onUploadComplete={onUploadComplete}
-                onUploadError={(error) => {
-                  console.error("Upload error:", error);
-                }}
-                trigger={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 gap-2 text-muted-foreground hover:text-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Новый файл
-                  </Button>
-                }
-              />
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 p-0"
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          ),
-      };
-      itemMap.set(doc.id, item);
+  // Sort documents to have folders first
+  const sortedDocuments = [...filteredDocuments].sort((a, b) => {
+    if (a.type === "folder" && b.type !== "folder") {
+      return -1;
     }
-
-    // Second pass: Build the tree structure
-    for (const doc of docs) {
-      const item = itemMap.get(doc.id);
-      if (item) {
-        if (doc.parentId) {
-          const parent = itemMap.get(doc.parentId);
-          if (parent?.children) {
-            parent.children.push(item);
-          }
-        } else {
-          rootItems.push(item);
-        }
-      }
+    if (a.type !== "folder" && b.type === "folder") {
+      return 1;
     }
+    return 0;
+  });
 
-    // Sort rootItems to have folders first
-    rootItems.sort((a, b) => {
-      if (a.children && !b.children) {
-        return -1;
-      }
-      if (!a.children && b.children) {
-        return 1;
-      }
-      return 0;
-    });
-
-    return rootItems;
-  };
-
-  const documentTree = buildDocumentTree(documents);
-
-  const handleItemHover = (item: TreeDataItem) => {
-    const doc = documents.find((d) => d.id === item.id);
-    if (doc && doc.type === "file") {
+  const handleItemHover = useCallback((doc: DocumentWithOwnerSignature) => {
+    if (doc.type === "file") {
       prefetchDocument(doc);
     }
-  };
+  }, []);
+
+  const breadcrumb = useBreadcrumb();
+
+  const handleFolderClick = useCallback(
+    (doc: DocumentWithOwnerSignature) => {
+      if (doc.type !== "folder") return;
+
+      // Use nested paths if enabled, otherwise use simple folder navigation
+      // Build full path for this folder by determining its ancestry
+      const { path, names } = nestedBreadcrumbs.getFolderPath(doc.id);
+
+      // Navigate using nested path
+      navigate({
+        to: "/dashboard/documents/folders/$folderPath",
+        params: { folderPath: path },
+        search: { folderNames: names },
+      });
+    },
+    [navigate, nestedBreadcrumbs]
+  );
+
+  const handleKeyPress = useCallback(
+    (e: React.KeyboardEvent, doc: DocumentWithOwnerSignature) => {
+      if (e.key === "Enter" || e.key === " ") {
+        if (doc.type === "file") {
+          onSelect(doc);
+        } else if (doc.type === "folder") {
+          handleFolderClick(doc);
+        }
+      }
+    },
+    [onSelect, handleFolderClick]
+  );
 
   return (
-    <TreeView
-      data={documentTree}
-      expandAll={false}
-      defaultNodeIcon={Folder}
-      defaultLeafIcon={File}
-      className="[&_[role='treeitem']]:transition-colors [&_[role='treeitem']]:duration-200 [&_[role='treeitem']]:ease-in-out [&_[role='treeitem']]:rounded-md [&_[role='treeitem']]:hover:bg-accent/50"
-      onSelect={(item: TreeDataItem) => {
-        if (item.children) return;
-        const selectedDoc = documents.find((doc) => doc.id === item.id);
-        if (selectedDoc) {
-          onSelect(selectedDoc as DocumentWithOwnerSignature);
-        }
-      }}
-      onMouseEnter={handleItemHover}
-    />
+    <div className="w-full">
+      <div className="border rounded">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b">
+              <th className="border-r text-left px-4 py-2">Name</th>
+              <th className="border-r text-left px-4 py-2">Owner</th>
+              <th className="border-r text-left px-4 py-2">Tag</th>
+              <th className="text-left px-4 py-2">Created at</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedDocuments.map((doc) => {
+              const Icon =
+                doc.type === "folder" ? Folder : getFileIcon(doc.name);
+
+              return (
+                <tr
+                  key={doc.id}
+                  className="border-b hover:bg-accent/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    if (doc.type === "file") {
+                      onSelect(doc);
+                    } else if (doc.type === "folder") {
+                      handleFolderClick(doc);
+                    }
+                  }}
+                  onKeyDown={(e) => handleKeyPress(e, doc)}
+                  onMouseEnter={() => handleItemHover(doc)}
+                  tabIndex={0}
+                  role="row"
+                  aria-label={`${doc.type === "folder" ? "Folder" : "File"}: ${doc.name}`}
+                >
+                  <td className="border-r p-2">
+                    <div className="flex items-center gap-2 px-2 py-1">
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{doc.name}</span>
+                    </div>
+                  </td>
+                  <td className="border-r p-2 text-sm">
+                    {doc.createdBy?.email || "-"}
+                  </td>
+                  <td className="border-r p-2 text-sm">{"-"}</td>
+                  <td className="p-2 text-sm">
+                    {doc.createdAt
+                      ? new Date(doc.createdAt).toLocaleDateString()
+                      : "-"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
