@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { legalEntities, profile, legalEntityZodSchema } from "../db/schema";
+import { legalEntities, profile, legalEntityZodSchema, legalEntityInsertSchema, legalEntityUpdateSchema } from "../db/schema";
 import type { HonoEnv } from "../db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -8,6 +8,39 @@ import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 
 const router = new Hono<HonoEnv>();
+
+router.get("/all", describeRoute({
+	description: "Get user's legal entities",
+	responses: {
+		200: {
+			description: "Legal entity found",
+			content: {
+				"application/json": {
+					schema: resolver(legalEntityZodSchema),
+				},
+			},
+		},
+		401: {
+			description: "Unauthorized",
+		},
+		404: {
+			description: "Legal entities not found",
+		},
+	},
+}), async (c) => {
+	const userId = c.get("userId") as string;
+
+	if (!userId) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	const userLegalEntities = await c.env.db.query.legalEntities.findMany({
+		where: eq(legalEntities.profileId, userId)
+	});
+
+	return c.json(userLegalEntities);
+
+})
 
 // Get current user's legal entity
 router.get(
@@ -51,47 +84,56 @@ router.get(
 
 // Create legal entity
 router.post(
-	"/",
+	"/create",
 	describeRoute({
-		description: "Create a new legal entity",
-		responses: {
-			201: {
-				description: "Legal entity created",
-				content: {
-					"application/json": {
-						schema: resolver(legalEntityZodSchema),
-					},
-				},
+	  description: "Create a new legal entity",
+	  responses: {
+		201: {
+		  description: "Legal entity created",
+		  content: {
+			"application/json": {
+			  schema: resolver(legalEntityInsertSchema),
 			},
-			400: {
-				description: "Invalid input",
-			},
-			500: {
-				description: "Internal server error",
-			},
+		  },
 		},
+		400: { description: "Invalid input" },
+		500: { description: "Internal server error" },
+	  },
 	}),
-	zValidator("json", legalEntityZodSchema),
+	// Use the insert schema for legal entity creation
+	zValidator("json", legalEntityInsertSchema),
 	async (c) => {
-		try {
-			const data = await c.req.json();
-			const validatedData = legalEntityZodSchema.parse(data);
-
-			const [newLegalEntity] = await c.env.db
-				.insert(legalEntities)
-				.values(validatedData)
-				.returning();
-
-			return c.json(newLegalEntity, 201);
-		} catch (error) {
-			console.error("Error creating legal entity:", error);
-			if (error instanceof z.ZodError) {
-				return c.json({ error: error.errors }, 400);
-			}
-			return c.json({ error: "Failed to create legal entity" }, 500);
+	  try {
+		// Get the profile ID from context (e.g. set by middleware during auth)
+		const userId = c.get("userId") as string;
+		if (!userId) {
+		  return c.json({ error: "Unauthorized" }, 401);
 		}
+  
+		const data = await c.req.json();
+		const validatedData = legalEntityInsertSchema.parse(data);
+  
+		const [newLegalEntity] = await c.env.db
+		  .insert(legalEntities)
+		  .values({
+			...validatedData,
+			profileId: userId,
+			registrationDate: new Date(
+				validatedData.registrationDate,
+			),
+		  })
+		  .returning();
+  
+		return c.json(newLegalEntity, 201);
+	  } catch (error) {
+		console.error("Error creating legal entity:", error);
+		if (error instanceof z.ZodError) {
+		  return c.json({ error: error.errors }, 400);
+		}
+		return c.json({ error: "Failed to create legal entity" }, 500);
+	  }
 	},
-);
+  );
 
 // Update legal entity
 router.put(
@@ -103,7 +145,7 @@ router.put(
 				description: "Legal entity updated",
 				content: {
 					"application/json": {
-						schema: resolver(legalEntityZodSchema),
+						schema: resolver(legalEntityUpdateSchema),
 					},
 				},
 			},
@@ -115,12 +157,16 @@ router.put(
 			},
 		},
 	}),
-	zValidator("json", legalEntityZodSchema.partial()),
+	zValidator("json", legalEntityUpdateSchema.partial()),
 	async (c) => {
 		try {
 			const id = c.req.param("id");
 			const data = await c.req.json();
-			const validatedData = legalEntityZodSchema.partial().parse(data);
+			const validatedData = legalEntityUpdateSchema.partial().parse(data);
+
+			if (validatedData.registrationDate) {
+				validatedData.registrationDate = new Date(validatedData.registrationDate);
+			  }
 
 			const [updatedLegalEntity] = await c.env.db
 				.update(legalEntities)
