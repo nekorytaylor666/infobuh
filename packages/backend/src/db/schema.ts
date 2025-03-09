@@ -91,6 +91,13 @@ export const legalEntityInsertSchema = createInsertSchema(legalEntities)
       }
     }, z.date()),
   });
+export const legalEntityUpdateSchema = legalEntityZodSchema.partial().extend({
+	registrationDate: z.preprocess(
+	  (arg) =>
+		typeof arg === "string" || arg instanceof Date ? new Date(arg) : arg,
+	  z.date()
+	).optional(),
+  });
 
 export const banks = pgTable("banks", {
 	id: uuid("id").primaryKey().defaultRandom(),

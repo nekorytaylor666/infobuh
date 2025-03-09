@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { legalEntities, profile, legalEntityZodSchema, legalEntityInsertSchema } from "../db/schema";
+import { legalEntities, profile, legalEntityZodSchema, legalEntityInsertSchema, legalEntityUpdateSchema } from "../db/schema";
 import type { HonoEnv } from "../db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -145,7 +145,7 @@ router.put(
 				description: "Legal entity updated",
 				content: {
 					"application/json": {
-						schema: resolver(legalEntityZodSchema),
+						schema: resolver(legalEntityUpdateSchema),
 					},
 				},
 			},
@@ -157,12 +157,16 @@ router.put(
 			},
 		},
 	}),
-	zValidator("json", legalEntityZodSchema.partial()),
+	zValidator("json", legalEntityUpdateSchema.partial()),
 	async (c) => {
 		try {
 			const id = c.req.param("id");
 			const data = await c.req.json();
-			const validatedData = legalEntityZodSchema.partial().parse(data);
+			const validatedData = legalEntityUpdateSchema.partial().parse(data);
+
+			if (validatedData.registrationDate) {
+				validatedData.registrationDate = new Date(validatedData.registrationDate);
+			  }
 
 			const [updatedLegalEntity] = await c.env.db
 				.update(legalEntities)
