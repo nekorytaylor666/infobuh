@@ -73,6 +73,49 @@ const OnboardingDataSchema = z.object({
 });
 type OnboardingData = z.infer<typeof OnboardingDataSchema>;
 
+router.get(
+	"/profile/:userId",
+	describeRoute({
+	  description: "Get user profile information by user ID (name, image, email)",
+	  responses: {
+		200: {
+		  description: "Successfully retrieved user profile",
+		},
+		400: {
+		  description: "Missing userId",
+		},
+		404: {
+		  description: "Profile not found",
+		},
+	  },
+	}),
+	async (c) => {
+	  const userId = c.req.param("userId");
+	  if (!userId) {
+		return c.json({ error: "User ID is required" }, 400);
+	  }
+  
+	  try {
+		// Fetch the profile
+		const userProfile = await c.env.db.query.profile.findFirst({
+		  where: eq(profile.id, userId),
+		});
+  
+		if (!userProfile) {
+		  return c.json({ error: "Profile not found" }, 404);
+		}
+  
+		// Return only name, image, and email
+		const { name, image, email } = userProfile;
+		return c.json({ name, image, email });
+	  } catch (error) {
+		console.error("Error fetching profile:", error);
+		return c.json({ error: "Internal server error" }, 500);
+	  }
+	},
+  );
+  
+
 // Route definitions
 router.get("/onboarding/status/:userId", async (c) => {
 	const userId = c.req.param("userId");

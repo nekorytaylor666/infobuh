@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
 
 const authSchema = pgSchema("auth");
 
@@ -61,6 +62,7 @@ export const onboardingStatusRelations = relations(
 	}),
 );
 
+
 export const legalEntities = pgTable("legal_entities", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	profileId: uuid("profile_id")
@@ -80,6 +82,15 @@ export const legalEntities = pgTable("legal_entities", {
 });
 
 export const legalEntityZodSchema = createSelectSchema(legalEntities);
+export const legalEntityInsertSchema = createInsertSchema(legalEntities)
+  .omit({ profileId: true })
+  .extend({
+    registrationDate: z.preprocess((arg) => {
+      if (typeof arg === 'string' || arg instanceof Date) {
+        return new Date(arg);
+      }
+    }, z.date()),
+  });
 
 export const banks = pgTable("banks", {
 	id: uuid("id").primaryKey().defaultRandom(),

@@ -13,8 +13,7 @@ import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
-import pdfRouter from "./routes/pdf";
-import pdfLibRouter from "./routes/pdfLib";
+
 import { prettyJSON } from "hono/pretty-json";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -37,7 +36,7 @@ app.use("*", prettyJSON());
 app.use(
 	"*",
 	cors({
-		origin: ["http://localhost:3000"],
+		origin: ["http://localhost:3000", "http://localhost:3002"],
 		credentials: true,
 	}),
 );
@@ -84,9 +83,6 @@ app.use("*", async (c, next) => {
 	await next();
 });
 app.route("/documents", documentsRouter);
-app.route("/pdf", pdfRouter);
-app.route("/api/pdf", pdfRouter);
-app.route("/api/pdf-lib", pdfLibRouter);
 
 app.use("*", authMiddleware);
 // Add environment variables to context
