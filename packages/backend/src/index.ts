@@ -7,10 +7,12 @@ import { openAPISpecs } from "hono-openapi";
 import authRouter from "./routes/auth";
 import legalEntityRouter from "./routes/legal-entity";
 import employeesRouter from "./routes/employees";
+import banksRouter from "./routes/banks";
 import { apiReference } from "@scalar/hono-api-reference";
 import { createDbClient, type HonoEnv } from "./db";
 import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
+import { documentsFlutterRouter } from "./routes/documents_flutter";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 
@@ -90,6 +92,8 @@ app.use("*", authMiddleware);
 app.route("/auth", authRouter);
 app.route("/legal-entity", legalEntityRouter);
 app.route("/employees", employeesRouter);
+app.route("/banks", banksRouter);
+app.route("/docs-flutter", documentsFlutterRouter);
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
 });
