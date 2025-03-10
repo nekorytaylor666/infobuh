@@ -138,6 +138,20 @@ export type Employee = typeof employees.$inferSelect;
 
 export type LegalEntity = typeof legalEntities.$inferSelect;
 
+export const documentsFlutter = pgTable("documents_flutter", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	legalEntityId: uuid("legal_entity_id")
+		.references(() => legalEntities.id)
+		.notNull(),
+	type: varchar("type", { length: 50 }).notNull(),
+	receiverBin: integer("receiver_bin").notNull(),
+	receiverName: varchar("receiver_name", { length: 255 }).notNull(),
+	fields: jsonb("fields").notNull(),
+	filePath: text("file_path").notNull(),
+	cms: text("cms"),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const documents = pgTable("documents", {
 	id: uuid("id").defaultRandom().primaryKey(),
 	name: varchar("name", { length: 255 }).notNull(),
