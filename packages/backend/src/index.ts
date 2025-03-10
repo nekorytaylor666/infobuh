@@ -7,6 +7,7 @@ import { openAPISpecs } from "hono-openapi";
 import authRouter from "./routes/auth";
 import legalEntityRouter from "./routes/legal-entity";
 import employeesRouter from "./routes/employees";
+import banksRouter from "./routes/banks";
 import { apiReference } from "@scalar/hono-api-reference";
 import { createDbClient, type HonoEnv } from "./db";
 import { authMiddleware } from "./middleware/auth";
@@ -90,6 +91,7 @@ app.use("*", authMiddleware);
 app.route("/auth", authRouter);
 app.route("/legal-entity", legalEntityRouter);
 app.route("/employees", employeesRouter);
+app.route("/banks", banksRouter);
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
 });

@@ -32,7 +32,7 @@ export const profile = pgTable("profile", {
 
 export const profileRelations = relations(profile, ({ one, many }) => ({
 	onboardingStatus: one(onboardingStatus, {
-		fields: [profile.id],
+		fields: [profile.id],	
 		references: [onboardingStatus.userId],
 	}),
 	legalEntities: many(legalEntities),
