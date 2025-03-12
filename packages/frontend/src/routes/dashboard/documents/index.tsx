@@ -34,6 +34,7 @@ import { DocumentBreadcrumb } from "@/components/documents/components/document-b
 import { useDocumentBreadcrumbs } from "@/components/documents/hooks/use-document-breadcrumbs";
 import { useNestedFolderBreadcrumbs } from "@/components/documents/hooks/use-nested-folder-breadcrumbs";
 import { useNavigate } from "@tanstack/react-router";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/dashboard/documents/")({
   component: DocumentsPage,
@@ -52,9 +53,9 @@ function DocumentsPage() {
     data: documents = [],
     isLoading,
     refetch,
+    isFetched,
   } = useDocuments(legalEntity?.id);
 
-  // If we're viewing a specific folder, fetch its details
   const { data: currentFolder } = useDocument(null);
 
   const uploadDocument = useUploadDocument();
@@ -130,56 +131,16 @@ function DocumentsPage() {
   // If we're viewing a specific folder, fetch all documents but filter display in tree
   return (
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center p-6 border-b">
-        <h1 className="text-2xl font-bold">Документы</h1>
+      <DocumentHeader parentId={null} onUploadComplete={handleUploadComplete} />
 
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              // Navigate to the empty folder path with root folder name
-              navigate({
-                to: "/dashboard/documents/folders/$folderPath",
-                params: { folderPath: "" },
-                search: { folderNames: "Документы" },
-              });
-            }}
-          >
-            <Folder className="mr-2 h-4 w-4" />
-            Использовать вложенную структуру
-          </Button>
-        </div>
-      </div>
-
-      {/* Breadcrumbs */}
-      <DocumentBreadcrumb />
-
-      {currentFolder && (
-        <div className="px-6 py-2">
-          <Link to="/dashboard/documents">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ChevronLeft className="h-4 w-4" />
-              Назад к списку документов
-            </Button>
-          </Link>
-        </div>
-      )}
-
-      <div className="flex-grow overflow-hidden">
-        <div className="h-full p-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900" />
-            </div>
-          ) : (
-            <DocumentTree
-              documents={documents}
-              onSelect={setSelectedFile}
-              onUploadComplete={handleUploadComplete}
-            />
-          )}
-        </div>
+      <div className="px-4 pt-4 pb-4">
+        <DocumentTree
+          documents={documents}
+          onSelect={setSelectedFile}
+          onUploadComplete={handleUploadComplete}
+          useNestedPaths={true}
+          isLoading={isLoading || !isFetched}
+        />
       </div>
 
       {selectedFile && (

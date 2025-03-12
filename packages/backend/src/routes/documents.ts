@@ -10,11 +10,12 @@ const NCALAYER_URL = "http://91.147.92.61:14579";
 export const documentsRouter = new Hono<HonoEnv>();
 
 // Get all documents for a legal entity
-documentsRouter.get("/:legalEntityId", async (c) => {
+documentsRouter.get("/:legalEntityId?", async (c) => {
 	const legalEntityId = c.req.param("legalEntityId");
+	const includeChildren = c.req.query("includeChildren") === "true";
 
 	const docs = await c.env.db.query.documents.findMany({
-		where: eq(documents.legalEntityId, legalEntityId),
+		where: and(eq(documents.legalEntityId, legalEntityId)),
 		orderBy: [desc(documents.createdAt)],
 		with: {
 			createdBy: true,

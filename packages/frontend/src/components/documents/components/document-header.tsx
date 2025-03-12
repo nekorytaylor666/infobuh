@@ -16,9 +16,9 @@ import type { UppyFile } from "@uppy/core";
 import { useCreateFolder } from "@/components/documents/hooks/use-documents";
 import { useLegalEntity } from "@/hooks/use-legal-entity";
 import { useAuthContext } from "@/lib/auth";
+import { DocumentBreadcrumb } from "./document-breadcrumb";
 
 interface DocumentHeaderProps {
-  title: string;
   onUploadComplete: (
     file: UppyFile<Record<string, unknown>, Record<string, unknown>>,
     parentId?: string | null
@@ -27,7 +27,6 @@ interface DocumentHeaderProps {
 }
 
 export function DocumentHeader({
-  title,
   onUploadComplete,
   parentId,
 }: DocumentHeaderProps) {
@@ -67,8 +66,8 @@ export function DocumentHeader({
   };
 
   return (
-    <div className="flex justify-between items-center p-6 border-b">
-      <h1 className="text-2xl font-bold">{title}</h1>
+    <div className="flex justify-between items-center pr-4">
+      <DocumentBreadcrumb />
 
       <div className="flex items-center gap-2">
         <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>

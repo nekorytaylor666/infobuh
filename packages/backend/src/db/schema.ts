@@ -62,7 +62,6 @@ export const onboardingStatusRelations = relations(
 	}),
 );
 
-
 export const legalEntities = pgTable("legal_entities", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	profileId: uuid("profile_id")
@@ -83,21 +82,23 @@ export const legalEntities = pgTable("legal_entities", {
 
 export const legalEntityZodSchema = createSelectSchema(legalEntities);
 export const legalEntityInsertSchema = createInsertSchema(legalEntities)
-  .omit({ profileId: true })
-  .extend({
-    registrationDate: z.preprocess((arg) => {
-      if (typeof arg === 'string' || arg instanceof Date) {
-        return new Date(arg);
-      }
-    }, z.date()),
-  });
+	.omit({ profileId: true })
+	.extend({
+		registrationDate: z.preprocess((arg) => {
+			if (typeof arg === "string" || arg instanceof Date) {
+				return new Date(arg);
+			}
+		}, z.date()),
+	});
 export const legalEntityUpdateSchema = legalEntityZodSchema.partial().extend({
-	registrationDate: z.preprocess(
-	  (arg) =>
-		typeof arg === "string" || arg instanceof Date ? new Date(arg) : arg,
-	  z.date()
-	).optional(),
-  });
+	registrationDate: z
+		.preprocess(
+			(arg) =>
+				typeof arg === "string" || arg instanceof Date ? new Date(arg) : arg,
+			z.date(),
+		)
+		.optional(),
+});
 
 export const banks = pgTable("banks", {
 	id: uuid("id").primaryKey().defaultRandom(),

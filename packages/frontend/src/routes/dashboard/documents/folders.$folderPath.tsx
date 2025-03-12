@@ -25,7 +25,8 @@ import type { UppyFile } from "@uppy/core";
 import { ChevronLeft } from "lucide-react";
 import React from "react";
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useNestedFolderBreadcrumbs } from "../../../components/documents/hooks/use-nested-folder-breadcrumbs";
+import { useNestedFolderBreadcrumbs } from "@/components/documents/hooks/use-nested-folder-breadcrumbs";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Create a type for our loader data
 interface FolderLoaderData {
@@ -59,11 +60,8 @@ export const Route = createFileRoute(
 });
 
 function NestedFolderPage() {
-  const { folderPath } = Route.useParams();
   const search = Route.useSearch();
   const loaderData = Route.useLoaderData() as FolderLoaderData;
-  const router = useRouter();
-  const navigate = useNavigate();
 
   // Extract folder IDs and names from the loader data and search params
   const { folderIds, currentFolderId } = loaderData;
@@ -78,21 +76,8 @@ function NestedFolderPage() {
   const {
     data: documents = [],
     isLoading,
-    refetch,
+    isFetched,
   } = useDocuments(legalEntity?.id);
-
-  // If we're viewing a specific folder, fetch its details (for tree display only)
-  const { data: currentFolder } = useDocument(
-    currentFolderId
-      ? { documentId: currentFolderId, legalEntityId: legalEntity?.id }
-      : null
-  );
-
-  // Use the last folder name in the path for display
-  const currentFolderName =
-    folderNames.length > 0
-      ? folderNames[folderNames.length - 1]
-      : currentFolder?.name || "Документы";
 
   const uploadDocument = useUploadDocument();
   const renameDocument = useRenameDocument();
@@ -157,27 +142,19 @@ function NestedFolderPage() {
     <div className="flex flex-col h-full">
       <DocumentHeader
         parentId={currentFolderId}
-        title={currentFolderName}
         onUploadComplete={handleUploadComplete}
       />
 
-      <DocumentBreadcrumb />
-
       <div className="flex-grow overflow-hidden">
-        <div className="h-full p-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900" />
-            </div>
-          ) : (
-            <DocumentTree
-              documents={documents}
-              onSelect={setSelectedFile}
-              onUploadComplete={handleUploadComplete}
-              currentFolderId={currentFolderId}
-              useNestedPaths={true}
-            />
-          )}
+        <div className="h-full px-4 pt-4 pb-4">
+          <DocumentTree
+            documents={documents}
+            onSelect={setSelectedFile}
+            onUploadComplete={handleUploadComplete}
+            currentFolderId={currentFolderId}
+            useNestedPaths={true}
+            isLoading={isLoading || !isFetched}
+          />
         </div>
       </div>
 
