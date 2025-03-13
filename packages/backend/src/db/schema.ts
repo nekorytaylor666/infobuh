@@ -267,3 +267,81 @@ export const employeesRelations = relations(employees, ({ one }) => ({
 		references: [legalEntities.id],
 	}),
 }));
+
+// Document templates for generating forms and PDFs
+export const documentTemplates = pgTable("document_templates", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	name: varchar("name", { length: 255 }).notNull(),
+	description: text("description"),
+	jsonSchema: jsonb("json_schema").notNull(), // JSON Schema for form generation
+	zodSchema: text("zod_schema").notNull(), // Zod schema as serialized string
+	pdfTemplate: jsonb("pdf_template"), // PDF layout configuration
+	legalEntityId: uuid("legal_entity_id")
+		.references(() => legalEntities.id)
+		.notNull(),
+	createdById: uuid("created_by_id")
+		.references(() => profile.id)
+		.notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type DocumentTemplate = typeof documentTemplates.$inferSelect;
+
+export const documentTemplateRelations = relations(
+	documentTemplates,
+	({ one }) => ({
+		legalEntity: one(legalEntities, {
+			fields: [documentTemplates.legalEntityId],
+			references: [legalEntities.id],
+		}),
+		createdBy: one(profile, {
+			fields: [documentTemplates.createdById],
+			references: [profile.id],
+		}),
+	}),
+);
+
+// Document instances generated from templates
+export const generatedDocuments = pgTable("generated_documents", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	name: varchar("name", { length: 255 }).notNull(),
+	templateId: uuid("template_id")
+		.references(() => documentTemplates.id)
+		.notNull(),
+	documentData: jsonb("document_data").notNull(), // Form data used to generate the document
+	pdfPath: text("pdf_path"), // Path to the generated PDF file
+	documentId: uuid("document_id").references(() => documents.id), // Link to the documents table if saved as a file
+	legalEntityId: uuid("legal_entity_id")
+		.references(() => legalEntities.id)
+		.notNull(),
+	createdById: uuid("created_by_id")
+		.references(() => profile.id)
+		.notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type GeneratedDocument = typeof generatedDocuments.$inferSelect;
+
+export const generatedDocumentRelations = relations(
+	generatedDocuments,
+	({ one }) => ({
+		template: one(documentTemplates, {
+			fields: [generatedDocuments.templateId],
+			references: [documentTemplates.id],
+		}),
+		document: one(documents, {
+			fields: [generatedDocuments.documentId],
+			references: [documents.id],
+		}),
+		legalEntity: one(legalEntities, {
+			fields: [generatedDocuments.legalEntityId],
+			references: [legalEntities.id],
+		}),
+		createdBy: one(profile, {
+			fields: [generatedDocuments.createdById],
+			references: [profile.id],
+		}),
+	}),
+);

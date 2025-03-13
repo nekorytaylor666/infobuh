@@ -13,6 +13,7 @@ import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
+import { documentTemplatesRouter } from "./routes/document-templates";
 
 import { prettyJSON } from "hono/pretty-json";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -83,6 +84,7 @@ app.use("*", async (c, next) => {
 	await next();
 });
 app.route("/documents", documentsRouter);
+app.route("/document-templates", documentTemplatesRouter);
 
 app.use("*", authMiddleware);
 // Add environment variables to context
