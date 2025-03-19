@@ -16,10 +16,10 @@ import { useBreadcrumb } from "@/contexts/BreadcrumbContext";
 import { useNestedFolderBreadcrumbs } from "../hooks/use-nested-folder-breadcrumbs";
 import { useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  HoverCard, 
-  HoverCardTrigger, 
-  HoverCardContent 
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
 } from "@/components/ui/hover-card";
 import { documentCache } from "../utils/document-cache";
 
@@ -75,29 +75,31 @@ const FilePreviewHoverCard = ({ doc }: { doc: DocumentWithOwnerSignature }) => {
 
   const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.name);
   const isPDF = /\.pdf$/i.test(doc.name);
-  
+
   const getFileUrl = () => {
-    const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${doc.name}`;
+    const baseUrl = `${
+      import.meta.env.VITE_SUPABASE_URL
+    }/storage/v1/object/public/documents/${doc.name}`;
     return documentCache.get(baseUrl) || baseUrl;
   };
 
   return (
-      <div className=" rounded-md overflow-hidden bg-background border shadow-sm p-0">
-        {isImage && (
-          <img
-            src={getFileUrl()}
-            alt={doc.name}
-            className="min-w-full min-h-full"
-          />
-        )}
-        {isPDF && (
-          <iframe
-            src={`${getFileUrl()}#toolbar=0&view=FitH`}
-            className="w-full h-min aspect-[9/16] "
-            title={doc.name}
-          />
-        )}
-      </div> 
+    <div className=" rounded-md overflow-hidden bg-background border shadow-sm p-0">
+      {isImage && (
+        <img
+          src={getFileUrl()}
+          alt={doc.name}
+          className="min-w-full min-h-full"
+        />
+      )}
+      {isPDF && (
+        <iframe
+          src={`${getFileUrl()}#toolbar=0&view=FitH`}
+          className="w-full h-min aspect-[9/16] "
+          title={doc.name}
+        />
+      )}
+    </div>
   );
 };
 
@@ -222,32 +224,39 @@ export function DocumentTree({
                       onMouseEnter={() => handleItemHover(doc)}
                       tabIndex={0}
                       role="row"
-                      aria-label={`${doc.type === "folder" ? "Папка" : "Файл"}: ${doc.name}`}
+                      aria-label={`${
+                        doc.type === "folder" ? "Папка" : "Файл"
+                      }: ${doc.name}`}
                     >
-                      <td className="border-r p-2">
-                        <div className="flex items-center gap-2 px-2 py-1">
-                          <Icon className="h-4 w-4 shrink-0" />
-                          {doc.type === "file" && isPreviewableFile(doc.name) ? (
-                            <HoverCard openDelay={200} closeDelay={200}>
-                              <HoverCardTrigger asChild>
-                                <span className="relative cursor-pointer hover:text-primary transition-colors">
-                                  {doc.name}
-                                </span>
-                              </HoverCardTrigger>
-                              <HoverCardContent side="right" align="start" className="z-50 p-0 rounded-md overflow-hidden">
-                                <FilePreviewHoverCard doc={doc} />
-                              </HoverCardContent>
-                            </HoverCard>
-                          ) : (
+                      <td className="border-r p-2 w-3/6">
+                        {doc.type === "file" && isPreviewableFile(doc.name) ? (
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <div className="flex items-center gap-2 px-2 py-1 cursor-pointer hover:text-primary transition-colors">
+                                <Icon className="h-4 w-4 shrink-0" />
+                                <span className="relative">{doc.name}</span>
+                              </div>
+                            </HoverCardTrigger>
+                            <HoverCardContent
+                              side="bottom"
+                              align="start"
+                              className="z-50 p-0 rounded-md overflow-hidden"
+                            >
+                              <FilePreviewHoverCard doc={doc} />
+                            </HoverCardContent>
+                          </HoverCard>
+                        ) : (
+                          <div className="flex items-center gap-2 px-2 py-1">
+                            <Icon className="h-4 w-4 shrink-0" />
                             <span>{doc.name}</span>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </td>
-                      <td className="border-r p-2 text-sm">
+                      <td className="border-r p-2 text-sm w-1/6">
                         {doc.createdBy?.email || ""}
                       </td>
-                      <td className="border-r p-2 text-sm">{""}</td>
-                      <td className="p-2 text-sm">
+                      <td className="border-r p-2 text-sm w-1/6">{""}</td>
+                      <td className="p-2 text-sm w-1/6">
                         {doc.createdAt
                           ? new Date(doc.createdAt).toLocaleDateString()
                           : "-"}
