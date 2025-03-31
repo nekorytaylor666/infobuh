@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { eq, and, desc } from "drizzle-orm";
 import type { HonoEnv } from "../db";
-import { documentsFlutter } from "../db/schema";
+import { documentsFlutter, documentSignatures, documentSignaturesFlutter } from "../db/schema";
 import { HTTPException } from "hono/http-exception";
 import { describeRoute } from "hono-openapi";
 
 export const documentsFlutterRouter = new Hono<HonoEnv>();
+
+const NCALAYER_URL = "http://91.147.92.61:14579";
 
 // GET all documents for a legal entity
 documentsFlutterRouter.get(
@@ -140,7 +142,6 @@ documentsFlutterRouter.post(
         receiverName,
         fields,
         filePath: newFilePath,
-        cms: cms || null,
       })
       .returning();
 
@@ -188,10 +189,6 @@ documentsFlutterRouter.put(
       throw new HTTPException(404, { message: "Document not found" });
     }
 
-    // Only allow update if the document has not been signed (i.e. cms is not set)
-    if (doc.cms) {
-      throw new HTTPException(400, { message: "Cannot update document that is signed or has CMS" });
-    }
 
     let updatedFilePath = doc.filePath;
     if (body.file && body.file.data && body.file.name) {
@@ -245,3 +242,125 @@ documentsFlutterRouter.put(
     return c.json(updatedDoc[0]);
   }
 );
+
+
+
+documentsFlutterRouter.post("/:legalEntityId/:id/sign", async (c) => {
+  const id = c.req.param("id");
+  const legalEntityId = c.req.param("legalEntityId");
+  const body = await c.req.json();
+  const { key, password, signerId } = body; // Make sure to pass signerId from frontend!
+
+  // 1) Verify the document exists
+  const doc = await c.env.db
+    .select()
+    .from(documentsFlutter)
+    .where(
+      and(eq(documentsFlutter.id, id), eq(documentsFlutter.legalEntityId, legalEntityId))
+    );
+
+  if (!doc.length) {
+    throw new HTTPException(404, { message: "Document not found" });
+  }
+
+  // 2) Download from the correct bucket & file path
+  const { data: fileData, error: storageError } = await c.env.supabase.storage
+    .from("documents")                  // Make sure this matches your upload bucket
+    .download(doc[0].filePath);         // filePath is the actual column name
+
+  if (storageError || !fileData) {
+    
+    throw new HTTPException(500, { message: "Failed to get file from storage" });
+  }
+
+  // 3) Convert file to base64
+  const fileBuffer = await fileData.arrayBuffer();
+  const base64Data = Buffer.from(fileBuffer).toString("base64");
+
+  // 4) Build request for NCALayer
+  const signRequest = {
+    data: base64Data,
+    signers: [
+      {
+        key,
+        password,
+        keyAlias: null,   // if needed
+      },
+    ],
+    withTsp: true,
+    tsaPolicy: "TSA_GOST_POLICY",
+    detached: false,
+  };
+
+  try {
+    // 5) Send to NCALayer
+    const response = await fetch(`${NCALAYER_URL}/cms/sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(signRequest),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || `NCALayer responded with status: ${response.status}`
+      );
+    }
+
+    const result = await response.json();
+
+    if (!result.cms) {
+      throw new Error("No CMS data received from NCALayer");
+    }
+
+    // 6) Insert signature record into your new table:
+    const [signature] = await c.env.db
+      .insert(documentSignaturesFlutter)
+      .values({
+        documentFlutterId: id,
+        signerId,
+        cms: result.cms,
+        signedAt: new Date(),
+      })
+      .returning();
+
+    // 7) Return the new signature
+    return c.json(signature);
+  } catch (error) {
+    console.error("Signing error:", error);
+    throw new HTTPException(500, {
+      message: error instanceof Error ? error.message : "Failed to sign document",
+    });
+  }
+});
+
+// GET: Document’s signatures (via documentSignaturesFlutter)
+documentsFlutterRouter.get("/:legalEntityId/:id/signatures", async (c) => {
+  const id = c.req.param("id");
+  const legalEntityId = c.req.param("legalEntityId");
+
+  // 1) Verify doc exists
+  const doc = await c.env.db
+    .select()
+    .from(documentsFlutter)
+    .where(
+      and(eq(documentsFlutter.id, id), eq(documentsFlutter.legalEntityId, legalEntityId))
+    );
+
+  if (!doc.length) {
+    throw new HTTPException(404, { message: "Document not found" });
+  }
+
+  // 2) Fetch all the flutter signatures referencing this doc
+  const signatures = await c.env.db.query.documentSignaturesFlutter.findMany({
+    where: eq(documentSignaturesFlutter.documentFlutterId, id),
+    with: {
+      signer: true, // see .signer relation in your schema
+    },
+    orderBy: [desc(documentSignaturesFlutter.signedAt)],
+  });
+
+  return c.json(signatures);
+});
+
+
