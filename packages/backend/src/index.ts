@@ -14,6 +14,7 @@ import { apiReference } from "@scalar/hono-api-reference";
 import { createDbClient, type HonoEnv } from "./db";
 import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
+import { contractsRouter } from "./routes/contracts";
 import { documentsFlutterRouter } from "./routes/documents_flutter";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
@@ -97,6 +98,7 @@ app.route("/employees", employeesRouter);
 app.route("/banks", banksRouter);
 app.route("/partners", partnersRouter);
 app.route("/products", productsRouter);
+app.route("/contracts", contractsRouter);
 app.route("/docs-flutter", documentsFlutterRouter);
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
