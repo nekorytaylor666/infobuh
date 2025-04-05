@@ -14,6 +14,7 @@ documentsFlutterRouter.get(
   "/:legalEntityId",
   describeRoute({
     description: "Get all documents for a legal entity",
+    tags: ["Documents"],
     responses: {
       200: {
         description: "List of documents",
@@ -43,6 +44,7 @@ documentsFlutterRouter.get(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Get a specific document for a legal entity",
+    tags: ["Documents"],
     responses: {
       200: {
         description: "Document retrieved successfully",
@@ -82,6 +84,7 @@ documentsFlutterRouter.post(
   "/:legalEntityId",
   describeRoute({
     description: "Create a new document for a legal entity",
+    tags: ["Documents"],
     responses: {
       200: {
         description: "Document created successfully",
@@ -154,6 +157,7 @@ documentsFlutterRouter.put(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Update an existing document for a legal entity",
+    tags: ["Documents"],
     responses: {
       200: {
         description: "Document updated successfully",

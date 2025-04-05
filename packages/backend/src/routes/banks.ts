@@ -18,6 +18,7 @@ router.get(
   "/:legalEntityId",
   describeRoute({
     description: "Get all banks for a legal entity",
+    tags: ["Banks"],
     responses: {
       200: {
         description: "List of banks",
@@ -51,6 +52,7 @@ router.post(
   "/:legalEntityId",
   describeRoute({
     description: "Create a new bank",
+    tags: ["Banks"],
     responses: {
       201: {
         description: "Bank created",
@@ -95,6 +97,7 @@ router.put(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Update a bank",
+    tags: ["Banks"],
     responses: {
       200: {
         description: "Bank updated",

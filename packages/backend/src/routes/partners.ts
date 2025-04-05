@@ -18,6 +18,7 @@ router.get(
   "/:legalEntityId",
   describeRoute({
     description: "Get all partners for a legal entity",
+    tags: ["Partners"],
     responses: {
       200: {
         description: "List of partners",
@@ -49,6 +50,7 @@ router.get(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Get a single partner",
+    tags: ["Partners"],
     responses: {
       200: {
         description: "Partner details",
@@ -85,6 +87,7 @@ router.post(
   "/:legalEntityId",
   describeRoute({
     description: "Create a new partner",
+    tags: ["Partners"],
     responses: {
       201: {
         description: "Partner created",
@@ -129,6 +132,7 @@ router.put(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Update a partner",
+    tags: ["Partners"],
     responses: {
       200: {
         description: "Partner updated",

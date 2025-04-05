@@ -11,6 +11,7 @@ contractsRouter.get(
   "/:legalEntityId",
   describeRoute({
     description: "Get all contracts for a legal entity",
+    tags: ["Contracts"],
     responses: {
       200: {
         description: "List of contracts",
@@ -35,6 +36,7 @@ contractsRouter.get(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Get a specific contract for a legal entity",
+    tags: ["Contracts"],
     responses: {
       200: {
         description: "Contract retrieved successfully",
@@ -64,6 +66,7 @@ contractsRouter.post(
   "/:legalEntityId",
   describeRoute({
     description: "Create a new contract for a legal entity",
+    tags: ["Contracts"],
     responses: {
       200: {
         description: "Contract created successfully",
@@ -114,6 +117,7 @@ contractsRouter.put(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Update an existing contract for a legal entity",
+    tags: ["Contracts"],
     responses: {
       200: {
         description: "Contract updated successfully",

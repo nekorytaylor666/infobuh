@@ -16,6 +16,7 @@ router.get(
   "/:legalEntityId",
   describeRoute({
     description: "Get all products for a legal entity",
+    tags: ["Products"],
     responses: {
       200: {
         description: "List of products",
@@ -47,6 +48,7 @@ router.get(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Get a single product",
+    tags: ["Products"],
     responses: {
       200: {
         description: "Product details",
@@ -82,6 +84,7 @@ router.post(
   "/:legalEntityId",
   describeRoute({
     description: "Create a new product",
+    tags: ["Products"],
     responses: {
       201: {
         description: "Product created",
@@ -127,6 +130,7 @@ router.put(
   "/:legalEntityId/:id",
   describeRoute({
     description: "Update a product",
+    tags: ["Products"],
     responses: {
       200: {
         description: "Product updated",
