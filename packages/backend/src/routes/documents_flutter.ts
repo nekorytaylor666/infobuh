@@ -249,7 +249,26 @@ documentsFlutterRouter.put(
 
 
 
-documentsFlutterRouter.post("/:legalEntityId/:id/sign", async (c) => {
+documentsFlutterRouter.post("/:legalEntityId/:id/sign",
+  describeRoute({
+    description:
+      "Signs a document via NCALayer using the provided key, password, and signerId. The signature is then stored and returned.",
+    tags: ['Documents', 'Sign'],
+    responses: {
+      200: {
+        description:
+          "Document signed successfully. Returns the signature record.",
+        content: { "application/json": {} },
+      },
+      404: {
+        description: "Document not found",
+      },
+      500: {
+        description: "Internal server error",
+      },
+    },
+  }),
+  async (c) => {
   const id = c.req.param("id");
   const legalEntityId = c.req.param("legalEntityId");
   const body = await c.req.json();
@@ -339,7 +358,25 @@ documentsFlutterRouter.post("/:legalEntityId/:id/sign", async (c) => {
 });
 
 // GET: Document’s signatures (via documentSignaturesFlutter)
-documentsFlutterRouter.get("/:legalEntityId/:id/signatures", async (c) => {
+documentsFlutterRouter.get("/:legalEntityId/:id/signatures",
+  describeRoute({
+    description:
+      "Retrieves all signatures for a given document (Flutter version) along with signer details.",
+    tags: ["Documents", 'Sign'],
+    responses: {
+      200: {
+        description: "List of document signatures",
+        content: { "application/json": {} },
+      },
+      404: {
+        description: "Document not found",
+      },
+      500: {
+        description: "Internal server error",
+      },
+    },
+  }),
+  async (c) => {
   const id = c.req.param("id");
   const legalEntityId = c.req.param("legalEntityId");
 
