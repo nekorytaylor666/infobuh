@@ -18,6 +18,7 @@ router.get(
 	"/:legalEntityId",
 	describeRoute({
 		description: "Get all employees for a legal entity",
+		tags: ["Employees"],
 		responses: {
 			200: {
 				description: "List of employees",
@@ -51,6 +52,7 @@ router.get(
 	"/:legalEntityId/:id",
 	describeRoute({
 		description: "Get a single employee by ID",
+		tags: ["Employees"],
 		responses: {
 			200: {
 				description: "Employee found",
@@ -93,7 +95,7 @@ router.post(
 	"/:legalEntityId",
 	describeRoute({
 		description: "Create a new employee",
-
+		tags: ["Employees"],
 		responses: {
 			201: {
 				description: "Employee created",
@@ -142,6 +144,7 @@ router.put(
 	"/:legalEntityId/:id",
 	describeRoute({
 		description: "Update an employee",
+		tags: ["Employees"],
 		responses: {
 			200: {
 				description: "Employee updated",
@@ -195,6 +198,7 @@ router.delete(
 	"/:legalEntityId/:id",
 	describeRoute({
 		description: "Delete an employee",
+		tags: ["Employees"],
 		responses: {
 			200: {
 				description: "Employee deleted",
