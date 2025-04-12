@@ -1,7 +1,7 @@
 import { createKazakhActService } from "./kazakh-acts";
 import { createKazakhWaybillService } from "./kazakh-waybill";
 import { createKazakhInvoiceService } from "./kazakh-invoice";
-import type { Database } from "../../../types";
+import type { Database } from "@accounting-kz/db";
 
 export * from "./kazakh-invoice";
 export * from "./kazakh-acts";
@@ -25,7 +25,7 @@ export const createDocumentGenerator = (db: Database) => {
     const generator =
       documentGenerator[templateType as keyof typeof documentGenerator];
     const parsedInput = generator.parseInput(input);
-    return generator.generateDocument(parsedInput);
+    return generator.generateDocument(parsedInput as any);
   };
 
   const parseInput = <T extends keyof typeof documentGenerator>(

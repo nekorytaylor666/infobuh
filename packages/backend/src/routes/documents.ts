@@ -1,9 +1,13 @@
 import { Hono } from "hono";
-import { eq, and, desc } from "drizzle-orm";
-import type { HonoEnv } from "../db";
-import { documents, documentSignatures } from "../db/schema";
+import type { HonoEnv } from "../env";
 import { HTTPException } from "hono/http-exception";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import {
+	and,
+	documents,
+	eq,
+	desc,
+	documentSignatures,
+} from "@accounting-kz/db";
 
 const NCALAYER_URL = "http://91.147.92.61:14579";
 
@@ -13,9 +17,8 @@ export const documentsRouter = new Hono<HonoEnv>();
 documentsRouter.get("/:legalEntityId?", async (c) => {
 	const legalEntityId = c.req.param("legalEntityId");
 	const includeChildren = c.req.query("includeChildren") === "true";
-
 	const docs = await c.env.db.query.documents.findMany({
-		where: and(eq(documents.legalEntityId, legalEntityId)),
+		where: and(eq(documents.legalEntityId, legalEntityId as string)),
 		orderBy: [desc(documents.createdAt)],
 		with: {
 			createdBy: true,

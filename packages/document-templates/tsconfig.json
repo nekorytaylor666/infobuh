@@ -10,6 +10,6 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "fonts/**/*"],
   "exclude": ["node_modules", "dist"]
 }

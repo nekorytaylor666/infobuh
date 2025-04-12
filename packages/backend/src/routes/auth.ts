@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { HonoEnv } from "../db";
+import type { HonoEnv } from "../env";
 import {
 	users,
 	profile,
@@ -7,12 +7,11 @@ import {
 	onboardingStatus,
 	banks,
 	employees,
-} from "../db/schema";
+	eq,
+} from "@accounting-kz/db";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
-import "zod-openapi/extend";
-import { resolver, validator as zValidator } from "hono-openapi/zod";
-import { eq } from "drizzle-orm";
+import { zValidator } from "hono-openapi/zod";
 
 const router = new Hono<HonoEnv>();
 
@@ -71,50 +70,48 @@ const OnboardingDataSchema = z.object({
 		.default([])
 		.describe("Optional list of employees"),
 });
-type OnboardingData = z.infer<typeof OnboardingDataSchema>;
 
 router.get(
 	"/profile/:userId",
 	describeRoute({
-	  description: "Get user profile information by user ID (name, image, email)",
-	  responses: {
-		200: {
-		  description: "Successfully retrieved user profile",
+		description: "Get user profile information by user ID (name, image, email)",
+		responses: {
+			200: {
+				description: "Successfully retrieved user profile",
+			},
+			400: {
+				description: "Missing userId",
+			},
+			404: {
+				description: "Profile not found",
+			},
 		},
-		400: {
-		  description: "Missing userId",
-		},
-		404: {
-		  description: "Profile not found",
-		},
-	  },
 	}),
 	async (c) => {
-	  const userId = c.req.param("userId");
-	  if (!userId) {
-		return c.json({ error: "User ID is required" }, 400);
-	  }
-  
-	  try {
-		// Fetch the profile
-		const userProfile = await c.env.db.query.profile.findFirst({
-		  where: eq(profile.id, userId),
-		});
-  
-		if (!userProfile) {
-		  return c.json({ error: "Profile not found" }, 404);
+		const userId = c.req.param("userId");
+		if (!userId) {
+			return c.json({ error: "User ID is required" }, 400);
 		}
-  
-		// Return only name, image, and email
-		const { name, image, email } = userProfile;
-		return c.json({ name, image, email });
-	  } catch (error) {
-		console.error("Error fetching profile:", error);
-		return c.json({ error: "Internal server error" }, 500);
-	  }
+
+		try {
+			// Fetch the profile
+			const userProfile = await c.env.db.query.profile.findFirst({
+				where: eq(profile.id, userId),
+			});
+
+			if (!userProfile) {
+				return c.json({ error: "Profile not found" }, 404);
+			}
+
+			// Return only name, image, and email
+			const { name, image, email } = userProfile;
+			return c.json({ name, image, email });
+		} catch (error) {
+			console.error("Error fetching profile:", error);
+			return c.json({ error: "Internal server error" }, 500);
+		}
 	},
-  );
-  
+);
 
 // Route definitions
 router.get("/onboarding/status/:userId", async (c) => {
@@ -154,7 +151,6 @@ router.post(
 	describeRoute({
 		description: "Submit onboarding data",
 	}),
-	zValidator("json", OnboardingDataSchema),
 	async (c) => {
 		try {
 			const data = await c.req.json();

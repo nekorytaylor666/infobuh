@@ -1,9 +1,12 @@
-import { eq } from "drizzle-orm";
-import type { Database } from "../../../../db";
-import { banks, employees, legalEntities } from "../../../../db/schema";
+import type { Database } from "@accounting-kz/db";
+import { banks, employees, legalEntities, eq } from "@accounting-kz/db";
 import { pdfService } from "../../pdf-service";
-import { kazakhWaybillInputSchema, type KazakhWaybillInput } from "./schema";
-import { numToFullWords } from "../../../../utils/numToFullWords";
+import {
+	kazakhWaybillInputSchema,
+	type WaybillItem,
+	type KazakhWaybillInput,
+} from "./schema";
+import { numToFullWords } from "@accounting-kz/utils";
 import { KazakhWaybillTemplate } from "./template";
 // Template type identifier
 const TEMPLATE_TYPE = "kazakh-waybill";
@@ -65,7 +68,7 @@ async function generateWaybill(
 
 	// 3. Calculate totals
 	const totalAmount = input.items.reduce(
-		(sum, item) => sum + item.quantity * item.price,
+		(sum: number, item: WaybillItem) => sum + item.quantity * item.price,
 		0,
 	);
 	const vatRate = 0.12; // 12% VAT
@@ -136,11 +139,13 @@ export function createKazakhWaybillService(db: Database): {
 		input: KazakhWaybillInput,
 	) => Promise<GenerateWaybillResult>;
 	templateType: string;
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	parseInput: (input: any) => KazakhWaybillInput;
 } {
 	return {
 		generateDocument: (input: KazakhWaybillInput) => generateWaybill(db, input),
 		templateType: TEMPLATE_TYPE,
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		parseInput: (input: any) => kazakhWaybillInputSchema.parse(input),
 	};
 }

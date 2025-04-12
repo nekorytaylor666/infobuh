@@ -1,16 +1,15 @@
 import { Hono } from "hono";
-import type { HonoEnv } from "../db";
+import type { HonoEnv } from "../env";
 import {
 	employeeInsertSchema,
 	employees,
 	employeeZodSchema,
-} from "../db/schema";
+	eq,
+} from "@accounting-kz/db";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 import "zod-openapi/extend";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
-import { eq } from "drizzle-orm";
-
 const router = new Hono<HonoEnv>();
 
 // Get all employees for a legal entity
@@ -37,7 +36,7 @@ router.get(
 		try {
 			const legalEntityId = c.req.param("legalEntityId");
 			const employeesList = await c.env.db.query.employees.findMany({
-				where: eq(employees.legalEntityId, legalEntityId),
+				where: eq(employees.legalEntityId, legalEntityId as string),
 			});
 			return c.json(employeesList);
 		} catch (error) {

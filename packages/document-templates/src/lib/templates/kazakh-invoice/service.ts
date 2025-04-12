@@ -1,9 +1,12 @@
-import { eq } from "drizzle-orm";
-import type { Database } from "../../../../db";
-import { banks, employees, legalEntities } from "../../../../db/schema";
+import type { Database } from "@accounting-kz/db";
+import { banks, employees, legalEntities, eq } from "@accounting-kz/db";
 import { pdfService } from "../../pdf-service";
-import { kazakhInvoiceInputSchema, type KazakhInvoiceInput } from "./schema";
-import { numToFullWords } from "../../../../utils/numToFullWords";
+import {
+	type InvoiceItem,
+	kazakhInvoiceInputSchema,
+	type KazakhInvoiceInput,
+} from "./schema";
+import { numToFullWords } from "@accounting-kz/utils";
 import { KazakhInvoiceTemplate } from "./template";
 // Template type identifier
 const TEMPLATE_TYPE = "kazakh-invoice";
@@ -40,6 +43,8 @@ async function generateInvoice(
 			: null,
 	]);
 
+	console.log(seller, sellerBank, client, executor);
+
 	// 2. Validate entities exist
 	if (!seller) {
 		throw new Error(
@@ -54,7 +59,7 @@ async function generateInvoice(
 
 	// 3. Calculate totals
 	const totalAmount = input.items.reduce(
-		(sum, item) => sum + item.quantity * item.price,
+		(sum: number, item: InvoiceItem) => sum + item.quantity * item.price,
 		0,
 	);
 	const vatAmount = totalAmount * 0.12; // 12% VAT
@@ -115,11 +120,13 @@ export function createKazakhInvoiceService(db: Database): {
 		input: KazakhInvoiceInput,
 	) => Promise<GenerateInvoiceResult>;
 	templateType: string;
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	parseInput: (input: any) => KazakhInvoiceInput;
 } {
 	return {
 		generateDocument: (input: KazakhInvoiceInput) => generateInvoice(db, input),
 		templateType: TEMPLATE_TYPE,
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		parseInput: (input: any) => kazakhInvoiceInputSchema.parse(input),
 	};
 }

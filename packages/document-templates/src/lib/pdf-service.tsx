@@ -98,7 +98,7 @@ export class PDFService {
         .filter(Boolean);
 
       if (interFonts.length > 0) {
-        Font.register({ family: "Inter", fonts: interFonts });
+        Font.register({ family: "Inter", fonts: interFonts as any });
         console.log(`Registered ${interFonts.length} Inter fonts successfully`);
       }
 

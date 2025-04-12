@@ -1,9 +1,12 @@
-import { eq } from "drizzle-orm";
-import type { Database } from "../../../../db";
-import { banks, employees, legalEntities } from "../../../../db/schema";
+import type { Database } from "@accounting-kz/db";
+import { banks, employees, legalEntities, eq } from "@accounting-kz/db";
 import { pdfService } from "../../pdf-service";
-import { kazakhActInputSchema, type KazakhActInput } from "./schema";
-import { numToFullWords } from "../../../../utils/numToFullWords";
+import {
+	type ActItem,
+	kazakhActInputSchema,
+	type KazakhActInput,
+} from "./schema";
+import { numToFullWords } from "@accounting-kz/utils";
 import { KazakhActTemplate } from "./template";
 // Template type identifier
 const TEMPLATE_TYPE = "kazakh-act";
@@ -59,7 +62,7 @@ async function generateAct(
 
 	// 3. Calculate totals
 	const totalAmount = input.items.reduce(
-		(sum, item) => sum + item.quantity * item.price,
+		(sum: number, item: ActItem) => sum + item.quantity * item.price,
 		0,
 	);
 	const vatAmount = totalAmount * 0.12; // 12% VAT
@@ -122,11 +125,13 @@ async function generateAct(
 export function createKazakhActService(db: Database): {
 	generateDocument: (input: KazakhActInput) => Promise<GenerateActResult>;
 	templateType: string;
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	parseInput: (input: any) => KazakhActInput;
 } {
 	return {
 		generateDocument: (input: KazakhActInput) => generateAct(db, input),
 		templateType: TEMPLATE_TYPE,
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		parseInput: (input: any) => kazakhActInputSchema.parse(input),
 	};
 }

@@ -11,7 +11,6 @@ import banksRouter from "./routes/banks";
 import partnersRouter from "./routes/partners";
 import productsRouter from "./routes/products";
 import { apiReference } from "@scalar/hono-api-reference";
-import { createDbClient, type HonoEnv } from "./db";
 import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
 import { contractsRouter } from "./routes/contracts";
@@ -24,6 +23,8 @@ import { prettyJSON } from "hono/pretty-json";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { env } from "hono/adapter";
+import { createDbClient } from "@accounting-kz/db";
+import type { HonoEnv } from "./env";
 
 // Load environment variables
 config({ path: ".env" });

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { HonoEnv } from "../db";
+import type { HonoEnv } from "../env";
 import { HTTPException } from "hono/http-exception";
 import { z, ZodError } from "zod";
 import {
@@ -7,12 +7,11 @@ import {
   createDocumentGenerator,
   kazakhActInputSchema,
   kazakhWaybillInputSchema,
-  KazakhActInput,
+  type KazakhActInput,
 } from "@accounting-kz/document-templates";
 import "zod-openapi/extend";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
-
 // Register templates
 export const documentTemplatesRouter = new Hono<HonoEnv>();
 

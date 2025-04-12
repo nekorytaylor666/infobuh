@@ -13,9 +13,9 @@ export const kazakhInvoiceInputSchema = z.object({
 	sellerLegalEntityId: z.string().uuid("Invalid seller legal entity ID"),
 	clientLegalEntityId: z.string().uuid("Invalid client legal entity ID"),
 	invoiceNumber: z.string().min(1, "Invoice number is required"),
-	invoiceDate: z.date(),
+	invoiceDate: z.string(),
 	contractNumber: z.string().min(1, "Contract number is required"),
-	contractDate: z.date().optional(),
+	contractDate: z.string().optional(),
 	items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
 	executorEmployeeId: z
 		.string()

@@ -17,6 +17,9 @@ importers:
 
   packages/backend:
     dependencies:
+      '@accounting-kz/db':
+        specifier: workspace:*
+        version: link:../db
       '@accounting-kz/document-templates':
         specifier: workspace:*
         version: link:../document-templates
@@ -27,7 +30,7 @@ importers:
         specifier: ^0.18.3
         version: 0.18.4(hono@4.7.4)(zod@3.24.2)
       '@hono/zod-validator':
-        specifier: ^0.4.2
+        specifier: ^0.4.3
         version: 0.4.3(hono@4.7.4)(zod@3.24.2)
       '@react-pdf/renderer':
         specifier: ^3.3.8
@@ -54,8 +57,8 @@ importers:
         specifier: ^4.0.0
         version: 4.7.4
       hono-openapi:
-        specifier: ^0.3.1
-        version: 0.3.1(typescript@5.8.2)
+        specifier: ^0.4.6
+        version: 0.4.6(@hono/arktype-validator@2.0.0(arktype@2.0.0-rc.25)(hono@4.7.4))(@hono/effect-validator@1.2.0(effect@3.13.10)(hono@4.7.4))(@hono/typebox-validator@0.2.6(@sinclair/typebox@0.34.30)(hono@4.7.4))(@hono/valibot-validator@0.5.2(hono@4.7.4)(valibot@1.0.0-rc.3(typescript@5.8.2)))(@hono/zod-validator@0.4.3(hono@4.7.4)(zod@3.24.2))(@sinclair/typebox@0.34.30)(@valibot/to-json-schema@1.0.0-rc.0(valibot@1.0.0-rc.3(typescript@5.8.2)))(arktype@2.0.0-rc.25)(effect@3.13.10)(hono@4.7.4)(openapi-types@12.1.3)(valibot@1.0.0-rc.3(typescript@5.8.2))(zod-openapi@4.2.3(zod@3.24.2))(zod@3.24.2)
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
@@ -72,10 +75,10 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0
       zod:
-        specifier: ^3.24.1
+        specifier: ^3.24.2
         version: 3.24.2
       zod-openapi:
-        specifier: ^4.2.2
+        specifier: ^4.2.3
         version: 4.2.3(zod@3.24.2)
       zod-to-json-schema:
         specifier: ^3.22.3
@@ -97,21 +100,49 @@ importers:
         specifier: ^5.2.2
         version: 5.8.2
 
+  packages/db:
+    dependencies:
+      drizzle-orm:
+        specifier: ^0.41.0
+        version: 0.41.0(@types/pg@8.11.11)(gel@2.0.1)(pg@8.13.3)(postgres@3.4.5)
+      drizzle-zod:
+        specifier: ^0.7.0
+        version: 0.7.0(drizzle-orm@0.41.0(@types/pg@8.11.11)(gel@2.0.1)(pg@8.13.3)(postgres@3.4.5))(zod@3.24.2)
+      postgres:
+        specifier: ^3.4.5
+        version: 3.4.5
+      zod:
+        specifier: 3.24.2
+        version: 3.24.2
+    devDependencies:
+      drizzle-kit:
+        specifier: ^0.30.6
+        version: 0.30.6
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   packages/document-templates:
     dependencies:
+      '@accounting-kz/db':
+        specifier: workspace:*
+        version: link:../db
+      '@accounting-kz/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@react-pdf/renderer':
         specifier: ^3.1.14
         version: 3.4.5(react@18.3.1)
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-    devDependencies:
-      '@types/node':
-        specifier: ^20.10.5
-        version: 20.17.24
       '@types/react':
-        specifier: ^18.2.45
+        specifier: ^18.3.3
         version: 18.3.18
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
+    devDependencies:
       typescript:
         specifier: ^5.3.3
         version: 5.8.2
@@ -201,7 +232,7 @@ importers:
         version: 2.49.1
       '@tanstack/react-form':
         specifier: ^0.41.1
-        version: 0.41.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.8.2)
+        version: 0.41.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.8.3)
       '@tanstack/react-query':
         specifier: ^5.63.0
         version: 5.67.2(react@19.0.0)
@@ -317,6 +348,12 @@ importers:
       vite:
         specifier: ^6.0.7
         version: 6.2.1(@types/node@20.17.24)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0)
+
+  packages/utils:
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
 
 packages:
 
@@ -2533,6 +2570,10 @@ packages:
     resolution: {integrity: sha512-l6dMSE100u7sDaTbLczibrQZjA35jLsHNqIV+jmhNVO3O8jzM6kywMOmV9uOz9ZVSCMPQhAZEFjL/qDPVrqpUA==}
     hasBin: true
 
+  drizzle-kit@0.30.6:
+    resolution: {integrity: sha512-U4wWit0fyZuGuP7iNmRleQyK2V8wCuv57vf5l3MnG4z4fzNTjY/U13M8owyQ5RavqvqxBifWORaR3wIUzlN64g==}
+    hasBin: true
+
   drizzle-orm@0.38.4:
     resolution: {integrity: sha512-s7/5BpLKO+WJRHspvpqTydxFob8i1vo2rEx4pY6TGY7QSMuUfWUuzaY0DIpXCkgHOo37BaFC+SJQb99dDUXT3Q==}
     peerDependencies:
@@ -2619,6 +2660,95 @@ packages:
       prisma:
         optional: true
       react:
+        optional: true
+      sql.js:
+        optional: true
+      sqlite3:
+        optional: true
+
+  drizzle-orm@0.41.0:
+    resolution: {integrity: sha512-7A4ZxhHk9gdlXmTdPj/lREtP+3u8KvZ4yEN6MYVxBzZGex5Wtdc+CWSbu7btgF6TB0N+MNPrvW7RKBbxJchs/Q==}
+    peerDependencies:
+      '@aws-sdk/client-rds-data': '>=3'
+      '@cloudflare/workers-types': '>=4'
+      '@electric-sql/pglite': '>=0.2.0'
+      '@libsql/client': '>=0.10.0'
+      '@libsql/client-wasm': '>=0.10.0'
+      '@neondatabase/serverless': '>=0.10.0'
+      '@op-engineering/op-sqlite': '>=2'
+      '@opentelemetry/api': ^1.4.1
+      '@planetscale/database': '>=1'
+      '@prisma/client': '*'
+      '@tidbcloud/serverless': '*'
+      '@types/better-sqlite3': '*'
+      '@types/pg': '*'
+      '@types/sql.js': '*'
+      '@vercel/postgres': '>=0.8.0'
+      '@xata.io/client': '*'
+      better-sqlite3: '>=7'
+      bun-types: '*'
+      expo-sqlite: '>=14.0.0'
+      gel: '>=2'
+      knex: '*'
+      kysely: '*'
+      mysql2: '>=2'
+      pg: '>=8'
+      postgres: '>=3'
+      prisma: '*'
+      sql.js: '>=1'
+      sqlite3: '>=5'
+    peerDependenciesMeta:
+      '@aws-sdk/client-rds-data':
+        optional: true
+      '@cloudflare/workers-types':
+        optional: true
+      '@electric-sql/pglite':
+        optional: true
+      '@libsql/client':
+        optional: true
+      '@libsql/client-wasm':
+        optional: true
+      '@neondatabase/serverless':
+        optional: true
+      '@op-engineering/op-sqlite':
+        optional: true
+      '@opentelemetry/api':
+        optional: true
+      '@planetscale/database':
+        optional: true
+      '@prisma/client':
+        optional: true
+      '@tidbcloud/serverless':
+        optional: true
+      '@types/better-sqlite3':
+        optional: true
+      '@types/pg':
+        optional: true
+      '@types/sql.js':
+        optional: true
+      '@vercel/postgres':
+        optional: true
+      '@xata.io/client':
+        optional: true
+      better-sqlite3:
+        optional: true
+      bun-types:
+        optional: true
+      expo-sqlite:
+        optional: true
+      gel:
+        optional: true
+      knex:
+        optional: true
+      kysely:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      postgres:
+        optional: true
+      prisma:
         optional: true
       sql.js:
         optional: true
@@ -2852,8 +2982,52 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hono-openapi@0.3.1:
-    resolution: {integrity: sha512-8j02qmkE3BJkr+s/tqiauiHy+/OMmM/bvf33G9CZpBRdyM95aVL3fgRj4tNsRdkL+e/rM5+EClozD3jxnwr4eA==}
+  hono-openapi@0.4.6:
+    resolution: {integrity: sha512-wSDySp2cS5Zcf1OeLG7nCP3eMsCpcDomN137T9B6/Z5Qq3D0nWgMf0I3Gl41SE1rE37OBQ0Smqx3LOP9Hk//7A==}
+    peerDependencies:
+      '@hono/arktype-validator': ^2.0.0
+      '@hono/effect-validator': ^1.2.0
+      '@hono/typebox-validator': ^0.2.0 || ^0.3.0
+      '@hono/valibot-validator': ^0.5.1
+      '@hono/zod-validator': ^0.4.1
+      '@sinclair/typebox': ^0.34.9
+      '@valibot/to-json-schema': ^1.0.0-beta.3
+      arktype: ^2.0.0-rc.25
+      effect: ^3.11.3
+      hono: ^4.6.13
+      openapi-types: ^12.1.3
+      valibot: ^1.0.0-beta.9
+      zod: ^3.23.8
+      zod-openapi: ^4.0.0
+    peerDependenciesMeta:
+      '@hono/arktype-validator':
+        optional: true
+      '@hono/effect-validator':
+        optional: true
+      '@hono/typebox-validator':
+        optional: true
+      '@hono/valibot-validator':
+        optional: true
+      '@hono/zod-validator':
+        optional: true
+      '@sinclair/typebox':
+        optional: true
+      '@valibot/to-json-schema':
+        optional: true
+      arktype:
+        optional: true
+      effect:
+        optional: true
+      hono:
+        optional: true
+      openapi-types:
+        optional: true
+      valibot:
+        optional: true
+      zod:
+        optional: true
+      zod-openapi:
+        optional: true
 
   hono@4.7.4:
     resolution: {integrity: sha512-Pst8FuGqz3L7tFF+u9Pu70eI0xa5S3LPUmrNd5Jm8nTHze9FxLTK9Kaj5g/k4UcwuJSXTP65SyHOPLrffpcAJg==}
@@ -3702,6 +3876,11 @@ packages:
 
   typescript@5.8.2:
     resolution: {integrity: sha512-aJn6wq13/afZp/jT9QZmwEjDqqvSGp1VT5GVg+f/t6/oVyrgXM6BY1h9BRh/O5p3PlUPAe+WuiEZOmb/49RqoQ==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  typescript@5.8.3:
+    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -5381,9 +5560,9 @@ snapshots:
     dependencies:
       react: 19.0.0
 
-  '@remix-run/node@2.16.0(typescript@5.8.2)':
+  '@remix-run/node@2.16.0(typescript@5.8.3)':
     dependencies:
-      '@remix-run/server-runtime': 2.16.0(typescript@5.8.2)
+      '@remix-run/server-runtime': 2.16.0(typescript@5.8.3)
       '@remix-run/web-fetch': 4.4.2
       '@web3-storage/multipart-parser': 1.0.0
       cookie-signature: 1.2.2
@@ -5391,11 +5570,11 @@ snapshots:
       stream-slice: 0.1.2
       undici: 6.21.1
     optionalDependencies:
-      typescript: 5.8.2
+      typescript: 5.8.3
 
   '@remix-run/router@1.23.0': {}
 
-  '@remix-run/server-runtime@2.16.0(typescript@5.8.2)':
+  '@remix-run/server-runtime@2.16.0(typescript@5.8.3)':
     dependencies:
       '@remix-run/router': 1.23.0
       '@types/cookie': 0.6.0
@@ -5405,7 +5584,7 @@ snapshots:
       source-map: 0.7.4
       turbo-stream: 2.4.0
     optionalDependencies:
-      typescript: 5.8.2
+      typescript: 5.8.3
 
   '@remix-run/web-blob@3.1.0':
     dependencies:
@@ -5578,9 +5757,9 @@ snapshots:
 
   '@tanstack/query-core@5.67.2': {}
 
-  '@tanstack/react-form@0.41.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.8.2)':
+  '@tanstack/react-form@0.41.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.8.3)':
     dependencies:
-      '@remix-run/node': 2.16.0(typescript@5.8.2)
+      '@remix-run/node': 2.16.0(typescript@5.8.3)
       '@tanstack/form-core': 0.41.4
       '@tanstack/react-store': 0.7.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       decode-formdata: 0.8.0
@@ -6190,6 +6369,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  drizzle-kit@0.30.6:
+    dependencies:
+      '@drizzle-team/brocli': 0.10.2
+      '@esbuild-kit/esm-loader': 2.6.5
+      esbuild: 0.19.12
+      esbuild-register: 3.6.0(esbuild@0.19.12)
+      gel: 2.0.1
+    transitivePeerDependencies:
+      - supports-color
+
   drizzle-orm@0.38.4(@types/pg@8.11.11)(@types/react@18.3.18)(pg@8.13.3)(postgres@3.4.5)(react@19.0.0):
     optionalDependencies:
       '@types/pg': 8.11.11
@@ -6198,9 +6387,21 @@ snapshots:
       postgres: 3.4.5
       react: 19.0.0
 
+  drizzle-orm@0.41.0(@types/pg@8.11.11)(gel@2.0.1)(pg@8.13.3)(postgres@3.4.5):
+    optionalDependencies:
+      '@types/pg': 8.11.11
+      gel: 2.0.1
+      pg: 8.13.3
+      postgres: 3.4.5
+
   drizzle-zod@0.7.0(drizzle-orm@0.38.4(@types/pg@8.11.11)(@types/react@18.3.18)(pg@8.13.3)(postgres@3.4.5)(react@19.0.0))(zod@3.24.2):
     dependencies:
       drizzle-orm: 0.38.4(@types/pg@8.11.11)(@types/react@18.3.18)(pg@8.13.3)(postgres@3.4.5)(react@19.0.0)
+      zod: 3.24.2
+
+  drizzle-zod@0.7.0(drizzle-orm@0.41.0(@types/pg@8.11.11)(gel@2.0.1)(pg@8.13.3)(postgres@3.4.5))(zod@3.24.2):
+    dependencies:
+      drizzle-orm: 0.41.0(@types/pg@8.11.11)(gel@2.0.1)(pg@8.13.3)(postgres@3.4.5)
       zod: 3.24.2
 
   dunder-proto@1.0.1:
@@ -6489,7 +6690,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono-openapi@0.3.1(typescript@5.8.2):
+  hono-openapi@0.4.6(@hono/arktype-validator@2.0.0(arktype@2.0.0-rc.25)(hono@4.7.4))(@hono/effect-validator@1.2.0(effect@3.13.10)(hono@4.7.4))(@hono/typebox-validator@0.2.6(@sinclair/typebox@0.34.30)(hono@4.7.4))(@hono/valibot-validator@0.5.2(hono@4.7.4)(valibot@1.0.0-rc.3(typescript@5.8.2)))(@hono/zod-validator@0.4.3(hono@4.7.4)(zod@3.24.2))(@sinclair/typebox@0.34.30)(@valibot/to-json-schema@1.0.0-rc.0(valibot@1.0.0-rc.3(typescript@5.8.2)))(arktype@2.0.0-rc.25)(effect@3.13.10)(hono@4.7.4)(openapi-types@12.1.3)(valibot@1.0.0-rc.3(typescript@5.8.2))(zod-openapi@4.2.3(zod@3.24.2))(zod@3.24.2):
     dependencies:
       json-schema-walker: 2.0.0
     optionalDependencies:
@@ -6507,8 +6708,6 @@ snapshots:
       valibot: 1.0.0-rc.3(typescript@5.8.2)
       zod: 3.24.2
       zod-openapi: 4.2.3(zod@3.24.2)
-    transitivePeerDependencies:
-      - typescript
 
   hono@4.7.4: {}
 
@@ -7297,6 +7496,8 @@ snapshots:
       url-parse: 1.5.10
 
   typescript@5.8.2: {}
+
+  typescript@5.8.3: {}
 
   undici-types@6.19.8: {}
 
