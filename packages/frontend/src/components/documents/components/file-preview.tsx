@@ -111,7 +111,9 @@ export function FilePreview({ file }: FilePreviewProps) {
 
       // Refresh signatures
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/documents/${legalEntity.id}/${file.id}/signatures`
+        `${import.meta.env.VITE_API_URL}/documents/${legalEntity.id}/${
+          file.id
+        }/signatures`
       );
       if (response.ok) {
         const data = await response.json();
@@ -128,7 +130,9 @@ export function FilePreview({ file }: FilePreviewProps) {
   useEffect(() => {
     if (file.id && legalEntity?.id) {
       fetch(
-        `${import.meta.env.VITE_API_URL}/documents/${legalEntity.id}/${file.id}/signatures`
+        `${import.meta.env.VITE_API_URL}/documents/${legalEntity.id}/${
+          file.id
+        }/signatures`
       )
         .then((response) => response.json())
         .then((data) => setSignatures(data))
@@ -140,7 +144,9 @@ export function FilePreview({ file }: FilePreviewProps) {
   const isPDF = /\.pdf$/i.test(file.name.replace(/\s/g, "%20"));
 
   const getFileUrl = useCallback(() => {
-    const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${file.name}`;
+    const baseUrl = `${
+      import.meta.env.VITE_SUPABASE_URL
+    }/storage/v1/object/public/documents/${file.name}`;
     return documentCache.get(baseUrl) || baseUrl;
   }, [file.name]);
 
@@ -208,7 +214,7 @@ export function FilePreview({ file }: FilePreviewProps) {
         </Dialog>
       </div>
 
-      <div className="relative w-full aspect-[3/2] max-h-[400px] bg-muted/20 rounded-lg">
+      <div className="relative w-full aspect-[3/2] max-h-[400px] bg-muted/20 rounded-lg ">
         {isLoading && (
           <Skeleton className="w-full h-full absolute inset-0 rounded-lg" />
         )}
@@ -233,7 +239,7 @@ export function FilePreview({ file }: FilePreviewProps) {
         {isPDF && (
           <iframe
             src={`${getFileUrl()}#toolbar=0`}
-            className="w-full h-full rounded-lg"
+            className="w-full h-full aspect-[9/16] rounded-lg"
             title={file.name}
             onLoad={() => {
               setIsLoading(false);

@@ -32,7 +32,7 @@ export const profile = pgTable("profile", {
 
 export const profileRelations = relations(profile, ({ one, many }) => ({
 	onboardingStatus: one(onboardingStatus, {
-		fields: [profile.id],	
+		fields: [profile.id],
 		references: [onboardingStatus.userId],
 	}),
 	legalEntities: many(legalEntities),
@@ -62,7 +62,6 @@ export const onboardingStatusRelations = relations(
 	}),
 );
 
-
 export const legalEntities = pgTable("legal_entities", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	profileId: uuid("profile_id")
@@ -83,21 +82,23 @@ export const legalEntities = pgTable("legal_entities", {
 
 export const legalEntityZodSchema = createSelectSchema(legalEntities);
 export const legalEntityInsertSchema = createInsertSchema(legalEntities)
-  .omit({ profileId: true })
-  .extend({
-    registrationDate: z.preprocess((arg) => {
-      if (typeof arg === 'string' || arg instanceof Date) {
-        return new Date(arg);
-      }
-    }, z.date()),
-  });
+	.omit({ profileId: true })
+	.extend({
+		registrationDate: z.preprocess((arg) => {
+			if (typeof arg === "string" || arg instanceof Date) {
+				return new Date(arg);
+			}
+		}, z.date()),
+	});
 export const legalEntityUpdateSchema = legalEntityZodSchema.partial().extend({
-	registrationDate: z.preprocess(
-	  (arg) =>
-		typeof arg === "string" || arg instanceof Date ? new Date(arg) : arg,
-	  z.date()
-	).optional(),
-  });
+	registrationDate: z
+		.preprocess(
+			(arg) =>
+				typeof arg === "string" || arg instanceof Date ? new Date(arg) : arg,
+			z.date(),
+		)
+		.optional(),
+});
 
 export const banks = pgTable("banks", {
 	id: uuid("id").primaryKey().defaultRandom(),
@@ -186,32 +187,35 @@ export const documentSignatures = pgTable("document_signatures", {
 	signedAt: timestamp("signed_at").defaultNow().notNull(),
 });
 
-export const documentSignaturesFlutter = pgTable("document_signatures_flutter", {
-	id: uuid("id").defaultRandom().primaryKey(),
-	documentFlutterId: uuid("document_flutter_id")
-	  .references(() => documentsFlutter.id, { onDelete: "cascade" })
-	  .notNull(),
-	signerId: uuid("signer_id")
-	  .references(() => profile.id)
-	  .notNull(),
-	cms: text("cms").notNull(),
-	signedAt: timestamp("signed_at").defaultNow().notNull(),
-  });
-  
-  // If you’d like relations:
-  export const documentSignaturesFlutterRelations = relations(
+export const documentSignaturesFlutter = pgTable(
+	"document_signatures_flutter",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		documentFlutterId: uuid("document_flutter_id")
+			.references(() => documentsFlutter.id, { onDelete: "cascade" })
+			.notNull(),
+		signerId: uuid("signer_id")
+			.references(() => profile.id)
+			.notNull(),
+		cms: text("cms").notNull(),
+		signedAt: timestamp("signed_at").defaultNow().notNull(),
+	},
+);
+
+// If you’d like relations:
+export const documentSignaturesFlutterRelations = relations(
 	documentSignaturesFlutter,
 	({ one }) => ({
-	  documentFlutter: one(documentsFlutter, {
-		fields: [documentSignaturesFlutter.documentFlutterId],
-		references: [documentsFlutter.id],
-	  }),
-	  signer: one(profile, {
-		fields: [documentSignaturesFlutter.signerId],
-		references: [profile.id],
-	  }),
-	})
-  );
+		documentFlutter: one(documentsFlutter, {
+			fields: [documentSignaturesFlutter.documentFlutterId],
+			references: [documentsFlutter.id],
+		}),
+		signer: one(profile, {
+			fields: [documentSignaturesFlutter.signerId],
+			references: [profile.id],
+		}),
+	}),
+);
 
 export type DocumentSignature = typeof documentSignatures.$inferSelect;
 export type DocumentSignatureWithSigner =
@@ -307,69 +311,144 @@ export const employeesRelations = relations(employees, ({ one }) => ({
 	}),
 }));
 
+// Document templates for generating forms and PDFs
+export const documentTemplates = pgTable("document_templates", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	name: varchar("name", { length: 255 }).notNull(),
+	description: text("description"),
+	jsonSchema: jsonb("json_schema").notNull(), // JSON Schema for form generation
+	zodSchema: text("zod_schema").notNull(), // Zod schema as serialized string
+	pdfTemplate: jsonb("pdf_template"), // PDF layout configuration
+	legalEntityId: uuid("legal_entity_id")
+		.references(() => legalEntities.id)
+		.notNull(),
+	createdById: uuid("created_by_id")
+		.references(() => profile.id)
+		.notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type DocumentTemplate = typeof documentTemplates.$inferSelect;
+
+export const documentTemplateRelations = relations(
+	documentTemplates,
+	({ one }) => ({
+		legalEntity: one(legalEntities, {
+			fields: [documentTemplates.legalEntityId],
+			references: [legalEntities.id],
+		}),
+		createdBy: one(profile, {
+			fields: [documentTemplates.createdById],
+			references: [profile.id],
+		}),
+	}),
+);
+
+// Document instances generated from templates
+export const generatedDocuments = pgTable("generated_documents", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	name: varchar("name", { length: 255 }).notNull(),
+	templateId: uuid("template_id")
+		.references(() => documentTemplates.id)
+		.notNull(),
+	documentData: jsonb("document_data").notNull(), // Form data used to generate the document
+	pdfPath: text("pdf_path"), // Path to the generated PDF file
+	documentId: uuid("document_id").references(() => documents.id), // Link to the documents table if saved as a file
+	legalEntityId: uuid("legal_entity_id")
+		.references(() => legalEntities.id)
+		.notNull(),
+	createdById: uuid("created_by_id")
+		.references(() => profile.id)
+		.notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type GeneratedDocument = typeof generatedDocuments.$inferSelect;
+
+export const generatedDocumentRelations = relations(
+	generatedDocuments,
+	({ one }) => ({
+		template: one(documentTemplates, {
+			fields: [generatedDocuments.templateId],
+			references: [documentTemplates.id],
+		}),
+		document: one(documents, {
+			fields: [generatedDocuments.documentId],
+			references: [documents.id],
+		}),
+		legalEntity: one(legalEntities, {
+			fields: [generatedDocuments.legalEntityId],
+			references: [legalEntities.id],
+		}),
+		createdBy: one(profile, {
+			fields: [generatedDocuments.createdById],
+			references: [profile.id],
+		}),
+	}),
+);
 
 export const partners = pgTable("partners", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	legalEntityId: uuid("legal_entity_id")
-	  .references(() => legalEntities.id, { onDelete: "cascade" })
-	  .notNull(),
+		.references(() => legalEntities.id, { onDelete: "cascade" })
+		.notNull(),
 	bin: varchar("bin", { length: 12 }).notNull(),
 	name: varchar("name", { length: 256 }).notNull(),
 	address: text("address").notNull(),
 	executerName: varchar("executer_name", { length: 256 }).notNull(),
 	executerRole: varchar("executer_role", { length: 100 }).notNull(),
-  });
-  
-  export const partnersRelations = relations(partners, ({ one }) => ({
+});
+
+export const partnersRelations = relations(partners, ({ one }) => ({
 	legalEntity: one(legalEntities, {
-	  fields: [partners.legalEntityId],
-	  references: [legalEntities.id],
+		fields: [partners.legalEntityId],
+		references: [legalEntities.id],
 	}),
-  }));
-  
-  export const partnerZodSchema = createSelectSchema(partners);
-  export const partnerInsertSchema = createInsertSchema(partners);
-  
-  export const contracts = pgTable("contracts", {
+}));
+
+export const partnerZodSchema = createSelectSchema(partners);
+export const partnerInsertSchema = createInsertSchema(partners);
+
+export const contracts = pgTable("contracts", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	legalEntityId: uuid("legal_entity_id")
-	  .references(() => legalEntities.id, { onDelete: "cascade" })
-	  .notNull(),
+		.references(() => legalEntities.id, { onDelete: "cascade" })
+		.notNull(),
 	name: varchar("name", { length: 256 }).notNull(),
 	partnerId: uuid("partner_id")
-	  .references(() => partners.id, { onDelete: "cascade" })
-	  .notNull(),
+		.references(() => partners.id, { onDelete: "cascade" })
+		.notNull(),
 	filePath: text("file_path").notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
-  });
-  
-  export const contractsRelations = relations(contracts, ({ one }) => ({
+});
+
+export const contractsRelations = relations(contracts, ({ one }) => ({
 	legalEntity: one(legalEntities, {
-	  fields: [contracts.legalEntityId],
-	  references: [legalEntities.id],
+		fields: [contracts.legalEntityId],
+		references: [legalEntities.id],
 	}),
 	partner: one(partners, {
-	  fields: [contracts.partnerId],
-	  references: [partners.id],
+		fields: [contracts.partnerId],
+		references: [partners.id],
 	}),
-  }));
-  
-  export const contractZodSchema = createSelectSchema(contracts);
-  export const contractInsertSchema = createInsertSchema(contracts);
+}));
 
+export const contractZodSchema = createSelectSchema(contracts);
+export const contractInsertSchema = createInsertSchema(contracts);
 
-  export const products = pgTable("products", {
+export const products = pgTable("products", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	legalEntityId: uuid("legal_entity_id")
-	  .references(() => legalEntities.id, { onDelete: "cascade" })
-	  .notNull(),
+		.references(() => legalEntities.id, { onDelete: "cascade" })
+		.notNull(),
 	type: varchar("type", { length: 50 }).notNull(),
 	name: varchar("name", { length: 256 }).notNull(),
 	measurement: varchar("measurement", { length: 50 }).notNull(),
 	price: integer("price").notNull(),
 	vat: integer("vat").notNull(),
-  });
-  
-  export const productZodSchema = createSelectSchema(products);
-  export const productInsertSchema = createInsertSchema(products);
-  
+});
+
+export const productZodSchema = createSelectSchema(products);
+export const productInsertSchema = createInsertSchema(products);

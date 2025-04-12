@@ -18,6 +18,7 @@ import { contractsRouter } from "./routes/contracts";
 import { documentsFlutterRouter } from "./routes/documents_flutter";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
+import { documentTemplatesRouter } from "./routes/document-templates";
 
 import { prettyJSON } from "hono/pretty-json";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -41,7 +42,7 @@ app.use("*", prettyJSON());
 app.use(
 	"*",
 	cors({
-		origin: ["http://localhost:3000", "http://localhost:3002"],
+		origin: ["http://localhost:3000", "http://localhost:3001"],
 		credentials: true,
 	}),
 );
@@ -88,6 +89,7 @@ app.use("*", async (c, next) => {
 	await next();
 });
 app.route("/documents", documentsRouter);
+app.route("/document-templates", documentTemplatesRouter);
 
 app.use("*", authMiddleware);
 // Add environment variables to context

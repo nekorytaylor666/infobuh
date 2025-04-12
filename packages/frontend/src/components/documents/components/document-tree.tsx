@@ -15,6 +15,13 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useBreadcrumb } from "@/contexts/BreadcrumbContext";
 import { useNestedFolderBreadcrumbs } from "../hooks/use-nested-folder-breadcrumbs";
 import { useCallback } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from "@/components/ui/hover-card";
+import { documentCache } from "../utils/document-cache";
 
 interface DocumentTreeProps {
   documents: DocumentWithOwnerSignature[];
@@ -25,6 +32,7 @@ interface DocumentTreeProps {
   ) => void;
   currentFolderId?: string;
   useNestedPaths?: boolean;
+  isLoading?: boolean;
 }
 
 // Function to get appropriate icon based on file extension
@@ -55,12 +63,53 @@ const getFileIcon = (filename: string) => {
   }
 };
 
+const isPreviewableFile = (filename: string) => {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  return ["jpg", "jpeg", "png", "gif", "webp", "pdf"].includes(ext || "");
+};
+
+const FilePreviewHoverCard = ({ doc }: { doc: DocumentWithOwnerSignature }) => {
+  if (doc.type !== "file" || !isPreviewableFile(doc.name)) {
+    return null;
+  }
+
+  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.name);
+  const isPDF = /\.pdf$/i.test(doc.name);
+
+  const getFileUrl = () => {
+    const baseUrl = `${
+      import.meta.env.VITE_SUPABASE_URL
+    }/storage/v1/object/public/documents/${doc.name}`;
+    return documentCache.get(baseUrl) || baseUrl;
+  };
+
+  return (
+    <div className=" rounded-md overflow-hidden bg-background border shadow-sm p-0">
+      {isImage && (
+        <img
+          src={getFileUrl()}
+          alt={doc.name}
+          className="min-w-full min-h-full"
+        />
+      )}
+      {isPDF && (
+        <iframe
+          src={`${getFileUrl()}#toolbar=0&view=FitH`}
+          className="w-full h-min aspect-[9/16] "
+          title={doc.name}
+        />
+      )}
+    </div>
+  );
+};
+
 export function DocumentTree({
   documents,
   onSelect,
   onUploadComplete,
   currentFolderId,
   useNestedPaths,
+  isLoading = false,
 }: DocumentTreeProps) {
   const navigate = useNavigate();
   const nestedBreadcrumbs = useNestedFolderBreadcrumbs([], [], documents);
@@ -84,7 +133,7 @@ export function DocumentTree({
   });
 
   const handleItemHover = useCallback((doc: DocumentWithOwnerSignature) => {
-    if (doc.type === "file") {
+    if (doc.type === "file" && isPreviewableFile(doc.name)) {
       prefetchDocument(doc);
     }
   }, []);
@@ -124,56 +173,97 @@ export function DocumentTree({
 
   return (
     <div className="w-full">
-      <div className="border rounded">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b">
-              <th className="border-r text-left px-4 py-2">Name</th>
-              <th className="border-r text-left px-4 py-2">Owner</th>
-              <th className="border-r text-left px-4 py-2">Tag</th>
-              <th className="text-left px-4 py-2">Created at</th>
+      <div className="border rounded h-[calc(100vh-300px)] overflow-auto">
+        <table className="w-full text-sm ">
+          <thead className="sticky top-0 bg-background z-10">
+            <tr className="border-b ">
+              <th className="border-r text-left px-4 py-2 ">Название</th>
+              <th className="border-r text-left px-2 py-2 ">Владелец</th>
+              <th className="border-r text-left px-2 py-2 ">Категория</th>
+              <th className="text-left px-2 py-2 ">Дата создания</th>
             </tr>
           </thead>
           <tbody>
-            {sortedDocuments.map((doc) => {
-              const Icon =
-                doc.type === "folder" ? Folder : getFileIcon(doc.name);
+            {isLoading
+              ? // Skeleton rows when loading
+                Array.from({ length: 50 }).map((_, index) => (
+                  <tr key={index} className="border-b">
+                    <td className="border-r p-2">
+                      <div className="flex items-center gap-2 px-2 py-1">
+                        <Skeleton className="h-4 w-4 shrink-0 rounded-sm" />
+                        <Skeleton className="h-4 w-[600px] rounded-sm" />
+                      </div>
+                    </td>
+                    <td className="border-r p-2 text-sm">
+                      <Skeleton className="h-4 w-24 rounded-sm" />
+                    </td>
+                    <td className="border-r p-2 text-sm">
+                      <Skeleton className="h-4 w-16 rounded-sm" />
+                    </td>
+                    <td className="p-2 text-sm">
+                      <Skeleton className="h-4 w-20" />
+                    </td>
+                  </tr>
+                ))
+              : sortedDocuments.map((doc) => {
+                  const Icon =
+                    doc.type === "folder" ? Folder : getFileIcon(doc.name);
 
-              return (
-                <tr
-                  key={doc.id}
-                  className="border-b hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => {
-                    if (doc.type === "file") {
-                      onSelect(doc);
-                    } else if (doc.type === "folder") {
-                      handleFolderClick(doc);
-                    }
-                  }}
-                  onKeyDown={(e) => handleKeyPress(e, doc)}
-                  onMouseEnter={() => handleItemHover(doc)}
-                  tabIndex={0}
-                  role="row"
-                  aria-label={`${doc.type === "folder" ? "Folder" : "File"}: ${doc.name}`}
-                >
-                  <td className="border-r p-2">
-                    <div className="flex items-center gap-2 px-2 py-1">
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span>{doc.name}</span>
-                    </div>
-                  </td>
-                  <td className="border-r p-2 text-sm">
-                    {doc.createdBy?.email || "-"}
-                  </td>
-                  <td className="border-r p-2 text-sm">{"-"}</td>
-                  <td className="p-2 text-sm">
-                    {doc.createdAt
-                      ? new Date(doc.createdAt).toLocaleDateString()
-                      : "-"}
-                  </td>
-                </tr>
-              );
-            })}
+                  return (
+                    <tr
+                      key={doc.id}
+                      className="border-b hover:bg-accent/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (doc.type === "file") {
+                          onSelect(doc);
+                        } else if (doc.type === "folder") {
+                          handleFolderClick(doc);
+                        }
+                      }}
+                      onKeyDown={(e) => handleKeyPress(e, doc)}
+                      onMouseEnter={() => handleItemHover(doc)}
+                      tabIndex={0}
+                      role="row"
+                      aria-label={`${
+                        doc.type === "folder" ? "Папка" : "Файл"
+                      }: ${doc.name}`}
+                    >
+                      <td className="border-r p-2 w-3/6">
+                        {doc.type === "file" && isPreviewableFile(doc.name) ? (
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <div className="flex items-center gap-2 px-2 py-1 cursor-pointer hover:text-primary transition-colors">
+                                <Icon className="h-4 w-4 shrink-0" />
+                                <span className="relative">{doc.name}</span>
+                              </div>
+                            </HoverCardTrigger>
+                            <HoverCardContent
+                              side="bottom"
+                              align="start"
+                              className="z-50 p-0 rounded-md overflow-hidden"
+                            >
+                              <FilePreviewHoverCard doc={doc} />
+                            </HoverCardContent>
+                          </HoverCard>
+                        ) : (
+                          <div className="flex items-center gap-2 px-2 py-1">
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span>{doc.name}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="border-r p-2 text-sm w-1/6">
+                        {doc.createdBy?.email || ""}
+                      </td>
+                      <td className="border-r p-2 text-sm w-1/6">{""}</td>
+                      <td className="p-2 text-sm w-1/6">
+                        {doc.createdAt
+                          ? new Date(doc.createdAt).toLocaleDateString()
+                          : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
           </tbody>
         </table>
       </div>

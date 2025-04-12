@@ -75,7 +75,7 @@ export function DocumentBreadcrumb() {
   const breadcrumbItems = useMemo(() => {
     if (!breadcrumbs.length) {
       return (
-        <div className="px-6 py-2">
+        <div className="px-6 pt-4">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -90,7 +90,7 @@ export function DocumentBreadcrumb() {
     }
 
     return (
-      <div className="px-6 py-2">
+      <div className="px-6 pt-4">
         <Breadcrumb>
           <BreadcrumbList>
             {breadcrumbs.map((breadcrumb, index) => (
