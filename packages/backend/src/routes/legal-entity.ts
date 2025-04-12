@@ -11,6 +11,7 @@ const router = new Hono<HonoEnv>();
 
 router.get("/all", describeRoute({
 	description: "Get user's legal entities",
+	tags: ["Legal Entity"],
 	responses: {
 		200: {
 			description: "Legal entity found",
@@ -47,6 +48,7 @@ router.get(
 	"/current",
 	describeRoute({
 		description: "Get current user's legal entity",
+		tags: ["Legal Entity"],
 		responses: {
 			200: {
 				description: "Legal entity found",
@@ -87,6 +89,7 @@ router.post(
 	"/create",
 	describeRoute({
 	  description: "Create a new legal entity",
+	  tags: ["Legal Entity"],
 	  responses: {
 		201: {
 		  description: "Legal entity created",
@@ -140,6 +143,7 @@ router.put(
 	"/:id",
 	describeRoute({
 		description: "Update a legal entity",
+		tags: ["Legal Entity"],
 		responses: {
 			200: {
 				description: "Legal entity updated",
@@ -194,6 +198,7 @@ router.delete(
 	"/:id",
 	describeRoute({
 		description: "Delete a legal entity",
+		tags: ["Legal Entity"],
 		responses: {
 			200: {
 				description: "Legal entity deleted",
