@@ -2,16 +2,16 @@ import { Hono } from "hono";
 import type { HonoEnv } from "../db";
 import { HTTPException } from "hono/http-exception";
 import { z, ZodError } from "zod";
-import { kazakhInvoiceInputSchema } from "../lib/document-templates/templates/kazakh-invoice/schema";
-import { createDocumentGenerator } from "../lib/document-templates/templates";
+import {
+  kazakhInvoiceInputSchema,
+  createDocumentGenerator,
+  kazakhActInputSchema,
+  kazakhWaybillInputSchema,
+  KazakhActInput,
+} from "@accounting-kz/document-templates";
 import "zod-openapi/extend";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
-import {
-  type KazakhActInput,
-  kazakhActInputSchema,
-} from "../lib/document-templates/templates/kazakh-acts/schema";
-import { kazakhWaybillInputSchema } from "../lib/document-templates/templates/kazakh-waybill/schema";
 
 // Register templates
 export const documentTemplatesRouter = new Hono<HonoEnv>();
@@ -21,23 +21,17 @@ documentTemplatesRouter.post(
   "/kazakh-invoice",
   describeRoute({
     description: "Generate a Kazakh invoice PDF",
-    requestBody: {
-      content: {
-        "application/json": {
-          schema: resolver(kazakhInvoiceInputSchema),
-        },
-      },
-      required: true,
-    },
     responses: {
       200: {
         description: "Kazakh invoice PDF generated successfully",
         content: {
           "application/json": {
-            schema: z.object({
-              documentId: z.string().uuid(),
-              pdfBuffer: z.instanceof(Buffer),
-            }),
+            schema: resolver(
+              z.object({
+                documentId: z.string().uuid(),
+                pdfBuffer: z.instanceof(Buffer),
+              })
+            ),
           },
         },
       },
@@ -86,23 +80,18 @@ documentTemplatesRouter.post(
   "/kazakh-act",
   describeRoute({
     description: "Generate a Kazakh act of completed works PDF",
-    requestBody: {
-      content: {
-        "application/json": {
-          schema: resolver(kazakhActInputSchema),
-        },
-      },
-      required: true,
-    },
+
     responses: {
       200: {
         description: "Kazakh act PDF generated successfully",
         content: {
           "application/json": {
-            schema: z.object({
-              documentId: z.string().uuid(),
-              pdfBuffer: z.instanceof(Buffer),
-            }),
+            schema: resolver(
+              z.object({
+                documentId: z.string().uuid(),
+                pdfBuffer: z.instanceof(Buffer),
+              })
+            ),
           },
         },
       },
@@ -149,23 +138,18 @@ documentTemplatesRouter.post(
   "/kazakh-waybill",
   describeRoute({
     description: "Generate a Kazakh waybill PDF",
-    requestBody: {
-      content: {
-        "application/json": {
-          schema: resolver(kazakhWaybillInputSchema),
-        },
-      },
-      required: true,
-    },
+
     responses: {
       200: {
         description: "Kazakh waybill PDF generated successfully",
         content: {
           "application/json": {
-            schema: z.object({
-              documentId: z.string().uuid(),
-              pdfBuffer: z.instanceof(Buffer),
-            }),
+            schema: resolver(
+              z.object({
+                documentId: z.string().uuid(),
+                pdfBuffer: z.instanceof(Buffer),
+              })
+            ),
           },
         },
       },

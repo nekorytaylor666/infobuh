@@ -1,7 +1,7 @@
 import { createKazakhActService } from "./kazakh-acts";
 import { createKazakhWaybillService } from "./kazakh-waybill";
 import { createKazakhInvoiceService } from "./kazakh-invoice";
-import type { Database } from "../../../db";
+import type { Database } from "../../../types";
 
 export * from "./kazakh-invoice";
 export * from "./kazakh-acts";
