@@ -418,7 +418,7 @@ export const contracts = pgTable("contracts", {
 		.notNull(),
 	number: integer("number").notNull(),
 	date: date("date").notNull(),
-	currency: varchar("type", { length: 3 }).notNull(),
+	currency: varchar("currency", { length: 3 }).notNull(),
 	partnerId: uuid("partner_id")
 		.references(() => partners.id, { onDelete: "cascade" })
 		.notNull(),
