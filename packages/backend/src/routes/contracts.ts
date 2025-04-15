@@ -82,7 +82,7 @@ contractsRouter.post(
 		const legalEntityId = c.req.param("legalEntityId");
 		const body = await c.req.json();
 		// Now we expect number and date in place of name
-		const { number, date, partnerId, file } = body;
+		const { number, date, partnerId, file, currency } = body;
 
 		if (
 			(number === undefined || number === null) ||
@@ -119,6 +119,7 @@ contractsRouter.post(
 				number,
 				date,
 				partnerId,
+				currency,
 				filePath: newFilePath,
 			})
 			.returning();
