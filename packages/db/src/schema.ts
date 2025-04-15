@@ -416,7 +416,9 @@ export const contracts = pgTable("contracts", {
 	legalEntityId: uuid("legal_entity_id")
 		.references(() => legalEntities.id, { onDelete: "cascade" })
 		.notNull(),
-	name: varchar("name", { length: 256 }).notNull(),
+	number: integer("number").notNull(),
+	date: date("date").notNull(),
+	currency: varchar("type", { length: 3 }).notNull(),
 	partnerId: uuid("partner_id")
 		.references(() => partners.id, { onDelete: "cascade" })
 		.notNull(),

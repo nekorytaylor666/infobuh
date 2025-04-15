@@ -1,9 +1,9 @@
 import type { Config } from "drizzle-kit";
 
 export default {
-	schema: "./src/db/schema.ts",
+	schema: "./src/schema.ts",
 	schemaFilter: ["public"],
-	out: "./src/db/migrations",
+	out: "./src/migrations",
 	dialect: "postgresql",
 	dbCredentials: {
 		// biome-ignore lint/style/noNonNullAssertion: env variables are set in .env

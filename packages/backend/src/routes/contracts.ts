@@ -81,9 +81,17 @@ contractsRouter.post(
 	async (c) => {
 		const legalEntityId = c.req.param("legalEntityId");
 		const body = await c.req.json();
-		const { name, partnerId, file } = body;
+		// Now we expect number and date in place of name
+		const { number, date, partnerId, file } = body;
 
-		if (!name || !partnerId || !file || !file.data || !file.name) {
+		if (
+			(number === undefined || number === null) ||
+			!date ||
+			!partnerId ||
+			!file ||
+			!file.data ||
+			!file.name
+		) {
 			throw new HTTPException(400, {
 				message: "Missing required fields or file data",
 			});
@@ -91,7 +99,6 @@ contractsRouter.post(
 
 		const fileName = file.name;
 		const newFilePath = `${legalEntityId}/${Date.now()}-${fileName}`;
-
 		const fileBuffer = Buffer.from(file.data, "base64");
 
 		const { error: uploadError } = await c.env.supabase.storage
@@ -109,7 +116,8 @@ contractsRouter.post(
 			.insert(contracts)
 			.values({
 				legalEntityId,
-				name,
+				number,
+				date,
 				partnerId,
 				filePath: newFilePath,
 			})
@@ -142,7 +150,7 @@ contractsRouter.put(
 		const contract = await c.env.db.query.contracts.findFirst({
 			where: and(
 				eq(contracts.id, id),
-				eq(contracts.legalEntityId, legalEntityId),
+				eq(contracts.legalEntityId, legalEntityId)
 			),
 		});
 
@@ -182,12 +190,16 @@ contractsRouter.put(
 		const updatedContract = await c.env.db
 			.update(contracts)
 			.set({
-				name: body.name ?? contract.name,
+				number: body.number ?? contract.number,
+				date: body.date ?? contract.date,
 				partnerId: body.partnerId ?? contract.partnerId,
 				filePath: updatedFilePath,
 			})
 			.where(
-				and(eq(contracts.id, id), eq(contracts.legalEntityId, legalEntityId)),
+				and(
+					eq(contracts.id, id),
+					eq(contracts.legalEntityId, legalEntityId)
+				)
 			)
 			.returning();
 
@@ -200,3 +212,5 @@ contractsRouter.put(
 		return c.json(updatedContract[0]);
 	},
 );
+
+
