@@ -106,6 +106,9 @@ app.route("/docs-flutter", documentsFlutterRouter);
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
 });
+app.get('/health-check', (c) => {
+	return c.json({message: 'All good', status: 200});
+})
 
 const port = Number(process.env.PORT) || 3000;
 console.log(`Server is running on port ${port}`);
