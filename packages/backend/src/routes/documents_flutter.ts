@@ -15,6 +15,40 @@ export const documentsFlutterRouter = new Hono<HonoEnv>();
 
 const NCALAYER_URL = "http://91.147.92.61:14579";
 
+documentsFlutterRouter.get(
+	"/receiver/:receiverBin",
+	describeRoute({
+	  description: "Get all documents where the receiverBin matches",
+	  tags: ["Documents"],
+	  parameters: [
+		{
+		  name: "receiverBin",
+		  in: "path",
+		  required: true,
+		  schema: { type: "string" },
+		  description: "BIN of the receiver to filter documents by",
+		},
+	  ],
+	  responses: {
+		200: {
+		  description: "List of documents for that BIN",
+		  content: { "application/json": {} },
+		},
+		500: { description: "Internal server error" },
+	  },
+	}),
+	async (c) => {
+	  const receiverBin = c.req.param("receiverBin");
+  
+	  const docs = await c.env.db.query.documentsFlutter.findMany({
+		where: eq(documentsFlutter.receiverBin, receiverBin),
+		orderBy: [desc(documentsFlutter.createdAt)],
+	  });
+  
+	  return c.json(docs);
+	},
+  );
+
 // GET all documents for a legal entity
 documentsFlutterRouter.get(
 	"/:legalEntityId",
@@ -430,3 +464,4 @@ documentsFlutterRouter.get(
 		return c.json(signatures);
 	},
 );
+
