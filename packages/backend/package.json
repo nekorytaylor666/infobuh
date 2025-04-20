@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@accounting-kz/db": "workspace:*",
+    "@accounting-kz/bin-verifier": "workspace:*",
     "@accounting-kz/document-templates": "workspace:*",
     "@hono/node-server": "^1.2.0",
     "@hono/zod-openapi": "^0.18.3",
