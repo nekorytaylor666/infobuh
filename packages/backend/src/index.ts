@@ -52,9 +52,10 @@ app.use(
 if (!process.env.DATABASE_URL) {
 	throw new Error("DATABASE_URL environment variable is not set.");
 }
-const client = postgres(process.env.DATABASE_URL);
 app.use("*", async (c, next) => {
-	c.set("db", drizzle(client));
+	c.env.DATABASE_URL = process.env.DATABASE_URL as string;
+	c.env.db = dbClient;
+	c.env.supabase = supabase;
 	await next();
 });
 
