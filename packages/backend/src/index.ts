@@ -18,7 +18,7 @@ import { documentsFlutterRouter } from "./routes/documents_flutter";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import { documentTemplatesRouter } from "./routes/document-templates";
-
+import { initializeBinData, findEntity } from "@accounting-kz/bin-verifier";
 import { prettyJSON } from "hono/pretty-json";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -49,7 +49,10 @@ app.use(
 );
 
 // Create database connection
-const client = postgres(env.DATABASE_URL);
+if (!process.env.DATABASE_URL) {
+	throw new Error("DATABASE_URL environment variable is not set.");
+}
+const client = postgres(process.env.DATABASE_URL);
 app.use("*", async (c, next) => {
 	c.set("db", drizzle(client));
 	await next();
@@ -83,14 +86,31 @@ app.get(
 	}),
 );
 app.use("*", async (c, next) => {
-	c.env.DATABASE_URL = process.env.DATABASE_URL as string;
-	c.env.db = dbClient;
-	c.env.supabase = supabase;
-
 	await next();
 });
 app.route("/documents", documentsRouter);
 app.route("/document-templates", documentTemplatesRouter);
+
+// Check for required environment variables
+const binDataCsvUrl = process.env.BIN_DATA_CSV_URL;
+if (!binDataCsvUrl) {
+	throw new Error("BIN_DATA_CSV_URL environment variable is not set.");
+}
+
+// Bin verifier route (ensure it uses the imported findEntity)
+app.get("/verify-bin", (c) => {
+	const query = c.req.query("q");
+	if (!query) {
+		return c.json({ error: "Query parameter 'q' is required" }, 400);
+	}
+	// findEntity now handles the initialization check internally
+	const entity = findEntity(query);
+	if (!entity) {
+		// Consider differentiating between "not found" and "not initialized", though findEntity logs a warning if not initialized.
+		return c.json({ error: "Entity not found or verifier not ready" }, 404);
+	}
+	return c.json(entity);
+});
 
 app.use("*", authMiddleware);
 // Add environment variables to context
@@ -106,14 +126,34 @@ app.route("/docs-flutter", documentsFlutterRouter);
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
 });
-app.get('/health-check', (c) => {
-	return c.json({message: 'All good', status: 200});
-})
+app.get("/health-check", (c) => {
+	return c.json({ message: "All good", status: 200 });
+});
 
 const port = Number(process.env.PORT) || 3000;
-console.log(`Server is running on port ${port}`);
 
-serve({
-	fetch: app.fetch,
-	port,
-});
+// --- Server Bootstrap and Start ---
+
+// Pass the validated URL to bootstrap
+async function bootstrap(csvUrl: string) {
+	try {
+		console.log("Starting application bootstrap...");
+		// Initialize Bin Verifier
+		await initializeBinData(csvUrl); // Use the argument
+		console.log("Application bootstrap completed successfully.");
+	} catch (error) {
+		console.error("Application bootstrap failed:", error);
+		process.exit(1); // Exit if critical initialization fails
+	}
+}
+
+(async () => {
+	// Pass the validated URL here
+	await bootstrap(binDataCsvUrl);
+
+	console.log(`Server is running on port ${port}`);
+	serve({
+		fetch: app.fetch,
+		port,
+	});
+})();
