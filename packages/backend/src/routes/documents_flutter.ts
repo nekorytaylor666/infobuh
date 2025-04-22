@@ -111,6 +111,9 @@ documentsFlutterRouter.get(
 			orderBy: [desc(documentsFlutter.createdAt)],
 			with: {
 				signatures: {
+					columns: {
+						cms: false,
+					},
 					with: {
 						signer: true,
 					},
