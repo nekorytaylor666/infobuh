@@ -89,10 +89,10 @@ app.get(
 app.use("*", async (c, next) => {
 	await next();
 });
+app.use("*", authMiddleware);
 app.route("/documents", documentsRouter);
 app.route("/document-templates", documentTemplatesRouter);
 
-app.use("*", authMiddleware);
 // Add environment variables to context
 
 app.route("/auth", authRouter);
