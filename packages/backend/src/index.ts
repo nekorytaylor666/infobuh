@@ -92,7 +92,6 @@ app.use("*", async (c, next) => {
 app.route("/documents", documentsRouter);
 app.route("/document-templates", documentTemplatesRouter);
 
-app.use("*", authMiddleware);
 // Add environment variables to context
 
 app.route("/auth", authRouter);
@@ -109,6 +108,7 @@ app.get("/", (c) => {
 app.get("/health-check", (c) => {
 	return c.json({ message: "All good", status: 200 });
 });
+app.use("*", authMiddleware);
 
 const port = Number(process.env.PORT) || 3000;
 

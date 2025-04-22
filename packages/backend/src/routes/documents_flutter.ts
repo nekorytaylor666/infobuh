@@ -7,6 +7,8 @@ import {
 	eq,
 	and,
 	desc,
+	isNull,
+	inArray,
 } from "@accounting-kz/db";
 import { HTTPException } from "hono/http-exception";
 import { describeRoute } from "hono-openapi";
@@ -15,46 +17,62 @@ export const documentsFlutterRouter = new Hono<HonoEnv>();
 
 const NCALAYER_URL = "https://signer.infobuh.com/";
 
+// GET documents by receiver BIN
 documentsFlutterRouter.get(
-	"/receiver/:receiverBin",
+	"/listByReceiver",
 	describeRoute({
-	  description: "Get all documents where the receiverBin matches",
-	  tags: ["Documents"],
-	  parameters: [
-		{
-		  name: "receiverBin",
-		  in: "path",
-		  required: true,
-		  schema: { type: "string" },
-		  description: "BIN of the receiver to filter documents by",
+		description: "Get all documents where the receiverBin matches",
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "receiverBin",
+				in: "query",
+				required: true,
+				schema: { type: "string" },
+				description: "BIN of the receiver to filter documents by",
+			},
+		],
+		responses: {
+			200: {
+				description: "List of documents for that BIN",
+				content: { "application/json": {} },
+			},
+			500: { description: "Internal server error" },
 		},
-	  ],
-	  responses: {
-		200: {
-		  description: "List of documents for that BIN",
-		  content: { "application/json": {} },
-		},
-		500: { description: "Internal server error" },
-	  },
 	}),
 	async (c) => {
-	  const receiverBin = c.req.param("receiverBin");
-  
-	  const docs = await c.env.db.query.documentsFlutter.findMany({
-		where: eq(documentsFlutter.receiverBin, receiverBin),
-		orderBy: [desc(documentsFlutter.createdAt)],
-	  });
-  
-	  return c.json(docs);
+		const receiverBin = c.req.query("receiverBin");
+
+		if (!receiverBin) {
+			throw new HTTPException(400, {
+				message: "Missing receiverBin query parameter",
+			});
+		}
+
+		const docs = await c.env.db.query.documentsFlutter.findMany({
+			where: eq(documentsFlutter.receiverBin, receiverBin),
+			orderBy: [desc(documentsFlutter.createdAt)],
+		});
+
+		return c.json(docs);
 	},
-  );
+);
 
 // GET all documents for a legal entity
 documentsFlutterRouter.get(
-	"/:legalEntityId",
+	"/list",
 	describeRoute({
 		description: "Get all documents for a legal entity",
-		tags: ["Documents"],
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the legal entity",
+			},
+		],
 		responses: {
 			200: {
 				description: "List of documents",
@@ -62,13 +80,20 @@ documentsFlutterRouter.get(
 					"application/json": {},
 				},
 			},
+			400: { description: "Missing or invalid legalEntityId query parameter" },
 			500: {
 				description: "Internal server error",
 			},
 		},
 	}),
 	async (c) => {
-		const legalEntityId = c.req.param("legalEntityId");
+		const legalEntityId = c.req.query("legalEntityId");
+
+		if (!legalEntityId) {
+			throw new HTTPException(400, {
+				message: "Missing legalEntityId query parameter",
+			});
+		}
 
 		const docs = await c.env.db.query.documentsFlutter.findMany({
 			where: eq(documentsFlutter.legalEntityId, legalEntityId),
@@ -81,10 +106,26 @@ documentsFlutterRouter.get(
 
 // GET a specific document for a legal entity
 documentsFlutterRouter.get(
-	"/:legalEntityId/:id",
+	"/get/:id",
 	describeRoute({
 		description: "Get a specific document for a legal entity",
-		tags: ["Documents"],
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document",
+			},
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the legal entity",
+			},
+		],
 		responses: {
 			200: {
 				description: "Document retrieved successfully",
@@ -92,6 +133,7 @@ documentsFlutterRouter.get(
 					"application/json": {},
 				},
 			},
+			400: { description: "Missing or invalid legalEntityId query parameter" },
 			404: {
 				description: "Document not found",
 			},
@@ -102,7 +144,13 @@ documentsFlutterRouter.get(
 	}),
 	async (c) => {
 		const id = c.req.param("id");
-		const legalEntityId = c.req.param("legalEntityId");
+		const legalEntityId = c.req.query("legalEntityId");
+
+		if (!legalEntityId) {
+			throw new HTTPException(400, {
+				message: "Missing legalEntityId query parameter",
+			});
+		}
 
 		const doc = await c.env.db.query.documentsFlutter.findFirst({
 			where: and(
@@ -121,10 +169,19 @@ documentsFlutterRouter.get(
 
 // POST: Create a new document for a legal entity
 documentsFlutterRouter.post(
-	"/:legalEntityId",
+	"/create",
 	describeRoute({
 		description: "Create a new document for a legal entity",
-		tags: ["Documents"],
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the legal entity",
+			},
+		],
 		responses: {
 			200: {
 				description: "Document created successfully",
@@ -133,7 +190,8 @@ documentsFlutterRouter.post(
 				},
 			},
 			400: {
-				description: "Missing required fields",
+				description:
+					"Missing required fields or missing/invalid legalEntityId query parameter",
 			},
 			500: {
 				description: "Internal server error",
@@ -141,9 +199,15 @@ documentsFlutterRouter.post(
 		},
 	}),
 	async (c) => {
-		const legalEntityId = c.req.param("legalEntityId");
+		const legalEntityId = c.req.query("legalEntityId");
 		const body = await c.req.json();
-		const { type, receiverBin, receiverName, fields, file, cms } = body;
+		const { type, receiverBin, receiverName, fields, file } = body;
+
+		if (!legalEntityId) {
+			throw new HTTPException(400, {
+				message: "Missing legalEntityId query parameter",
+			});
+		}
 
 		// Basic validation for required fields
 		if (
@@ -156,7 +220,7 @@ documentsFlutterRouter.post(
 			!file.name
 		) {
 			throw new HTTPException(400, {
-				message: "Missing required fields or file data",
+				message: "Missing required fields or file data in request body",
 			});
 		}
 
@@ -174,34 +238,60 @@ documentsFlutterRouter.post(
 				contentType: file.contentType || "application/octet-stream",
 			});
 		if (uploadError) {
+			console.error("Supabase upload error:", uploadError);
 			throw new HTTPException(500, {
 				message: "Failed to upload file to storage",
 			});
 		}
 
 		// Insert the document record with the uploaded file path
-		const newDoc = await c.env.db
-			.insert(documentsFlutter)
-			.values({
-				legalEntityId,
-				type,
-				receiverBin,
-				receiverName,
-				fields,
-				filePath: newFilePath,
-			})
-			.returning();
+		try {
+			const newDoc = await c.env.db
+				.insert(documentsFlutter)
+				.values({
+					legalEntityId,
+					type,
+					receiverBin,
+					receiverName,
+					fields,
+					filePath: newFilePath,
+				})
+				.returning();
 
-		return c.json(newDoc[0]);
+			return c.json(newDoc[0], 201);
+		} catch (dbError) {
+			console.error("Database insert error:", dbError);
+			// Attempt to delete the uploaded file if db insert fails
+			await c.env.supabase.storage.from("documents").remove([newFilePath]);
+			throw new HTTPException(500, {
+				message: "Failed to save document record after file upload",
+			});
+		}
 	},
 );
 
-// PUT: Update an existing document for a legal entity (only if not signed and doesn't have CMS)
+// PUT: Update an existing document for a legal entity
 documentsFlutterRouter.put(
-	"/:legalEntityId/:id",
+	"/update/:id",
 	describeRoute({
 		description: "Update an existing document for a legal entity",
-		tags: ["Documents"],
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document to update",
+			},
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the legal entity",
+			},
+		],
 		responses: {
 			200: {
 				description: "Document updated successfully",
@@ -211,7 +301,7 @@ documentsFlutterRouter.put(
 			},
 			400: {
 				description:
-					"Cannot update document that is signed or has CMS / Invalid update",
+					"Invalid update data or missing/invalid legalEntityId query parameter",
 			},
 			404: {
 				description: "Document not found",
@@ -223,8 +313,14 @@ documentsFlutterRouter.put(
 	}),
 	async (c) => {
 		const id = c.req.param("id");
-		const legalEntityId = c.req.param("legalEntityId");
+		const legalEntityId = c.req.query("legalEntityId");
 		const body = await c.req.json();
+
+		if (!legalEntityId) {
+			throw new HTTPException(400, {
+				message: "Missing legalEntityId query parameter",
+			});
+		}
 
 		// Retrieve the document to check update eligibility
 		const doc = await c.env.db.query.documentsFlutter.findFirst({
@@ -239,29 +335,26 @@ documentsFlutterRouter.put(
 		}
 
 		let updatedFilePath = doc.filePath;
+		let oldFilePathToDelete: string | null = null;
+
+		// Handle file update
 		if (body.file?.data && body.file.name) {
-			// Remove the old file from Supabase Storage if exists
 			if (doc.filePath) {
-				const { error: removeError } = await c.env.supabase.storage
-					.from("documents")
-					.remove([doc.filePath]);
-				if (removeError) {
-					throw new HTTPException(500, {
-						message: "Failed to delete old file from storage",
-					});
-				}
+				oldFilePathToDelete = doc.filePath;
 			}
 
 			// Generate a new unique file path and upload the new file
 			const fileName = body.file.name;
 			const newFilePath = `${legalEntityId}/${Date.now()}-${fileName}`;
 			const fileBuffer = Buffer.from(body.file.data, "base64");
+
 			const { error: uploadError } = await c.env.supabase.storage
 				.from("documents")
 				.upload(newFilePath, fileBuffer, {
 					contentType: body.file.contentType || "application/octet-stream",
 				});
 			if (uploadError) {
+				console.error("Supabase update upload error:", uploadError);
 				throw new HTTPException(500, {
 					message: "Failed to upload new file to storage",
 				});
@@ -269,64 +362,129 @@ documentsFlutterRouter.put(
 			updatedFilePath = newFilePath;
 		}
 
-		// Update the document record with the new file path if applicable
-		const updatedDoc = await c.env.db
-			.update(documentsFlutter)
-			.set({
-				type: body.type ?? doc.type,
-				receiverBin: body.receiverBin ?? doc.receiverBin,
-				receiverName: body.receiverName ?? doc.receiverName,
-				fields: body.fields ?? doc.fields,
-				filePath: updatedFilePath,
-			})
-			.where(
-				and(
-					eq(documentsFlutter.id, id),
-					eq(documentsFlutter.legalEntityId, legalEntityId),
-				),
-			)
-			.returning();
+		// Update the document record
+		try {
+			const updatedDocResult = await c.env.db
+				.update(documentsFlutter)
+				.set({
+					type: body.type ?? doc.type,
+					receiverBin: body.receiverBin ?? doc.receiverBin,
+					receiverName: body.receiverName ?? doc.receiverName,
+					fields: body.fields ?? doc.fields,
+					filePath: updatedFilePath,
+				})
+				.where(
+					and(
+						eq(documentsFlutter.id, id),
+						eq(documentsFlutter.legalEntityId, legalEntityId),
+					),
+				)
+				.returning();
 
-		if (!updatedDoc.length) {
-			throw new HTTPException(404, {
-				message: "Document not found or update failed",
+			if (!updatedDocResult.length) {
+				throw new HTTPException(404, {
+					message: "Document not found during update",
+				});
+			}
+
+			// If update and file upload were successful, delete the old file
+			if (oldFilePathToDelete) {
+				const { error: removeError } = await c.env.supabase.storage
+					.from("documents")
+					.remove([oldFilePathToDelete]);
+				if (removeError) {
+					console.error("Failed to delete old file from storage:", removeError);
+				}
+			}
+
+			return c.json(updatedDocResult[0]);
+		} catch (dbError) {
+			console.error("Database update error:", dbError);
+			// If DB update fails after a new file was uploaded, try to delete the new file
+			if (updatedFilePath !== doc.filePath) {
+				await c.env.supabase.storage
+					.from("documents")
+					.remove([updatedFilePath]);
+			}
+			if (dbError instanceof HTTPException) {
+				throw dbError;
+			}
+			throw new HTTPException(500, {
+				message: "Failed to update document record",
 			});
 		}
-
-		return c.json(updatedDoc[0]);
 	},
 );
 
-documentsFlutterRouter.post(
-	"/:legalEntityId/:id/sign",
+// DELETE: Delete a specific document for a legal entity
+documentsFlutterRouter.delete(
+	"/delete/:id",
 	describeRoute({
-		description:
-			"Signs a document via NCALayer using the provided key, password, and signerId. The signature is then stored and returned.",
-		tags: ["Documents", "Sign"],
+		description: "Delete a specific document for a legal entity",
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document to delete",
+			},
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the legal entity",
+			},
+		],
 		responses: {
-			200: {
-				description:
-					"Document signed successfully. Returns the signature record.",
-				content: { "application/json": {} },
-			},
-			404: {
-				description: "Document not found",
-			},
-			500: {
-				description: "Internal server error",
-			},
+			204: { description: "Document deleted successfully" },
+			400: { description: "Missing or invalid legalEntityId query parameter" },
+			404: { description: "Document not found" },
+			500: { description: "Internal server error" },
 		},
 	}),
 	async (c) => {
 		const id = c.req.param("id");
-		const legalEntityId = c.req.param("legalEntityId");
-		const body = await c.req.json();
-		const { key, password, signerId } = body; // Make sure to pass signerId from frontend!
+		const legalEntityId = c.req.query("legalEntityId");
 
-		// 1) Verify the document exists
-		const doc = await c.env.db
-			.select()
-			.from(documentsFlutter)
+		if (!legalEntityId) {
+			throw new HTTPException(400, {
+				message: "Missing legalEntityId query parameter",
+			});
+		}
+
+		// 1. Find the document to get the file path
+		const doc = await c.env.db.query.documentsFlutter.findFirst({
+			where: and(
+				eq(documentsFlutter.id, id),
+				eq(documentsFlutter.legalEntityId, legalEntityId),
+			),
+			columns: {
+				filePath: true,
+			},
+		});
+
+		if (!doc) {
+			throw new HTTPException(404, { message: "Document not found" });
+		}
+
+		// 2. Delete associated signatures (cascade might handle this, but explicit is safer)
+		try {
+			await c.env.db
+				.delete(documentSignaturesFlutter)
+				.where(eq(documentSignaturesFlutter.documentFlutterId, id));
+		} catch (sigDeleteError) {
+			console.error("Error deleting document signatures:", sigDeleteError);
+			throw new HTTPException(500, {
+				message: "Failed to delete associated signatures",
+			});
+		}
+
+		// 3. Delete the document record from the database
+		const deleteResult = await c.env.db
+			.delete(documentsFlutter)
 			.where(
 				and(
 					eq(documentsFlutter.id, id),
@@ -334,16 +492,108 @@ documentsFlutterRouter.post(
 				),
 			);
 
-		if (!doc.length) {
-			throw new HTTPException(404, { message: "Document not found" });
+		// Check if the document was actually deleted (rowCount might be available depending on driver)
+		// Assuming delete doesn't throw error if row not found, but returns 0 affected rows
+
+		// 4. Delete the file from storage *after* successful DB deletion
+		if (doc.filePath) {
+			const { error: storageError } = await c.env.supabase.storage
+				.from("documents")
+				.remove([doc.filePath]);
+			if (storageError) {
+				console.error(
+					"Failed to delete file from storage after DB delete:",
+					storageError,
+				);
+			}
+		}
+
+		return c.body(null, 204);
+	},
+);
+
+// POST: Sign a document
+documentsFlutterRouter.post(
+	"/sign/:id",
+	describeRoute({
+		description:
+			"Signs a document via NCALayer using the provided key, password, and signerId. The signature is then stored and returned.",
+		tags: ["Documents Flutter", "Sign"],
+		parameters: [
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document to sign",
+			},
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the legal entity (owner of the document)",
+			},
+		],
+		responses: {
+			200: {
+				description:
+					"Document signed successfully. Returns the signature record.",
+				content: { "application/json": {} },
+			},
+			400: {
+				description:
+					"Missing or invalid legalEntityId query parameter / Missing body parameters",
+			},
+			404: {
+				description: "Document not found",
+			},
+			500: {
+				description: "Internal server error or NCALayer error",
+			},
+		},
+	}),
+	async (c) => {
+		const id = c.req.param("id");
+		const legalEntityId = c.req.query("legalEntityId");
+		const body = await c.req.json();
+		const { key, password, signerId } = body;
+
+		if (!legalEntityId) {
+			throw new HTTPException(400, {
+				message: "Missing legalEntityId query parameter",
+			});
+		}
+		if (!key || !password || !signerId) {
+			throw new HTTPException(400, {
+				message: "Missing key, password, or signerId in request body",
+			});
+		}
+
+		// 1) Verify the document exists and belongs to the legal entity
+		const doc = await c.env.db.query.documentsFlutter.findFirst({
+			where: and(
+				eq(documentsFlutter.id, id),
+				eq(documentsFlutter.legalEntityId, legalEntityId),
+			),
+			columns: {
+				filePath: true,
+			},
+		});
+
+		if (!doc || !doc.filePath) {
+			throw new HTTPException(404, {
+				message: "Document not found or file path missing",
+			});
 		}
 
 		// 2) Download from the correct bucket & file path
 		const { data: fileData, error: storageError } = await c.env.supabase.storage
-			.from("documents") // Make sure this matches your upload bucket
-			.download(doc[0].filePath); // filePath is the actual column name
+			.from("documents")
+			.download(doc.filePath);
 
 		if (storageError || !fileData) {
+			console.error("Supabase download error:", storageError);
 			throw new HTTPException(500, {
 				message: "Failed to get file from storage",
 			});
@@ -360,7 +610,7 @@ documentsFlutterRouter.post(
 				{
 					key,
 					password,
-					keyAlias: null, // if needed
+					keyAlias: null,
 				},
 			],
 			withTsp: true,
@@ -377,9 +627,15 @@ documentsFlutterRouter.post(
 			});
 
 			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
+				let errorData: { message?: string } = {};
+				try {
+					errorData = await response.json();
+				} catch (parseError) {
+					console.error("Failed to parse NCALayer error response:", parseError);
+				}
+				console.error("NCALayer signing error:", response.status, errorData);
 				throw new Error(
-					errorData.message ||
+					errorData?.message ||
 						`NCALayer responded with status: ${response.status}`,
 				);
 			}
@@ -387,6 +643,7 @@ documentsFlutterRouter.post(
 			const result = await response.json();
 
 			if (!result.cms) {
+				console.error("NCALayer response missing CMS data:", result);
 				throw new Error("No CMS data received from NCALayer");
 			}
 
@@ -404,7 +661,7 @@ documentsFlutterRouter.post(
 			// 7) Return the new signature
 			return c.json(signature);
 		} catch (error) {
-			console.error("Signing error:", error);
+			console.error("Signing process error:", error);
 			throw new HTTPException(500, {
 				message:
 					error instanceof Error ? error.message : "Failed to sign document",
@@ -413,18 +670,35 @@ documentsFlutterRouter.post(
 	},
 );
 
-// GET: Document’s signatures (via documentSignaturesFlutter)
+// GET: Document's signatures
 documentsFlutterRouter.get(
-	"/:legalEntityId/:id/signatures",
+	"/getSignatures/:id",
 	describeRoute({
 		description:
 			"Retrieves all signatures for a given document (Flutter version) along with signer details.",
-		tags: ["Documents", "Sign"],
+		tags: ["Documents Flutter", "Sign"],
+		parameters: [
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document",
+			},
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the legal entity (for verification)",
+			},
+		],
 		responses: {
 			200: {
 				description: "List of document signatures",
 				content: { "application/json": {} },
 			},
+			400: { description: "Missing or invalid legalEntityId query parameter" },
 			404: {
 				description: "Document not found",
 			},
@@ -435,28 +709,34 @@ documentsFlutterRouter.get(
 	}),
 	async (c) => {
 		const id = c.req.param("id");
-		const legalEntityId = c.req.param("legalEntityId");
+		const legalEntityId = c.req.query("legalEntityId");
 
-		// 1) Verify doc exists
-		const doc = await c.env.db
-			.select()
-			.from(documentsFlutter)
-			.where(
-				and(
-					eq(documentsFlutter.id, id),
-					eq(documentsFlutter.legalEntityId, legalEntityId),
-				),
-			);
+		if (!legalEntityId) {
+			throw new HTTPException(400, {
+				message: "Missing legalEntityId query parameter",
+			});
+		}
 
-		if (!doc.length) {
-			throw new HTTPException(404, { message: "Document not found" });
+		// 1) Verify doc exists and belongs to the legal entity
+		const doc = await c.env.db.query.documentsFlutter.findFirst({
+			where: and(
+				eq(documentsFlutter.id, id),
+				eq(documentsFlutter.legalEntityId, legalEntityId),
+			),
+			columns: { id: true },
+		});
+
+		if (!doc) {
+			throw new HTTPException(404, {
+				message: "Document not found for the specified legal entity",
+			});
 		}
 
 		// 2) Fetch all the flutter signatures referencing this doc
 		const signatures = await c.env.db.query.documentSignaturesFlutter.findMany({
 			where: eq(documentSignaturesFlutter.documentFlutterId, id),
 			with: {
-				signer: true, // see .signer relation in your schema
+				signer: true,
 			},
 			orderBy: [desc(documentSignaturesFlutter.signedAt)],
 		});
@@ -465,3 +745,44 @@ documentsFlutterRouter.get(
 	},
 );
 
+// GET: List ALL documents, optionally filtered by type (No legalEntityId filter here)
+documentsFlutterRouter.get(
+	"/listAll",
+	describeRoute({
+		description:
+			"List all documents across all legal entities, optionally filtered by type. Includes signatures.",
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "type",
+				in: "query",
+				required: false,
+				schema: { type: "string" },
+				description: "Filter documents by type (e.g., 'invoice', 'contract')",
+			},
+		],
+		responses: {
+			200: {
+				description: "List of all documents",
+				content: { "application/json": {} },
+			},
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		const type = c.req.query("type");
+
+		const documentsList = await c.env.db.query.documentsFlutter.findMany({
+			where: type ? eq(documentsFlutter.type, type) : undefined,
+			orderBy: [desc(documentsFlutter.createdAt)],
+			with: {
+				signatures: {
+					with: {
+						signer: true,
+					},
+				},
+			},
+		});
+		return c.json(documentsList);
+	},
+);

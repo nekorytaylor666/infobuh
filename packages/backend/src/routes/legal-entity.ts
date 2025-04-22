@@ -323,7 +323,9 @@ router.get("/verify-bin", async (c) => {
 		return c.json({ error: "Query parameter 'q' is required" }, 400);
 	}
 	// findEntity now handles the initialization check internally
-	const entity = await findEntity(query);
+	const entity = await c.env.db.query.binRegistry.findFirst({
+		where: (binRegistry, { eq }) => eq(binRegistry.bin, query),
+	});
 	if (!entity) {
 		// Consider differentiating between "not found" and "not initialized", though findEntity logs a warning if not initialized.
 		return c.json({ error: "Entity not found or verifier not ready" }, 404);
