@@ -3,7 +3,9 @@ import * as fs from "node:fs";
 import { Writable } from "node:stream"; // For fetch stream
 import { pipeline } from "node:stream/promises"; // For pipeline
 import csv from "csv-parser"; // Import csv-parser
+import { BinRegistryEntry, createDbClient } from "@accounting-kz/db";
 
+const db = createDbClient(process.env.DATABASE_URL! as string);
 // Define the structure for a legal entity based on expected columns
 interface LegalEntity {
 	bin?: string; // БИН
@@ -264,67 +266,26 @@ export async function initializeBinData(downloadUrl: string): Promise<void> {
  * Finds the first legal entity matching the query (case-insensitive)
  * by BIN, Name, or IIN. Returns undefined if not initialized or not found.
  */
-export function findEntity(query: string): LegalEntity | undefined {
-	if (!isInitialized) {
-		console.warn("Bin verifier not initialized. Call initializeBinData first.");
-		return undefined;
-	}
+export async function findEntity(
+	query: string,
+): Promise<BinRegistryEntry | undefined> {
 	if (!query) return undefined;
-	const lowerCaseQuery = query.toLowerCase().trim();
 
-	return legalEntities.find(
-		(entity) =>
-			entity.bin?.toLowerCase() === lowerCaseQuery ||
-			entity.name?.toLowerCase().includes(lowerCaseQuery) || // Use 'includes' for name matching
-			entity.iin?.toLowerCase() === lowerCaseQuery,
-	);
+	return await db.query.binRegistry.findFirst({
+		where: (binRegistry, { eq }) => eq(binRegistry.bin, query),
+	});
 }
 
 /**
  * Finds all legal entities matching the query (case-insensitive)
  * by BIN, Name, or IIN. Returns empty array if not initialized or not found.
  */
-export function findAllEntities(query: string): LegalEntity[] {
-	if (!isInitialized) {
-		console.warn("Bin verifier not initialized. Call initializeBinData first.");
-		return [];
-	}
+export async function findAllEntities(
+	query: string,
+): Promise<BinRegistryEntry[]> {
 	if (!query) return [];
-	const lowerCaseQuery = query.toLowerCase().trim();
 
-	return legalEntities.filter(
-		(entity) =>
-			entity.bin?.toLowerCase() === lowerCaseQuery ||
-			entity.name?.toLowerCase().includes(lowerCaseQuery) ||
-			entity.iin?.toLowerCase() === lowerCaseQuery,
-	);
-}
-
-// --- Example Usage ---
-
-const searchTerm = "001123550090"; // Replace with an actual BIN, IIN, or Name part
-const found = findEntity(searchTerm);
-
-if (found) {
-	console.log("\n--- Found Entity ---");
-	console.log("BIN:", found.bin);
-	console.log("Name:", found.name);
-	console.log("IIN:", found.iin);
-	console.log("Original Data:", JSON.stringify(found.originalData, null, 2)); // Prettier output
-} else {
-	console.log(`\nNo entity found matching "${searchTerm}".`);
-}
-
-const searchNamePart = "comabooks"; // Replace with a part of a name
-const allFound = findAllEntities(searchNamePart);
-
-if (allFound.length > 0) {
-	console.log(
-		`\n--- Found ${allFound.length} Entities Matching "${searchNamePart}" ---`,
-	);
-	allFound.forEach((entity, index) => {
-		console.log(`${index + 1}: ${entity.name} (BIN: ${entity.bin || "N/A"})`);
+	return await db.query.binRegistry.findMany({
+		where: (binRegistry, { eq }) => eq(binRegistry.bin, query),
 	});
-} else {
-	console.log(`\nNo entities found matching "${searchNamePart}".`);
 }
