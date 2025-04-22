@@ -760,6 +760,13 @@ documentsFlutterRouter.get(
 				schema: { type: "string" },
 				description: "Filter documents by type (e.g., 'invoice', 'contract')",
 			},
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the legal entity",
+			},
 		],
 		responses: {
 			200: {
@@ -771,12 +778,26 @@ documentsFlutterRouter.get(
 	}),
 	async (c) => {
 		const type = c.req.query("type");
+		const legalEntityId = c.req.query("legalEntityId") as string;
+
+		if (!legalEntityId) {
+			throw new HTTPException(400, {
+				message: "Missing legalEntityId query parameter",
+			});
+		}
 
 		const documentsList = await c.env.db.query.documentsFlutter.findMany({
-			where: type ? eq(documentsFlutter.type, type) : undefined,
+			where: and(
+				eq(documentsFlutter.legalEntityId, legalEntityId),
+				type ? eq(documentsFlutter.type, type) : undefined,
+			),
+
 			orderBy: [desc(documentsFlutter.createdAt)],
 			with: {
 				signatures: {
+					columns: {
+						cms: false,
+					},
 					with: {
 						signer: true,
 					},

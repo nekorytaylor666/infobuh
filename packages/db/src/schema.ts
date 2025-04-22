@@ -142,18 +142,45 @@ export type Employee = typeof employees.$inferSelect;
 
 export type LegalEntity = typeof legalEntities.$inferSelect;
 
-export const documentsFlutter = pgTable("documents_flutter", {
-	id: uuid("id").defaultRandom().primaryKey(),
-	legalEntityId: uuid("legal_entity_id")
-		.references(() => legalEntities.id)
-		.notNull(),
-	type: varchar("type", { length: 50 }).notNull(),
-	receiverBin: varchar("receiver_bin", { length: 20 }).notNull(),
-	receiverName: varchar("receiver_name", { length: 255 }).notNull(),
-	fields: jsonb("fields").notNull(),
-	filePath: text("file_path").notNull(),
-	createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const documentsFlutter = pgTable(
+	"documents_flutter",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		legalEntityId: uuid("legal_entity_id")
+			.references(() => legalEntities.id)
+			.notNull(),
+		type: varchar("type", { length: 50 }).notNull(),
+		receiverBin: varchar("receiver_bin", { length: 20 }).notNull(),
+		receiverName: varchar("receiver_name", { length: 255 }).notNull(),
+		fields: jsonb("fields").notNull(),
+		filePath: text("file_path").notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("documents_flutter_legal_entity_id_idx").on(table.legalEntityId),
+		index("documents_flutter_receiver_bin_idx").on(table.receiverBin),
+		index("documents_flutter_legal_entity_type_idx").on(
+			table.legalEntityId,
+			table.type,
+		),
+		index("documents_flutter_legal_entity_created_at_idx").on(
+			table.legalEntityId,
+			table.createdAt,
+		),
+	],
+);
+
+// Add relations for documentsFlutter
+export const documentsFlutterRelations = relations(
+	documentsFlutter,
+	({ one, many }) => ({
+		legalEntity: one(legalEntities, {
+			fields: [documentsFlutter.legalEntityId],
+			references: [legalEntities.id],
+		}),
+		signatures: many(documentSignaturesFlutter), // Links to the signatures table
+	}),
+);
 
 // Explicitly define the type for the documents table including columns
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
