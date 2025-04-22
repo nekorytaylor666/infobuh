@@ -120,7 +120,22 @@ documentsFlutterRouter.get(
 				},
 			},
 		});
-		return c.json(documentsList);
+
+		const documentsListWithStatus = documentsList.map((doc) => {
+			let status = "unsigned";
+			if (doc.signatures.length === 1) {
+				status = "signedOne";
+			}
+			if (doc.signatures.length >= 2) {
+				status = "signedBoth";
+			}
+			return {
+				...doc,
+				status,
+			};
+		});
+
+		return c.json(documentsListWithStatus);
 	},
 );
 
@@ -177,13 +192,26 @@ documentsFlutterRouter.get(
 				eq(documentsFlutter.id, id),
 				eq(documentsFlutter.legalEntityId, legalEntityId),
 			),
+			with: {
+				signatures: {
+					with: {
+						signer: true,
+					},
+				},
+			},
 		});
 
 		if (!doc) {
 			throw new HTTPException(404, { message: "Document not found" });
 		}
-
-		return c.json(doc);
+		let status = "unsigned";
+		if (doc.signatures.length === 1) {
+			status = "signedOne";
+		}
+		if (doc.signatures.length >= 2) {
+			status = "signedBoth";
+		}
+		return c.json({ ...doc, status });
 	},
 );
 
