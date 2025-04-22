@@ -52,9 +52,33 @@ documentsFlutterRouter.get(
 		const docs = await c.env.db.query.documentsFlutter.findMany({
 			where: eq(documentsFlutter.receiverBin, receiverBin),
 			orderBy: [desc(documentsFlutter.createdAt)],
+			with: {
+				signatures: {
+					columns: {
+						cms: false,
+					},
+					with: {
+						signer: true,
+					},
+				},
+			},
 		});
 
-		return c.json(docs);
+		const documentsWithStatus = docs.map((doc) => {
+			let status = "unsigned";
+			if (doc.signatures.length === 1) {
+				status = "signedOne";
+			}
+			if (doc.signatures.length >= 2) {
+				status = "signedBoth";
+			}
+			return {
+				...doc,
+				status,
+			};
+		});
+
+		return c.json(documentsWithStatus);
 	},
 );
 

@@ -65,8 +65,8 @@ function normalizeHeader(header: string): string {
 		като: "kato",
 		"елді мекеннің атауы": "localityNameKz",
 		"наименование населенного пункта": "localityNameRu",
-		'"заңды мекен-жайы, юридический адрес"': "legalAddress",
-		'"басшының таә, фио руководителя"': "directorName",
+		legalAddress: "legalAddress",
+		directorName: "directorName",
 	};
 	const lowerTrimmed = header.toLowerCase().trim();
 	return headerMap[lowerTrimmed] || lowerTrimmed;
@@ -178,29 +178,39 @@ async function parseCsvData(
 }
 
 /**
- * Seeds the bin_registry table using batch inserts with conflict handling.
+ * Seeds the bin_registry table using batch inserts with conflict handling in parallel.
  */
 async function seedBinRegistry(
 	db: Database,
 	data: Record<string, string | null>[],
-	batchSize = 500,
+	batchSize = 1000, // Set default batch size to 5000
+	concurrencyLimit = 10, // Limit concurrent database operations
 ): Promise<void> {
-	console.log(`Seeding ${data.length} records into bin_registry...`);
-	let processedCount = 0;
-	let failedCount = 0;
+	console.log(
+		`Seeding ${data.length} records into bin_registry using ${concurrencyLimit} parallel batches of size ${batchSize}...`,
+	);
+	let totalSkippedCount = 0;
+	const batchPromises: (() => Promise<{
+		processed: number;
+		failed: number;
+	}>)[] = [];
 
 	for (let i = 0; i < data.length; i += batchSize) {
 		const batch = data.slice(i, i + batchSize);
 		const valuesToInsert = batch
 			.map((row) => {
-				if (!row.bin || !row.bin.trim()) return null;
+				// Basic validation: Ensure 'bin' exists and is not just whitespace
+				if (!row.bin || row.bin.trim().length !== 12) {
+					// console.warn(`Skipping row with invalid BIN: ${row.bin}`); // Optional: Log skipped rows
+					return null;
+				}
 				const registrationDate = parseDate(row.registrationDate);
 				return {
 					bin: row.bin.trim(),
 					fullNameKz: row.fullNameKz || null,
 					fullNameRu: row.fullNameRu || null,
 					registrationDate: registrationDate
-						? registrationDate.toISOString()
+						? registrationDate.toISOString().split("T")[0] // Format as YYYY-MM-DD
 						: null,
 					oked: row.oked || null,
 					primaryActivityKz: row.primaryActivityKz || null,
@@ -218,62 +228,128 @@ async function seedBinRegistry(
 					kato: row.kato || null,
 					localityNameKz: row.localityNameKz || null,
 					localityNameRu: row.localityNameRu || null,
-					legalAddress: row.legalAddress || null,
-					directorName: row.directorName || null,
+					legalAddress: row.legaladdress || null,
+					directorName: row.directorname || null,
+					updatedAt: new Date(), // Set updatedAt during insert/update
 				};
 			})
 			.filter((item): item is NonNullable<typeof item> => item !== null);
 
-		failedCount += batch.length - valuesToInsert.length; // Count skipped rows
+		const skippedInBatch = batch.length - valuesToInsert.length;
+		totalSkippedCount += skippedInBatch;
 
 		if (valuesToInsert.length > 0) {
-			try {
-				await db
-					.insert(binRegistry)
-					.values(valuesToInsert)
-					.onConflictDoUpdate({
-						target: binRegistry.bin,
-						set: {
-							fullNameKz: sql`excluded.full_name_kz`,
-							fullNameRu: sql`excluded.full_name_ru`,
-							registrationDate: sql`excluded.registration_date`,
-							oked: sql`excluded.oked`,
-							primaryActivityKz: sql`excluded.primary_activity_kz`,
-							primaryActivityRu: sql`excluded.primary_activity_ru`,
-							secondaryOked: sql`excluded.secondary_oked`,
-							krp: sql`excluded.krp`,
-							krpNameKz: sql`excluded.krp_name_kz`,
-							krpNameRu: sql`excluded.krp_name_ru`,
-							kse: sql`excluded.kse`,
-							kseNameKz: sql`excluded.kse_name_kz`,
-							kseNameRu: sql`excluded.kse_name_ru`,
-							kfs: sql`excluded.kfs`,
-							kfsNameKz: sql`excluded.kfs_name_kz`,
-							kfsNameRu: sql`excluded.kfs_name_ru`,
-							kato: sql`excluded.kato`,
-							localityNameKz: sql`excluded.locality_name_kz`,
-							localityNameRu: sql`excluded.locality_name_ru`,
-							legalAddress: sql`excluded.legal_address`,
-							directorName: sql`excluded.director_name`,
-							updatedAt: new Date(),
-						},
-					});
-
-				processedCount += valuesToInsert.length;
-				process.stdout.write(
-					`Processed ${processedCount} / ${data.length} records...\r`,
-				);
-			} catch (error) {
-				failedCount += valuesToInsert.length;
-				console.error(`\nError seeding batch (index ${i}):`, error);
-			}
+			// Wrap the async operation in a function to control execution
+			const batchPromiseFunc = async () => {
+				try {
+					await db
+						.insert(binRegistry)
+						.values(valuesToInsert)
+						.onConflictDoUpdate({
+							target: binRegistry.bin,
+							set: {
+								fullNameKz: sql`excluded.full_name_kz`,
+								fullNameRu: sql`excluded.full_name_ru`,
+								registrationDate: sql`excluded.registration_date`,
+								oked: sql`excluded.oked`,
+								primaryActivityKz: sql`excluded.primary_activity_kz`,
+								primaryActivityRu: sql`excluded.primary_activity_ru`,
+								secondaryOked: sql`excluded.secondary_oked`,
+								krp: sql`excluded.krp`,
+								krpNameKz: sql`excluded.krp_name_kz`,
+								krpNameRu: sql`excluded.krp_name_ru`,
+								kse: sql`excluded.kse`,
+								kseNameKz: sql`excluded.kse_name_kz`,
+								kseNameRu: sql`excluded.kse_name_ru`,
+								kfs: sql`excluded.kfs`,
+								kfsNameKz: sql`excluded.kfs_name_kz`,
+								kfsNameRu: sql`excluded.kfs_name_ru`,
+								kato: sql`excluded.kato`,
+								localityNameKz: sql`excluded.locality_name_kz`,
+								localityNameRu: sql`excluded.locality_name_ru`,
+								legalAddress: sql`excluded.legal_address`,
+								directorName: sql`excluded.director_name`, // directorName is included here
+								updatedAt: sql`excluded.updated_at`, // Use excluded value for updatedAt
+							},
+						});
+					// Simple progress indication per batch completion
+					// console.log(`Batch completed (index ${i}, ${valuesToInsert.length} records)`);
+					return { processed: valuesToInsert.length, failed: 0 };
+				} catch (error) {
+					console.error(
+						`
+Error seeding batch (starting index ${i}, size ${valuesToInsert.length}):`,
+						error instanceof Error ? error.message : error, // Log only message for brevity
+					);
+					// Consider logging the specific batch data or BINs that failed if needed
+					// console.error("Failed BINs:", valuesToInsert.map(v => v.bin).join(', '));
+					return { processed: 0, failed: valuesToInsert.length };
+				}
+			};
+			batchPromises.push(batchPromiseFunc);
+		} else if (skippedInBatch > 0) {
+			// Optional: Log if a whole batch was skipped
+			// console.log(`Skipped entire batch starting at index ${i} due to invalid BINs.`);
 		}
 	}
 
-	process.stdout.write("\n");
 	console.log(
-		`Seeding finished. ${processedCount} records processed. ${failedCount} skipped/failed.`,
+		`Prepared ${batchPromises.length} batches. Starting processing with concurrency ${concurrencyLimit}...`,
 	);
+
+	// 2. Execute promises with concurrency limit
+	let totalProcessedCount = 0;
+	let totalFailedCount = 0;
+	const executing: Promise<{ processed: number; failed: number }>[] = [];
+
+	for (const batchPromiseFunc of batchPromises) {
+		// Start the promise function
+		const promise = batchPromiseFunc().then((result) => {
+			// Update counts once a promise resolves
+			totalProcessedCount += result.processed;
+			totalFailedCount += result.failed;
+			// Remove the completed promise from the executing array
+			executing.splice(executing.indexOf(promise), 1);
+			// Log progress intermittently
+			if (
+				(totalProcessedCount + totalFailedCount + totalSkippedCount) %
+					(batchSize * concurrencyLimit) <
+				batchSize
+			) {
+				const totalHandled =
+					totalProcessedCount + totalFailedCount + totalSkippedCount;
+				process.stdout.write(
+					`Progress: ${totalHandled} / ${data.length} records handled...\r`,
+				);
+			}
+			return result; // Pass the result along
+		});
+
+		executing.push(promise);
+
+		// If the number of executing promises reaches the limit, wait for one to finish
+		if (executing.length >= concurrencyLimit) {
+			await Promise.race(executing);
+		}
+	}
+
+	// Wait for all remaining promises to complete
+	await Promise.all(executing);
+
+	process.stdout.write("\n"); // New line after progress indicator
+
+	console.log("--- Seeding Summary ---");
+	console.log(`Total records in CSV (approx): ${data.length}`);
+	console.log(
+		`Successfully processed (inserted/updated): ${totalProcessedCount}`,
+	);
+	console.log(`Skipped due to invalid/missing BIN: ${totalSkippedCount}`);
+	console.log(`Failed during database operation: ${totalFailedCount}`);
+	console.log("-----------------------");
+
+	if (totalFailedCount > 0) {
+		console.warn("Some batches failed during the seeding process.");
+	}
 }
 
 /**
