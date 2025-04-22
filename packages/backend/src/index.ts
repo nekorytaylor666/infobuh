@@ -89,6 +89,7 @@ app.get(
 app.use("*", async (c, next) => {
 	await next();
 });
+app.use("*", authMiddleware);
 app.route("/documents", documentsRouter);
 app.route("/document-templates", documentTemplatesRouter);
 
@@ -108,7 +109,6 @@ app.get("/", (c) => {
 app.get("/health-check", (c) => {
 	return c.json({ message: "All good", status: 200 });
 });
-app.use("*", authMiddleware);
 
 const port = Number(process.env.PORT) || 3000;
 
