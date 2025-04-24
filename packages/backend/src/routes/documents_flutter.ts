@@ -627,15 +627,9 @@ documentsFlutterRouter.post(
 	}),
 	async (c) => {
 		const id = c.req.param("id");
-		const legalEntityId = c.req.query("legalEntityId");
 		const body = await c.req.json();
 		const { key, password, signerId } = body;
 
-		if (!legalEntityId) {
-			throw new HTTPException(400, {
-				message: "Missing legalEntityId query parameter",
-			});
-		}
 		if (!key || !password || !signerId) {
 			throw new HTTPException(400, {
 				message: "Missing key, password, or signerId in request body",
@@ -644,10 +638,7 @@ documentsFlutterRouter.post(
 
 		// 1) Verify the document exists and belongs to the legal entity
 		const doc = await c.env.db.query.documentsFlutter.findFirst({
-			where: and(
-				eq(documentsFlutter.id, id),
-				eq(documentsFlutter.legalEntityId, legalEntityId),
-			),
+			where: and(eq(documentsFlutter.id, id)),
 			columns: {
 				filePath: true,
 			},
@@ -656,6 +647,25 @@ documentsFlutterRouter.post(
 		if (!doc || !doc.filePath) {
 			throw new HTTPException(404, {
 				message: "Document not found or file path missing",
+			});
+		}
+
+		// 1.5) Check if this signer has already signed this document
+		const existingSignature =
+			await c.env.db.query.documentSignaturesFlutter.findFirst({
+				where: and(
+					eq(documentSignaturesFlutter.documentFlutterId, id),
+					eq(documentSignaturesFlutter.signerId, signerId),
+				),
+				columns: {
+					id: true, // Only need to check for existence
+				},
+			});
+
+		if (existingSignature) {
+			throw new HTTPException(409, {
+				// 409 Conflict is appropriate here
+				message: "This user has already signed this document.",
 			});
 		}
 

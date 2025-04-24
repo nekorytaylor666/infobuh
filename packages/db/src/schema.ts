@@ -448,22 +448,36 @@ export const partnersRelations = relations(partners, ({ one }) => ({
 export const partnerZodSchema = createSelectSchema(partners);
 export const partnerInsertSchema = createInsertSchema(partners);
 
-export const contracts = pgTable("contracts", {
-	id: uuid("id").primaryKey().defaultRandom(),
-	legalEntityId: uuid("legal_entity_id")
-		.references(() => legalEntities.id, { onDelete: "cascade" })
-		.notNull(),
-	number: integer("number").notNull(),
-	date: date("date").notNull(),
-	currency: varchar("currency", { length: 3 }).notNull(),
-	partnerId: uuid("partner_id")
-		.references(() => partners.id, { onDelete: "cascade" })
-		.notNull(),
-	filePath: text("file_path").notNull(),
-	createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const contracts = pgTable(
+	"contracts",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		legalEntityId: uuid("legal_entity_id")
+			.references(() => legalEntities.id, { onDelete: "cascade" })
+			.notNull(),
+		number: integer("number").notNull(),
+		date: date("date").notNull(),
+		currency: varchar("currency", { length: 3 }).notNull(),
+		partnerId: uuid("partner_id")
+			.references(() => partners.id, { onDelete: "cascade" })
+			.notNull(),
+		receiverBin: varchar("receiver_bin", { length: 20 }).notNull(),
+		receiverName: varchar("receiver_name", { length: 255 }).notNull(),
+		filePath: text("file_path").notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("contracts_legal_entity_id_idx").on(table.legalEntityId),
+		index("contracts_receiver_bin_idx").on(table.receiverBin),
+		index("contracts_legal_entity_created_at_idx").on(
+			table.legalEntityId,
+			table.createdAt,
+		),
+	],
+);
 
-export const contractsRelations = relations(contracts, ({ one }) => ({
+export const contractsRelations = relations(contracts, ({ one, many }) => ({
 	legalEntity: one(legalEntities, {
 		fields: [contracts.legalEntityId],
 		references: [legalEntities.id],
@@ -472,6 +486,7 @@ export const contractsRelations = relations(contracts, ({ one }) => ({
 		fields: [contracts.partnerId],
 		references: [partners.id],
 	}),
+	signatures: many(contractSignatures),
 }));
 
 export const contractZodSchema = createSelectSchema(contracts);
@@ -536,3 +551,32 @@ export const binRegistry = pgTable(
 export const binRegistrySelectSchema = createSelectSchema(binRegistry); // For retrieving data
 export const binRegistryInsertSchema = createInsertSchema(binRegistry); // For inserting new records
 export type BinRegistryEntry = typeof binRegistry.$inferSelect; // TypeScript type for use in application code
+
+// New table for contract signatures, mirroring document_signatures_flutter
+export const contractSignatures = pgTable("contract_signatures", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	contractId: uuid("contract_id")
+		.references(() => contracts.id, { onDelete: "cascade" })
+		.notNull(),
+	signerId: uuid("signer_id")
+		.references(() => profile.id) // Reference profile for signer info
+		.notNull(),
+	cms: text("cms").notNull(),
+	signedAt: timestamp("signed_at").defaultNow().notNull(),
+});
+
+// Relations for contract signatures
+export const contractSignaturesRelations = relations(
+	contractSignatures,
+	({ one }) => ({
+		contract: one(contracts, {
+			fields: [contractSignatures.contractId],
+			references: [contracts.id],
+		}),
+		signer: one(profile, {
+			// Link to profile table for signer details
+			fields: [contractSignatures.signerId],
+			references: [profile.id],
+		}),
+	}),
+);
