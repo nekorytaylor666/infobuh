@@ -655,7 +655,7 @@ documentsFlutterRouter.post(
 			await c.env.db.query.documentSignaturesFlutter.findFirst({
 				where: and(
 					eq(documentSignaturesFlutter.documentFlutterId, id),
-					eq(documentSignaturesFlutter.signerId, signerId),
+					eq(documentSignaturesFlutter.legalEntityId, legalEntityId),
 				),
 				columns: {
 					id: true, // Only need to check for existence
@@ -665,7 +665,7 @@ documentsFlutterRouter.post(
 		if (existingSignature) {
 			throw new HTTPException(409, {
 				// 409 Conflict is appropriate here
-				message: "This user has already signed this document.",
+				message: "This legal entity has already signed this document.",
 			});
 		}
 
