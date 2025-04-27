@@ -10,6 +10,7 @@ import employeesRouter from "./routes/employees";
 import banksRouter from "./routes/banks";
 import partnersRouter from "./routes/partners";
 import productsRouter from "./routes/products";
+import fcmTokenRouter from "./routes/fcm-token";
 import { apiReference } from "@scalar/hono-api-reference";
 import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
@@ -103,6 +104,7 @@ app.route("/partners", partnersRouter);
 app.route("/products", productsRouter);
 app.route("/contracts", contractsRouter);
 app.route("/docs-flutter", documentsFlutterRouter);
+app.route("/fcm-token", fcmTokenRouter);
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
 });
