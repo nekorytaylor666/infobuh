@@ -627,18 +627,18 @@ documentsFlutterRouter.post(
 	}),
 	async (c) => {
 		const id = c.req.param("id");
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
 		const body = await c.req.json();
 		const { key, password, signerId } = body;
 
-		if (!key || !password || !signerId) {
+		if (!key || !password || !signerId || !legalEntityId) {
 			throw new HTTPException(400, {
 				message: "Missing key, password, or signerId in request body",
 			});
 		}
 
-		// 1) Verify the document exists and belongs to the legal entity
 		const doc = await c.env.db.query.documentsFlutter.findFirst({
-			where: and(eq(documentsFlutter.id, id)),
+			where: eq(documentsFlutter.id, id),
 			columns: {
 				filePath: true,
 			},
@@ -737,6 +737,7 @@ documentsFlutterRouter.post(
 					signerId,
 					cms: result.cms,
 					signedAt: new Date(),
+					legalEntityId,
 				})
 				.returning();
 
@@ -774,6 +775,13 @@ documentsFlutterRouter.get(
 				schema: { type: "string", format: "uuid" },
 				description: "UUID of the legal entity (for verification)",
 			},
+			{
+				name: "includeCms",
+				in: "query",
+				required: false,
+				schema: { type: "boolean" },
+				description: "Set to true to include the full CMS signature data.",
+			},
 		],
 		responses: {
 			200: {
@@ -792,6 +800,7 @@ documentsFlutterRouter.get(
 	async (c) => {
 		const id = c.req.param("id");
 		const legalEntityId = c.req.query("legalEntityId");
+		const includeCms = c.req.query("includeCms") === "true"; // Check for the query parameter
 
 		if (!legalEntityId) {
 			throw new HTTPException(400, {
@@ -817,8 +826,12 @@ documentsFlutterRouter.get(
 		// 2) Fetch all the flutter signatures referencing this doc
 		const signatures = await c.env.db.query.documentSignaturesFlutter.findMany({
 			where: eq(documentSignaturesFlutter.documentFlutterId, id),
+			columns: {
+				cms: includeCms,
+			},
 			with: {
 				signer: true,
+				legalEntity: true,
 			},
 			orderBy: [desc(documentSignaturesFlutter.signedAt)],
 		});

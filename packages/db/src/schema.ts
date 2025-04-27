@@ -236,6 +236,9 @@ export const documentSignaturesFlutter = pgTable(
 			.notNull(),
 		cms: text("cms").notNull(),
 		signedAt: timestamp("signed_at").defaultNow().notNull(),
+		legalEntityId: uuid("legal_entity_id")
+			.references(() => legalEntities.id)
+			.notNull(),
 	},
 );
 
@@ -250,6 +253,10 @@ export const documentSignaturesFlutterRelations = relations(
 		signer: one(profile, {
 			fields: [documentSignaturesFlutter.signerId],
 			references: [profile.id],
+		}),
+		legalEntity: one(legalEntities, {
+			fields: [documentSignaturesFlutter.legalEntityId],
+			references: [legalEntities.id],
 		}),
 	}),
 );
