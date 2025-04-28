@@ -3,6 +3,7 @@ import { eq, fcmTokenInsertSchema, fcmTokens } from "@accounting-kz/db";
 import { HTTPException } from "hono/http-exception";
 import type { HonoEnv } from "../env";
 import { zValidator } from "@hono/zod-validator";
+import { profile, legalEntities } from "@accounting-kz/db/schema";
 
 const fcmTokenRouter = new Hono<HonoEnv>();
 
@@ -66,6 +67,88 @@ fcmTokenRouter.get("/find/:userId", async (c) => {
 		return c.json(tokens);
 	} catch (error) {
 		console.error("Error fetching FCM tokens:", error);
+		throw new HTTPException(500, { message: "Internal server error" });
+	}
+});
+
+// GET /fcm-token/legal-entity/:legalEntityId - Find FCM tokens by legal entity ID
+fcmTokenRouter.get("/legal-entity/:legalEntityId", async (c) => {
+	const legalEntityId = c.req.param("legalEntityId");
+	const db = c.env.db;
+
+	if (!legalEntityId) {
+		throw new HTTPException(400, { message: "Legal Entity ID is required" });
+	}
+
+	try {
+		const tokens = await db.query.legalEntities.findMany({
+			where: eq(legalEntities.id, legalEntityId),
+			columns: {
+				id: true,
+				bin: true,
+			},
+			with: {
+				profile: {
+					with: {
+						fcmTokens: true,
+					},
+				},
+			},
+		});
+
+		if (!tokens || tokens.length === 0) {
+			return c.json(
+				{ message: "No FCM tokens found for this legal entity" },
+				404,
+			);
+		}
+
+		return c.json(tokens);
+	} catch (error) {
+		console.error("Error fetching FCM tokens by legal entity:", error);
+		throw new HTTPException(500, { message: "Internal server error" });
+	}
+});
+
+fcmTokenRouter.get("/legal-entity/bin/:bin", async (c) => {
+	const bin = c.req.param("bin");
+	const db = c.env.db;
+
+	if (!bin) {
+		throw new HTTPException(400, { message: "BIN is required" });
+	}
+
+	try {
+		const legalEntity = await db.query.legalEntities.findFirst({
+			where: eq(legalEntities.bin, bin),
+			columns: {
+				id: true,
+				bin: true,
+				name: true,
+				address: true,
+				phone: true,
+			},
+			with: {
+				profile: {
+					columns: {
+						id: true,
+						name: true,
+						email: true,
+					},
+					with: {
+						fcmTokens: true,
+					},
+				},
+			},
+		});
+
+		if (!legalEntity) {
+			throw new HTTPException(404, { message: "Legal entity not found" });
+		}
+
+		return c.json(legalEntity);
+	} catch (error) {
+		console.error("Error fetching legal entity by BIN:", error);
 		throw new HTTPException(500, { message: "Internal server error" });
 	}
 });
