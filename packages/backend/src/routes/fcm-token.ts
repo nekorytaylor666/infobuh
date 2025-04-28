@@ -3,7 +3,7 @@ import { eq, fcmTokenInsertSchema, fcmTokens } from "@accounting-kz/db";
 import { HTTPException } from "hono/http-exception";
 import type { HonoEnv } from "../env";
 import { zValidator } from "@hono/zod-validator";
-import { profile, legalEntities } from "@accounting-kz/db/schema";
+import { profile, legalEntities } from "@accounting-kz/db";
 
 const fcmTokenRouter = new Hono<HonoEnv>();
 
