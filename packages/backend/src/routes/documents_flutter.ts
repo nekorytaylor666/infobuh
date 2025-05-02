@@ -670,6 +670,9 @@ documentsFlutterRouter.post(
 				legalEntityId: true,
 				type: true,
 			},
+			with: {
+				legalEntity: true,
+			},
 		});
 
 		if (!docInfo || !docInfo.filePath || !docInfo.receiverBin) {
@@ -772,7 +775,7 @@ documentsFlutterRouter.post(
 
 			// Send notification to the receiver BIN that the document was signed
 			sendNotificationToLegalEntityByBin(c, {
-				receiverBin: docInfo.receiverBin,
+				receiverBin: docInfo.legalEntity.bin,
 				message: {
 					notification: {
 						title: "Документ подписан",
