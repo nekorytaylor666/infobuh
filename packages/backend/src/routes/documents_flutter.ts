@@ -9,6 +9,7 @@ import {
 	desc,
 	isNull,
 	inArray,
+	legalEntities,
 } from "@accounting-kz/db";
 import { HTTPException } from "hono/http-exception";
 import { describeRoute } from "hono-openapi";
@@ -290,7 +291,18 @@ documentsFlutterRouter.post(
 				message: "Missing legalEntityId query parameter",
 			});
 		}
-
+		const legalEntity = await c.env.db.query.legalEntities.findFirst({
+			where: eq(legalEntities.id, legalEntityId),
+			columns: {
+				name: true,
+				id: true,
+			},
+		});
+		if (!legalEntity) {
+			throw new HTTPException(404, {
+				message: "Legal entity not found",
+			});
+		}
 		// Basic validation for required fields
 		if (
 			!type ||
@@ -346,7 +358,7 @@ documentsFlutterRouter.post(
 				message: {
 					notification: {
 						title: "Получен новый документ",
-						body: `Получен новый документ типа ${newDoc.type} от ${newDoc.legalEntityId}.`,
+						body: `Получен новый документ типа ${newDoc.type} от ${legalEntity.name}.`,
 					},
 					data: { documentId: newDoc.id, type: "new_document" },
 				},
@@ -775,11 +787,13 @@ documentsFlutterRouter.post(
 
 			// Send notification to the receiver BIN that the document was signed
 			sendNotificationToLegalEntityByBin(c, {
-				receiverBin: docInfo.legalEntity.bin,
+				receiverBin: docInfo.receiverBin,
 				message: {
 					notification: {
 						title: "Документ подписан",
-						body: `Документ ${docInfo.type || ""} подписан.`,
+						body: `Документ ${docInfo.type || ""} подписан ${
+							docInfo.legalEntity.name
+						}`,
 					},
 					data: { documentId: id, type: "document_signed" },
 				},
