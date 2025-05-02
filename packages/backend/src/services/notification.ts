@@ -7,6 +7,53 @@ import {
 } from "firebase-admin/messaging";
 import type { HonoEnv } from "../env";
 import type { Context } from "hono";
+import * as admin from "firebase-admin";
+import { getApps } from "firebase-admin/app";
+import { config } from "dotenv";
+import * as path from "path";
+
+// Load environment variables for service account path
+config({ path: ".env" });
+
+// --- Firebase Admin SDK Initialization ---
+// Construct an absolute path to the service account file in the backend root
+const defaultServiceAccountPath = path.join(
+	__dirname,
+	"..",
+	"..",
+	".service-account.infobuh.json",
+);
+const serviceAccountPath =
+	process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH || defaultServiceAccountPath;
+
+let firebaseAdminApp: admin.app.App;
+if (!getApps().length) {
+	try {
+		// Use the resolved absolute path directly
+		const serviceAccount = require(serviceAccountPath);
+		firebaseAdminApp = admin.initializeApp({
+			credential: admin.credential.cert(serviceAccount),
+		});
+		console.log(
+			"Firebase Admin SDK initialized successfully from notification service.",
+		);
+	} catch (error: unknown) {
+		console.error(
+			"Error initializing Firebase Admin SDK in notification service:",
+			error,
+		);
+		console.error(
+			"Ensure the service account key file exists relative to backend root at:",
+			serviceAccountPath,
+		);
+		process.exit(1);
+	}
+} else {
+	firebaseAdminApp = getApps()[0] as admin.app.App;
+}
+// Export the initialized app instance
+export { firebaseAdminApp };
+// --- End Firebase Admin SDK Initialization ---
 
 interface SendNotificationArgs {
 	receiverBin: string;
