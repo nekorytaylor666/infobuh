@@ -20,3 +20,5 @@ dist/
 # Env
 .env
 .env.local
+
+.service-account.infobuh.json

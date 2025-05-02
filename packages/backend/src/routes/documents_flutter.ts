@@ -13,6 +13,8 @@ import {
 import { HTTPException } from "hono/http-exception";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
+import { sendNotificationToLegalEntityByBin } from "../services/notification";
+
 export const documentsFlutterRouter = new Hono<HonoEnv>();
 
 const NCALAYER_URL = "https://signer.infobuh.com/";
@@ -64,7 +66,10 @@ documentsFlutterRouter.get(
 			},
 		});
 
-		const documentsWithStatus = docs.map((doc) => {
+		// Infer the type based on the query structure
+		type DocumentWithSignatures = (typeof docs)[number];
+
+		const documentsWithStatus = docs.map((doc: DocumentWithSignatures) => {
 			let status = "unsigned";
 			if (doc.signatures.length === 1) {
 				status = "signedOne";
@@ -145,19 +150,24 @@ documentsFlutterRouter.get(
 			},
 		});
 
-		const documentsListWithStatus = documentsList.map((doc) => {
-			let status = "unsigned";
-			if (doc.signatures.length === 1) {
-				status = "signedOne";
-			}
-			if (doc.signatures.length >= 2) {
-				status = "signedBoth";
-			}
-			return {
-				...doc,
-				status,
-			};
-		});
+		// Infer the type based on the query structure
+		type DocumentListWithSignatures = (typeof documentsList)[number];
+
+		const documentsListWithStatus = documentsList.map(
+			(doc: DocumentListWithSignatures) => {
+				let status = "unsigned";
+				if (doc.signatures.length === 1) {
+					status = "signedOne";
+				}
+				if (doc.signatures.length >= 2) {
+					status = "signedBoth";
+				}
+				return {
+					...doc,
+					status,
+				};
+			},
+		);
 
 		return c.json(documentsListWithStatus);
 	},
@@ -318,7 +328,7 @@ documentsFlutterRouter.post(
 
 		// Insert the document record with the uploaded file path
 		try {
-			const newDoc = await c.env.db
+			const [newDoc] = await c.env.db
 				.insert(documentsFlutter)
 				.values({
 					legalEntityId,
@@ -330,7 +340,21 @@ documentsFlutterRouter.post(
 				})
 				.returning();
 
-			return c.json(newDoc[0], 201);
+			// Send notification to the receiver BIN
+			sendNotificationToLegalEntityByBin(c, {
+				receiverBin: newDoc.receiverBin,
+				message: {
+					notification: {
+						title: "Получен новый документ",
+						body: `Получен новый документ типа ${newDoc.type} от ${newDoc.legalEntityId}.`,
+					},
+					data: { documentId: newDoc.id, type: "new_document" },
+				},
+			}).catch((err) =>
+				console.error("Failed to send creation notification:", err),
+			);
+
+			return c.json(newDoc, 201);
 		} catch (dbError) {
 			console.error("Database insert error:", dbError);
 			// Attempt to delete the uploaded file if db insert fails
@@ -637,42 +661,47 @@ documentsFlutterRouter.post(
 			});
 		}
 
-		const doc = await c.env.db.query.documentsFlutter.findFirst({
+		// 1) Get Document Info (Including receiverBin)
+		const docInfo = await c.env.db.query.documentsFlutter.findFirst({
 			where: eq(documentsFlutter.id, id),
 			columns: {
 				filePath: true,
+				receiverBin: true,
+				legalEntityId: true,
+				type: true,
 			},
 		});
 
-		if (!doc || !doc.filePath) {
+		if (!docInfo || !docInfo.filePath || !docInfo.receiverBin) {
 			throw new HTTPException(404, {
-				message: "Document not found or file path missing",
+				message:
+					"Document not found, file path missing, or receiver BIN missing",
 			});
 		}
 
-		// 1.5) Check if this signer has already signed this document
+		// 1.5) Check if this signer (by legalEntityId associated with signerId) has already signed
+		// We'll use the legalEntityId passed in the body for the signature record itself
 		const existingSignature =
 			await c.env.db.query.documentSignaturesFlutter.findFirst({
 				where: and(
 					eq(documentSignaturesFlutter.documentFlutterId, id),
-					eq(documentSignaturesFlutter.legalEntityId, legalEntityId),
+					eq(documentSignaturesFlutter.signerId, signerId),
 				),
 				columns: {
-					id: true, // Only need to check for existence
+					id: true,
 				},
 			});
 
 		if (existingSignature) {
 			throw new HTTPException(409, {
-				// 409 Conflict is appropriate here
-				message: "This legal entity has already signed this document.",
+				message: "This signer has already signed this document.",
 			});
 		}
 
 		// 2) Download from the correct bucket & file path
 		const { data: fileData, error: storageError } = await c.env.supabase.storage
 			.from("documents")
-			.download(doc.filePath);
+			.download(docInfo.filePath);
 
 		if (storageError || !fileData) {
 			console.error("Supabase download error:", storageError);
@@ -740,6 +769,20 @@ documentsFlutterRouter.post(
 					legalEntityId,
 				})
 				.returning();
+
+			// Send notification to the receiver BIN that the document was signed
+			sendNotificationToLegalEntityByBin(c, {
+				receiverBin: docInfo.receiverBin,
+				message: {
+					notification: {
+						title: "Документ подписан",
+						body: `Документ ${docInfo.type || ""} подписан.`,
+					},
+					data: { documentId: id, type: "document_signed" },
+				},
+			}).catch((err) =>
+				console.error("Failed to send signature notification:", err),
+			);
 
 			// 7) Return the new signature
 			return c.json(signature);

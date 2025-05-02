@@ -26,9 +26,38 @@ import postgres from "postgres";
 import { env } from "hono/adapter";
 import { createDbClient } from "@accounting-kz/db";
 import type { HonoEnv } from "./env";
+import * as admin from "firebase-admin";
+import { getApps } from "firebase-admin/app";
 
 // Load environment variables
 config({ path: ".env" });
+
+// --- Firebase Admin SDK Initialization ---
+// IMPORTANT: Replace './serviceAccountKey.json' with the path to your actual key file
+// Ensure this file is kept secure and is not committed to your repository.
+const serviceAccountPath =
+	process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH ||
+	"./../.service-account.infobuh.json";
+let firebaseAdminApp: admin.app.App;
+if (!getApps().length) {
+	try {
+		const serviceAccount = require(serviceAccountPath);
+		firebaseAdminApp = admin.initializeApp({
+			credential: admin.credential.cert(serviceAccount),
+		});
+		console.log("Firebase Admin SDK initialized successfully.");
+	} catch (error: unknown) {
+		console.error("Error initializing Firebase Admin SDK:", error);
+		console.error(
+			"Ensure the service account key file exists at:",
+			serviceAccountPath,
+		);
+		process.exit(1); // Exit if Firebase Admin can't initialize
+	}
+} else {
+	firebaseAdminApp = getApps()[0] as admin.app.App; // Use existing app
+}
+// --- End Firebase Admin SDK Initialization ---
 
 if (!process.env.DATABASE_URL) {
 	throw new Error("DATABASE_URL is not set");
@@ -57,6 +86,7 @@ app.use("*", async (c, next) => {
 	c.env.DATABASE_URL = process.env.DATABASE_URL as string;
 	c.env.db = dbClient;
 	c.env.supabase = supabase;
+	c.env.firebaseAdmin = firebaseAdminApp;
 	await next();
 });
 

@@ -11,8 +11,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@accounting-kz/db": "workspace:*",
     "@accounting-kz/bin-verifier": "workspace:*",
+    "@accounting-kz/db": "workspace:*",
     "@accounting-kz/document-templates": "workspace:*",
     "@hono/node-server": "^1.2.0",
     "@hono/zod-openapi": "^0.18.3",
@@ -24,6 +24,7 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.3",
     "drizzle-zod": "^0.7.0",
+    "firebase-admin": "^13.3.0",
     "hono": "^4.0.0",
     "hono-openapi": "^0.4.6",
     "pdf-lib": "^1.17.1",

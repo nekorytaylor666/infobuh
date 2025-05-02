@@ -3,7 +3,9 @@ import { eq, fcmTokenInsertSchema, fcmTokens } from "@accounting-kz/db";
 import { HTTPException } from "hono/http-exception";
 import type { HonoEnv } from "../env";
 import { zValidator } from "@hono/zod-validator";
-import { profile, legalEntities } from "@accounting-kz/db";
+import { legalEntities } from "@accounting-kz/db";
+import { sendNotificationToLegalEntityByBin } from "../services/notification";
+import type { MulticastMessage } from "firebase-admin/messaging";
 
 const fcmTokenRouter = new Hono<HonoEnv>();
 
@@ -150,6 +152,32 @@ fcmTokenRouter.get("/legal-entity/bin/:bin", async (c) => {
 	} catch (error) {
 		console.error("Error fetching legal entity by BIN:", error);
 		throw new HTTPException(500, { message: "Internal server error" });
+	}
+});
+
+fcmTokenRouter.get("/test-push", async (c) => {
+	const message = {
+		notification: {
+			title: "Multicast Test",
+			body: "This is a test message for the multicast test!",
+		},
+	} satisfies Omit<MulticastMessage, "tokens">;
+
+	try {
+		const response = sendNotificationToLegalEntityByBin(c, {
+			receiverBin: "001123550090",
+			message,
+		});
+		console.log("Successfully sent message:", response);
+		return c.json({
+			message: "Successfully sent notification to topic:",
+			responseId: response,
+		});
+	} catch (error) {
+		console.error("Error sending message:", error);
+		throw new HTTPException(500, {
+			message: "Failed to send notification to topic:",
+		});
 	}
 });
 
