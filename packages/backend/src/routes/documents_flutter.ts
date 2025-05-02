@@ -358,7 +358,7 @@ documentsFlutterRouter.post(
 				message: {
 					notification: {
 						title: "Получен новый документ",
-						body: `Получен новый документ типа ${newDoc.type} от ${legalEntity.name}.`,
+						body: `${newDoc.type} от ${legalEntity.name}.`,
 					},
 					data: { documentId: newDoc.id, type: "new_document" },
 				},
