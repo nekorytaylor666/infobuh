@@ -7,10 +7,16 @@ import {
 } from "firebase-admin/messaging";
 import type { HonoEnv } from "../env";
 import type { Context } from "hono";
-import * as admin from "firebase-admin";
-import { getApps } from "firebase-admin/app";
+import {
+	initializeApp,
+	cert,
+	getApps,
+	type App as FirebaseApp,
+} from "firebase-admin/app";
+import { credential } from "firebase-admin";
 import { config } from "dotenv";
-import * as path from "path";
+import * as path from "node:path";
+import * as fs from "node:fs";
 
 // Load environment variables for service account path
 config({ path: ".env" });
@@ -26,13 +32,15 @@ const defaultServiceAccountPath = path.join(
 const serviceAccountPath =
 	process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH || defaultServiceAccountPath;
 
-let firebaseAdminApp: admin.app.App;
+let firebaseAdminApp: FirebaseApp;
 if (!getApps().length) {
 	try {
 		// Use the resolved absolute path directly
-		const serviceAccount = require(serviceAccountPath);
-		firebaseAdminApp = admin.initializeApp({
-			credential: admin.credential.cert(serviceAccount),
+		// Read the file content and parse as JSON
+		const serviceAccountContent = fs.readFileSync(serviceAccountPath, "utf-8");
+		const serviceAccount = JSON.parse(serviceAccountContent);
+		firebaseAdminApp = initializeApp({
+			credential: cert(serviceAccount),
 		});
 		console.log(
 			"Firebase Admin SDK initialized successfully from notification service.",
@@ -49,7 +57,7 @@ if (!getApps().length) {
 		process.exit(1);
 	}
 } else {
-	firebaseAdminApp = getApps()[0] as admin.app.App;
+	firebaseAdminApp = getApps()[0] as FirebaseApp;
 }
 // Export the initialized app instance
 export { firebaseAdminApp };
