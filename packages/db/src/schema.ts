@@ -13,6 +13,7 @@ import {
 	PgTable,
 	type PgTableWithColumns,
 	index,
+	primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
@@ -40,6 +41,8 @@ export const profileRelations = relations(profile, ({ one, many }) => ({
 	}),
 	legalEntities: many(legalEntities),
 	fcmTokens: many(fcmTokens),
+	documentFlutterReadStatuses: many(documentFlutterReadStatus),
+	documentFlutterPins: many(documentFlutterPins),
 }));
 
 export const onboardingStatus = pgTable("onboarding_status", {
@@ -179,7 +182,71 @@ export const documentsFlutterRelations = relations(
 			fields: [documentsFlutter.legalEntityId],
 			references: [legalEntities.id],
 		}),
-		signatures: many(documentSignaturesFlutter), // Links to the signatures table
+		signatures: many(documentSignaturesFlutter),
+		readStatuses: many(documentFlutterReadStatus),
+		pins: many(documentFlutterPins),
+	}),
+);
+
+// New table for document read status
+export const documentFlutterReadStatus = pgTable(
+	"document_flutter_read_status",
+	{
+		profileId: uuid("profile_id")
+			.references(() => profile.id, { onDelete: "cascade" })
+			.notNull(),
+		documentFlutterId: uuid("document_flutter_id")
+			.references(() => documentsFlutter.id, { onDelete: "cascade" })
+			.notNull(),
+		readAt: timestamp("read_at").defaultNow().notNull(),
+	},
+	(table) => ({
+		pk: primaryKey({ columns: [table.profileId, table.documentFlutterId] }),
+	}),
+);
+
+export const documentFlutterReadStatusRelations = relations(
+	documentFlutterReadStatus,
+	({ one }) => ({
+		profile: one(profile, {
+			fields: [documentFlutterReadStatus.profileId],
+			references: [profile.id],
+		}),
+		documentFlutter: one(documentsFlutter, {
+			fields: [documentFlutterReadStatus.documentFlutterId],
+			references: [documentsFlutter.id],
+		}),
+	}),
+);
+
+// New table for document pinning
+export const documentFlutterPins = pgTable(
+	"document_flutter_pins",
+	{
+		profileId: uuid("profile_id")
+			.references(() => profile.id, { onDelete: "cascade" })
+			.notNull(),
+		documentFlutterId: uuid("document_flutter_id")
+			.references(() => documentsFlutter.id, { onDelete: "cascade" })
+			.notNull(),
+		pinnedAt: timestamp("pinned_at").defaultNow().notNull(),
+	},
+	(table) => ({
+		pk: primaryKey({ columns: [table.profileId, table.documentFlutterId] }),
+	}),
+);
+
+export const documentFlutterPinsRelations = relations(
+	documentFlutterPins,
+	({ one }) => ({
+		profile: one(profile, {
+			fields: [documentFlutterPins.profileId],
+			references: [profile.id],
+		}),
+		documentFlutter: one(documentsFlutter, {
+			fields: [documentFlutterPins.documentFlutterId],
+			references: [documentsFlutter.id],
+		}),
 	}),
 );
 

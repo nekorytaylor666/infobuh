@@ -4,6 +4,8 @@ import {
 	documentsFlutter,
 	documentSignatures,
 	documentSignaturesFlutter,
+	documentFlutterReadStatus,
+	documentFlutterPins,
 	eq,
 	and,
 	desc,
@@ -45,6 +47,7 @@ documentsFlutterRouter.get(
 	}),
 	async (c) => {
 		const receiverBin = c.req.query("receiverBin");
+		const profileId = c.get("userId");
 
 		if (!receiverBin) {
 			throw new HTTPException(400, {
@@ -63,6 +66,14 @@ documentsFlutterRouter.get(
 					with: {
 						signer: true,
 					},
+				},
+				readStatuses: {
+					where: eq(documentFlutterReadStatus.profileId, profileId),
+					limit: 1,
+				},
+				pins: {
+					where: eq(documentFlutterPins.profileId, profileId),
+					limit: 1,
 				},
 			},
 		});
@@ -126,6 +137,8 @@ documentsFlutterRouter.get(
 	async (c) => {
 		const legalEntityId = c.req.query("legalEntityId");
 		const type = c.req.query("type");
+		const profileId = c.get("userId");
+
 		if (!legalEntityId) {
 			throw new HTTPException(400, {
 				message: "Missing legalEntityId query parameter",
@@ -147,6 +160,14 @@ documentsFlutterRouter.get(
 					with: {
 						signer: true,
 					},
+				},
+				readStatuses: {
+					where: eq(documentFlutterReadStatus.profileId, profileId),
+					limit: 1,
+				},
+				pins: {
+					where: eq(documentFlutterPins.profileId, profileId),
+					limit: 1,
 				},
 			},
 		});
@@ -215,6 +236,7 @@ documentsFlutterRouter.get(
 	async (c) => {
 		const id = c.req.param("id");
 		const legalEntityId = c.req.query("legalEntityId");
+		const profileId = c.get("userId");
 
 		if (!legalEntityId) {
 			throw new HTTPException(400, {
@@ -233,12 +255,21 @@ documentsFlutterRouter.get(
 						signer: true,
 					},
 				},
+				readStatuses: {
+					where: eq(documentFlutterReadStatus.profileId, profileId),
+					limit: 1,
+				},
+				pins: {
+					where: eq(documentFlutterPins.profileId, profileId),
+					limit: 1,
+				},
 			},
 		});
 
 		if (!doc) {
 			throw new HTTPException(404, { message: "Document not found" });
 		}
+
 		let status = "unsigned";
 		if (doc.signatures.length === 1) {
 			status = "signedOne";
@@ -246,7 +277,12 @@ documentsFlutterRouter.get(
 		if (doc.signatures.length >= 2) {
 			status = "signedBoth";
 		}
-		return c.json({ ...doc, status });
+		return c.json({
+			...doc,
+			status,
+			isRead: doc.readStatuses.length > 0,
+			isPinned: doc.pins.length > 0,
+		});
 	},
 );
 
@@ -897,5 +933,210 @@ documentsFlutterRouter.get(
 		});
 
 		return c.json(signatures);
+	},
+);
+
+// POST: Mark a document as read
+documentsFlutterRouter.post(
+	"/markAsRead/:id",
+	describeRoute({
+		description: "Marks a document as read for the current user.",
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document to mark as read",
+			},
+		],
+		responses: {
+			201: {
+				description: "Read status created successfully.",
+				content: { "application/json": {} },
+			},
+			401: { description: "Unauthorized (User not logged in)" },
+			404: { description: "Document not found" },
+			409: { description: "Document already marked as read by this user" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		const documentFlutterId = c.req.param("id");
+		const profileId = c.get("userId"); // Assume profileId is available from auth middleware
+
+		if (!profileId) {
+			throw new HTTPException(401, { message: "User must be logged in" });
+		}
+
+		// Optional: Check if the document exists and the user has access (depends on your access rules)
+		const docExists = await c.env.db.query.documentsFlutter.findFirst({
+			where: eq(documentsFlutter.id, documentFlutterId),
+			columns: { id: true },
+		});
+		if (!docExists) {
+			throw new HTTPException(404, { message: "Document not found" });
+		}
+
+		try {
+			const [readStatus] = await c.env.db
+				.insert(documentFlutterReadStatus)
+				.values({
+					profileId,
+					documentFlutterId,
+				})
+				.onConflictDoNothing() // Prevent error if already marked as read
+				.returning();
+
+			// If onConflictDoNothing resulted in no insert, it means it was already read
+			if (!readStatus) {
+				// Fetch the existing status to return it, or just return 200 OK
+				const existing =
+					await c.env.db.query.documentFlutterReadStatus.findFirst({
+						where: and(
+							eq(documentFlutterReadStatus.profileId, profileId),
+							eq(
+								documentFlutterReadStatus.documentFlutterId,
+								documentFlutterId,
+							),
+						),
+					});
+				return c.json(existing, 200);
+				// Or throw 409: throw new HTTPException(409, { message: 'Already marked as read' });
+			}
+
+			return c.json(readStatus, 201);
+		} catch (error) {
+			console.error("Error marking document as read:", error);
+			throw new HTTPException(500, {
+				message: "Failed to mark document as read",
+			});
+		}
+	},
+);
+
+// POST: Pin a document
+documentsFlutterRouter.post(
+	"/pin/:id",
+	describeRoute({
+		description: "Pins a document for the current user.",
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document to pin",
+			},
+		],
+		responses: {
+			201: {
+				description: "Document pinned successfully.",
+				content: { "application/json": {} },
+			},
+			401: { description: "Unauthorized (User not logged in)" },
+			404: { description: "Document not found" },
+			409: { description: "Document already pinned by this user" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		const documentFlutterId = c.req.param("id");
+		const profileId = c.get("userId"); // Assume profileId is available from auth middleware
+
+		if (!profileId) {
+			throw new HTTPException(401, { message: "User must be logged in" });
+		}
+
+		// Optional: Check if the document exists
+		const docExists = await c.env.db.query.documentsFlutter.findFirst({
+			where: eq(documentsFlutter.id, documentFlutterId),
+			columns: { id: true },
+		});
+		if (!docExists) {
+			throw new HTTPException(404, { message: "Document not found" });
+		}
+
+		try {
+			const [pin] = await c.env.db
+				.insert(documentFlutterPins)
+				.values({ profileId, documentFlutterId })
+				.onConflictDoNothing()
+				.returning();
+
+			if (!pin) {
+				const existing = await c.env.db.query.documentFlutterPins.findFirst({
+					where: and(
+						eq(documentFlutterPins.profileId, profileId),
+						eq(documentFlutterPins.documentFlutterId, documentFlutterId),
+					),
+				});
+				return c.json(existing, 200);
+				// Or throw 409: throw new HTTPException(409, { message: 'Already pinned' });
+			}
+
+			return c.json(pin, 201);
+		} catch (error) {
+			console.error("Error pinning document:", error);
+			throw new HTTPException(500, { message: "Failed to pin document" });
+		}
+	},
+);
+
+// DELETE: Unpin a document
+documentsFlutterRouter.delete(
+	"/unpin/:id",
+	describeRoute({
+		description: "Unpins a document for the current user.",
+		tags: ["Documents Flutter"],
+		parameters: [
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document to unpin",
+			},
+		],
+		responses: {
+			204: { description: "Document unpinned successfully" },
+			401: { description: "Unauthorized (User not logged in)" },
+			404: { description: "Pin record not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		const documentFlutterId = c.req.param("id");
+		const profileId = c.get("userId"); // Assume profileId is available from auth middleware
+
+		if (!profileId) {
+			throw new HTTPException(401, { message: "User must be logged in" });
+		}
+
+		try {
+			const deleteResult = await c.env.db
+				.delete(documentFlutterPins)
+				.where(
+					and(
+						eq(documentFlutterPins.profileId, profileId),
+						eq(documentFlutterPins.documentFlutterId, documentFlutterId),
+					),
+				);
+
+			// Check if a row was actually deleted (this might depend on the DB driver)
+			// if (deleteResult.rowCount === 0) { // Example check
+			// 	throw new HTTPException(404, { message: "Pin record not found" });
+			// }
+
+			return c.body(null, 204);
+		} catch (error) {
+			console.error("Error unpinning document:", error);
+			if (error instanceof HTTPException) {
+				throw error;
+			}
+			throw new HTTPException(500, { message: "Failed to unpin document" });
+		}
 	},
 );
