@@ -265,7 +265,7 @@ documentsFlutterRouter.get(
 						signer: true,
 					},
 					columns: {
-						cms: Boolean(includeCms),
+						cms: false,
 					},
 				},
 				readStatuses: {
