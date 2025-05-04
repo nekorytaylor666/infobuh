@@ -216,6 +216,13 @@ documentsFlutterRouter.get(
 				schema: { type: "string", format: "uuid" },
 				description: "UUID of the legal entity",
 			},
+			{
+				name: "includeCms",
+				in: "query",
+				required: false,
+				schema: { type: "boolean" },
+				description: "Include CMS in the response",
+			},
 		],
 		responses: {
 			200: {
@@ -237,6 +244,7 @@ documentsFlutterRouter.get(
 		const id = c.req.param("id");
 		const legalEntityId = c.req.query("legalEntityId");
 		const profileId = c.get("userId");
+		const includeCms = c.req.query("includeCms");
 
 		if (!legalEntityId) {
 			throw new HTTPException(400, {
@@ -253,6 +261,9 @@ documentsFlutterRouter.get(
 				signatures: {
 					with: {
 						signer: true,
+					},
+					columns: {
+						cms: !!includeCms,
 					},
 				},
 				readStatuses: {
