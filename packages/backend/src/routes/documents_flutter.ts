@@ -175,7 +175,7 @@ documentsFlutterRouter.get(
 		// Infer the type based on the query structure
 		type DocumentListWithSignatures = (typeof documentsList)[number];
 
-		const documentsListWithStatus = documentsList.map(
+		const documentsListWithStatusAndReadStatusAndPins = documentsList.map(
 			(doc: DocumentListWithSignatures) => {
 				let status = "unsigned";
 				if (doc.signatures.length === 1) {
@@ -187,11 +187,13 @@ documentsFlutterRouter.get(
 				return {
 					...doc,
 					status,
+					isRead: doc.readStatuses.length > 0,
+					isPinned: doc.pins.length > 0,
 				};
 			},
 		);
 
-		return c.json(documentsListWithStatus);
+		return c.json(documentsListWithStatusAndReadStatusAndPins);
 	},
 );
 
@@ -263,7 +265,7 @@ documentsFlutterRouter.get(
 						signer: true,
 					},
 					columns: {
-						cms: !!includeCms,
+						cms: Boolean(includeCms),
 					},
 				},
 				readStatuses: {
