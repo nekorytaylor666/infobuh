@@ -278,6 +278,7 @@ documentsFlutterRouter.get(
 				},
 			},
 		});
+		console.log(doc);
 
 		if (!doc) {
 			throw new HTTPException(404, { message: "Document not found" });
