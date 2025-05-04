@@ -248,6 +248,7 @@ documentsFlutterRouter.get(
 		const profileId = c.get("userId");
 		const includeCms = c.req.query("includeCms");
 
+		const includeCmsBoolean = includeCms === "true";
 		if (!legalEntityId) {
 			throw new HTTPException(400, {
 				message: "Missing legalEntityId query parameter",
@@ -265,7 +266,7 @@ documentsFlutterRouter.get(
 						signer: true,
 					},
 					columns: {
-						cms: false,
+						cms: includeCmsBoolean,
 					},
 				},
 				readStatuses: {
