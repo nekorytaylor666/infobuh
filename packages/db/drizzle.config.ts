@@ -1,9 +1,9 @@
 import type { Config } from "drizzle-kit";
-import { config as loadEnv } from 'dotenv';
+import { config as loadEnv } from "dotenv";
 loadEnv();
 
 export default {
-	schema: "./src/schema.ts",
+	schema: "./src/schema",
 	schemaFilter: ["public"],
 	out: "./src/migrations",
 	dialect: "postgresql",
