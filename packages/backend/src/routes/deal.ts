@@ -9,6 +9,9 @@ import {
 	desc,
 	and,
 	legalEntities,
+	dealDocumentsFlutter,
+	documentsFlutter,
+	inArray,
 } from "@accounting-kz/db";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
@@ -545,6 +548,307 @@ dealRouter.delete(
 				throw error;
 			}
 			return c.json({ error: "Failed to delete deal" }, 500);
+		}
+	},
+);
+
+// Schemas for managing deal documents
+const manageDealDocumentsSchema = z.object({
+	documentFlutterIds: z
+		.array(z.string().uuid("Invalid Document ID format"))
+		.min(1, "At least one documentFlutterId is required."),
+});
+const dealDocumentPathParamsSchema = z.object({
+	dealId: z.string().uuid("Invalid Deal ID format"),
+	documentFlutterId: z.string().uuid("Invalid Document ID format"),
+});
+
+// Add document(s) to a deal
+dealRouter.post(
+	"/:dealId/documents",
+	describeRoute({
+		description: "Add one or more documents to a specific deal.",
+		tags: ["Deals", "Deal Documents"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		request: {
+			body: {
+				content: {
+					"application/json": {
+						schema: manageDealDocumentsSchema,
+					},
+				},
+			},
+		},
+		responses: {
+			201: {
+				description: "Documents added to deal successfully.",
+				content: {
+					"application/json": {
+						// Consider returning the list of created dealDocumentsFlutter records
+						schema: z.array(z.object({})), // Placeholder, refine as needed
+					},
+				},
+			},
+			400: { description: "Invalid input (e.g., invalid IDs, missing body)" },
+			401: { description: "Unauthorized" },
+			404: { description: "Deal or one or more Documents not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	zValidator("json", manageDealDocumentsSchema),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+			const { dealId } = c.req.param();
+			const { documentFlutterIds } = c.req.valid("json");
+
+			// 1. Check if deal exists
+			const dealExists = await c.env.db.query.deals.findFirst({
+				where: eq(deals.id, dealId),
+				columns: { id: true },
+			});
+			if (!dealExists) {
+				return c.json({ error: "Deal not found" }, 404);
+			}
+
+			// 2. Check if all documents exist
+			if (documentFlutterIds.length > 0) {
+				const existingDocs = await c.env.db.query.documentsFlutter.findMany({
+					where: inArray(documentsFlutter.id, documentFlutterIds),
+					columns: { id: true },
+				});
+				if (existingDocs.length !== documentFlutterIds.length) {
+					const foundDocIds = new Set(existingDocs.map((doc) => doc.id));
+					const notFoundIds = documentFlutterIds.filter(
+						(id) => !foundDocIds.has(id),
+					);
+					return c.json(
+						{
+							error: "One or more documents not found",
+							notFoundDocumentIds: notFoundIds,
+						},
+						404,
+					);
+				}
+			}
+
+			// 3. Prepare and insert new associations
+			const associationsToCreate = documentFlutterIds.map((docId) => ({
+				dealId: dealId,
+				documentFlutterId: docId,
+			}));
+
+			if (associationsToCreate.length === 0) {
+				return c.json(
+					{ message: "No documents to add or already associated." },
+					200,
+				);
+			}
+
+			const createdAssociations = await c.env.db
+				.insert(dealDocumentsFlutter)
+				.values(associationsToCreate)
+				.onConflictDoNothing() // Ignores if primary key (dealId, documentFlutterId) conflict
+				.returning();
+
+			return c.json(createdAssociations, 201);
+		} catch (error) {
+			console.error("Error adding documents to deal:", error);
+			if (error instanceof z.ZodError)
+				return c.json({ error: error.errors }, 400);
+			if (error instanceof HTTPException) throw error;
+			return c.json({ error: "Failed to add documents to deal" }, 500);
+		}
+	},
+);
+
+// Remove a document from a deal
+dealRouter.delete(
+	"/:dealId/documents/:documentFlutterId",
+	describeRoute({
+		description: "Remove a specific document from a deal.",
+		tags: ["Deals", "Deal Documents"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+			{
+				name: "documentFlutterId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the documentFlutter to remove",
+			},
+		],
+		responses: {
+			204: { description: "Document removed from deal successfully." },
+			401: { description: "Unauthorized" },
+			404: { description: "Deal or Document association not found." },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+			const { dealId, documentFlutterId } = c.req.param();
+
+			// Validate UUIDs (param validation might be added via middleware later if not covered by openapi plugin)
+			if (
+				!z.string().uuid().safeParse(dealId).success ||
+				!z.string().uuid().safeParse(documentFlutterId).success
+			) {
+				return c.json({ error: "Invalid Deal ID or Document ID format" }, 400);
+			}
+
+			const result = await c.env.db
+				.delete(dealDocumentsFlutter)
+				.where(
+					and(
+						eq(dealDocumentsFlutter.dealId, dealId),
+						eq(dealDocumentsFlutter.documentFlutterId, documentFlutterId),
+					),
+				)
+				.returning({ deletedDealId: dealDocumentsFlutter.dealId }); // Check if something was deleted
+
+			if (result.length === 0) {
+				return c.json(
+					{ error: "Association not found or already deleted." },
+					404,
+				);
+			}
+
+			return c.body(null, 204);
+		} catch (error) {
+			console.error("Error removing document from deal:", error);
+			if (error instanceof HTTPException) throw error;
+			return c.json({ error: "Failed to remove document from deal" }, 500);
+		}
+	},
+);
+
+// Update (replace) all documents for a deal
+dealRouter.put(
+	"/:dealId/documents",
+	describeRoute({
+		description: "Replace all associated documents for a deal with a new set.",
+		tags: ["Deals", "Deal Documents"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		request: {
+			body: {
+				content: {
+					"application/json": {
+						schema: manageDealDocumentsSchema, // Same schema as adding
+					},
+				},
+			},
+		},
+		responses: {
+			200: {
+				description: "Documents for deal updated successfully.",
+				content: {
+					"application/json": {
+						schema: z.array(z.object({})), // Placeholder for new associations
+					},
+				},
+			},
+			400: { description: "Invalid input" },
+			401: { description: "Unauthorized" },
+			404: { description: "Deal or one or more Documents not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	zValidator("json", manageDealDocumentsSchema),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+			const { dealId } = c.req.param();
+			const { documentFlutterIds } = c.req.valid("json");
+
+			// 1. Check if deal exists
+			const dealExists = await c.env.db.query.deals.findFirst({
+				where: eq(deals.id, dealId),
+				columns: { id: true },
+			});
+			if (!dealExists) {
+				return c.json({ error: "Deal not found" }, 404);
+			}
+
+			// 2. Check if all new documents exist
+			if (documentFlutterIds.length > 0) {
+				const existingDocs = await c.env.db.query.documentsFlutter.findMany({
+					where: inArray(documentsFlutter.id, documentFlutterIds),
+					columns: { id: true },
+				});
+				if (existingDocs.length !== documentFlutterIds.length) {
+					const foundDocIds = new Set(existingDocs.map((doc) => doc.id));
+					const notFoundIds = documentFlutterIds.filter(
+						(id) => !foundDocIds.has(id),
+					);
+					return c.json(
+						{
+							error: "One or more new documents not found",
+							notFoundDocumentIds: notFoundIds,
+						},
+						404,
+					);
+				}
+			}
+
+			// 3. Transaction: Delete old associations, then insert new ones
+			const newAssociations = await c.env.db.transaction(async (tx) => {
+				// Delete existing associations for this deal
+				await tx
+					.delete(dealDocumentsFlutter)
+					.where(eq(dealDocumentsFlutter.dealId, dealId));
+
+				// If there are new documents to associate, insert them
+				if (documentFlutterIds.length > 0) {
+					const associationsToCreate = documentFlutterIds.map((docId) => ({
+						dealId: dealId,
+						documentFlutterId: docId,
+					}));
+
+					return tx
+						.insert(dealDocumentsFlutter)
+						.values(associationsToCreate)
+						.returning();
+				}
+				return []; // Return empty array if no new documents
+			});
+
+			return c.json(newAssociations);
+		} catch (error) {
+			console.error("Error updating documents for deal:", error);
+			if (error instanceof z.ZodError)
+				return c.json({ error: error.errors }, 400);
+			if (error instanceof HTTPException) throw error;
+			return c.json({ error: "Failed to update documents for deal" }, 500);
 		}
 	},
 );
