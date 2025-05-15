@@ -14,7 +14,6 @@ import fcmTokenRouter from "./routes/fcm-token";
 import { apiReference } from "@scalar/hono-api-reference";
 import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
-import { contractsRouter } from "./routes/contracts";
 import { documentsFlutterRouter } from "./routes/documents_flutter";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
@@ -27,7 +26,7 @@ import { env } from "hono/adapter";
 import { createDbClient } from "@accounting-kz/db";
 import type { HonoEnv } from "./env";
 import { firebaseAdminApp } from "./services/notification"; // Import initialized app
-
+import { dealRouter, router } from "./routes/deal";
 // Load environment variables
 config({ path: ".env" });
 
@@ -89,9 +88,10 @@ app.get(
 		},
 	}),
 );
-app.use("*", async (c, next) => {
-	await next();
+app.get("/health-check", (c) => {
+	return c.json({ message: "All good", status: 200 });
 });
+
 app.use("*", authMiddleware);
 app.route("/documents", documentsRouter);
 app.route("/document-templates", documentTemplatesRouter);
@@ -104,14 +104,11 @@ app.route("/employees", employeesRouter);
 app.route("/banks", banksRouter);
 app.route("/partners", partnersRouter);
 app.route("/products", productsRouter);
-app.route("/contracts", contractsRouter);
 app.route("/docs-flutter", documentsFlutterRouter);
 app.route("/fcm-token", fcmTokenRouter);
+app.route("/deals", dealRouter);
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
-});
-app.get("/health-check", (c) => {
-	return c.json({ message: "All good", status: 200 });
 });
 
 const port = Number(process.env.PORT) || 3000;

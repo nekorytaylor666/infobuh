@@ -8,3 +8,5 @@ export * from "./fcmTokens";
 export * from "./bin-registry";
 export * from "./partners";
 export * from "./banks";
+export * from "./deal";
+export * from "./comments";

@@ -20,6 +20,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { legalEntities } from "./legal-entities";
 import { profile } from "./auth";
+import { comments } from "./comments";
 
 export const documentsFlutter = pgTable(
 	"documents_flutter",
@@ -60,6 +61,7 @@ export const documentsFlutterRelations = relations(
 		signatures: many(documentSignaturesFlutter),
 		readStatuses: many(documentFlutterReadStatus),
 		pins: many(documentFlutterPins),
+		comments: many(comments),
 	}),
 );
 

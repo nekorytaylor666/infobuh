@@ -2,7 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ... */
+input[type="color"],
+input[type="date"],
+input[type="datetime"],
+input[type="datetime-local"],
+input[type="email"],
+input[type="month"],
+input[type="number"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="text"],
+input[type="time"],
+input[type="url"],
+input[type="week"],
+select:focus,
+textarea {
+  font-size: 16px;
+}
 
 @layer base {
   :root {
@@ -153,4 +170,51 @@
   src: url("src/assets/fonts/GeistVariableVF.woff2") format("woff2");
   font-style: normal;
   font-weight: 100 900;
+}
+
+.BottomSheet-view {
+  height: var(--silk-100-lvh-dvh-pct);
+}
+
+.BottomSheet-content {
+  max-width: 700px;
+  height: auto;
+}
+
+.BottomSheet-bleedingBackground {
+  border-radius: 24px;
+  background-color: white;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.SheetWithKeyboard-view {
+  /* SELF-LAYOUT */
+  z-index: 1;
+  top: 0;
+  bottom: initial;
+  /* Adding 60px to make it fully visible below iOS Safari's
+    bottom UI */
+  height: calc(var(--silk-100-lvh-dvh-pct) + 60px);
+}
+
+@media (min-width: 800px) {
+  .SheetWithKeyboard-view {
+    /* SELF-LAYOUT */
+    height: 100%;
+  }
+}
+
+.SheetWithKeyboard-content {
+  /* SELF-LAYOUT */
+  height: calc(100% - max(env(safe-area-inset-top), 6px));
+
+  /* APPEARANCE */
+  background-color: transparent;
+}
+@media (min-width: 800px) {
+  .SheetWithKeyboard-content {
+    /* SELF-LAYOUT */
+    width: calc(800px - var(--size-9));
+    height: calc(100% - var(--size-12) * 2);
+  }
 }

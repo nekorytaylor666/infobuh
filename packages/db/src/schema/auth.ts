@@ -15,7 +15,7 @@ import {
 	index,
 	primaryKey,
 } from "drizzle-orm/pg-core";
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { legalEntities } from "./legal-entities";
@@ -39,17 +39,6 @@ export const profile = pgTable("profile", {
 	image: varchar("image"),
 	email: varchar("email", { length: 256 }).notNull(),
 });
-
-export const profileRelations = relations(profile, ({ one, many }) => ({
-	onboardingStatus: one(onboardingStatus, {
-		fields: [profile.id],
-		references: [onboardingStatus.userId],
-	}),
-	legalEntities: many(legalEntities),
-	fcmTokens: many(fcmTokens),
-	documentFlutterReadStatuses: many(documentFlutterReadStatus),
-	documentFlutterPins: many(documentFlutterPins),
-}));
 
 export const onboardingStatus = pgTable("onboarding_status", {
 	userId: uuid("user_id")
