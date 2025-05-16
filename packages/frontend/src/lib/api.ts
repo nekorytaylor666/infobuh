@@ -91,6 +91,15 @@ export async function getLegalEntity() {
 	return response.data;
 }
 
+export async function getLegalEntityByUserId(token: string) {
+	const response = await api.get<LegalEntity>("/legal-entity/all", {
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	});
+	return response.data;
+}
+
 export async function getEmployees(legalEntityId: string) {
 	const response = await api.get(`/employees/${legalEntityId}`);
 	return response.data;

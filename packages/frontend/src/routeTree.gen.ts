@@ -13,9 +13,9 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as OnboardingImport } from './routes/onboarding'
 import { Route as AboutImport } from './routes/about'
+import { Route as ShareRouteImport } from './routes/share/route'
 import { Route as DashboardRouteImport } from './routes/dashboard/route'
 import { Route as IndexImport } from './routes/index'
-import { Route as ShareRouterImport } from './routes/share/router'
 import { Route as AuthSignupImport } from './routes/auth/signup'
 import { Route as AuthSignImport } from './routes/auth/sign'
 import { Route as AuthLoginImport } from './routes/auth/login'
@@ -40,6 +40,12 @@ const AboutRoute = AboutImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const ShareRouteRoute = ShareRouteImport.update({
+  id: '/share',
+  path: '/share',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const DashboardRouteRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -49,12 +55,6 @@ const DashboardRouteRoute = DashboardRouteImport.update({
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ShareRouterRoute = ShareRouterImport.update({
-  id: '/share/router',
-  path: '/share/router',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -95,16 +95,16 @@ const DashboardEmployeesIdRoute = DashboardEmployeesIdImport.update({
 } as any)
 
 const ShareDealsDealIdIndexRoute = ShareDealsDealIdIndexImport.update({
-  id: '/share/deals/$dealId/',
-  path: '/share/deals/$dealId/',
-  getParentRoute: () => rootRoute,
+  id: '/deals/$dealId/',
+  path: '/deals/$dealId/',
+  getParentRoute: () => ShareRouteRoute,
 } as any)
 
 const ShareDealsDealIdDocumentIdRoute = ShareDealsDealIdDocumentIdImport.update(
   {
-    id: '/share/deals/$dealId/$documentId',
-    path: '/share/deals/$dealId/$documentId',
-    getParentRoute: () => rootRoute,
+    id: '/deals/$dealId/$documentId',
+    path: '/deals/$dealId/$documentId',
+    getParentRoute: () => ShareRouteRoute,
   } as any,
 )
 
@@ -131,6 +131,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/share': {
+      id: '/share'
+      path: '/share'
+      fullPath: '/share'
+      preLoaderRoute: typeof ShareRouteImport
       parentRoute: typeof rootRoute
     }
     '/about': {
@@ -168,13 +175,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignupImport
       parentRoute: typeof rootRoute
     }
-    '/share/router': {
-      id: '/share/router'
-      path: '/share/router'
-      fullPath: '/share/router'
-      preLoaderRoute: typeof ShareRouterImport
-      parentRoute: typeof rootRoute
-    }
     '/dashboard/employees/$id': {
       id: '/dashboard/employees/$id'
       path: '/employees/$id'
@@ -205,17 +205,17 @@ declare module '@tanstack/react-router' {
     }
     '/share/deals/$dealId/$documentId': {
       id: '/share/deals/$dealId/$documentId'
-      path: '/share/deals/$dealId/$documentId'
+      path: '/deals/$dealId/$documentId'
       fullPath: '/share/deals/$dealId/$documentId'
       preLoaderRoute: typeof ShareDealsDealIdDocumentIdImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof ShareRouteImport
     }
     '/share/deals/$dealId/': {
       id: '/share/deals/$dealId/'
-      path: '/share/deals/$dealId'
+      path: '/deals/$dealId'
       fullPath: '/share/deals/$dealId'
       preLoaderRoute: typeof ShareDealsDealIdIndexImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof ShareRouteImport
     }
   }
 }
@@ -241,15 +241,29 @@ const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
   DashboardRouteRouteChildren,
 )
 
+interface ShareRouteRouteChildren {
+  ShareDealsDealIdDocumentIdRoute: typeof ShareDealsDealIdDocumentIdRoute
+  ShareDealsDealIdIndexRoute: typeof ShareDealsDealIdIndexRoute
+}
+
+const ShareRouteRouteChildren: ShareRouteRouteChildren = {
+  ShareDealsDealIdDocumentIdRoute: ShareDealsDealIdDocumentIdRoute,
+  ShareDealsDealIdIndexRoute: ShareDealsDealIdIndexRoute,
+}
+
+const ShareRouteRouteWithChildren = ShareRouteRoute._addFileChildren(
+  ShareRouteRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/onboarding': typeof OnboardingRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/share/router': typeof ShareRouterRoute
   '/dashboard/employees/$id': typeof DashboardEmployeesIdRoute
   '/dashboard/documents': typeof DashboardDocumentsIndexRoute
   '/dashboard/employees': typeof DashboardEmployeesIndexRoute
@@ -261,12 +275,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/onboarding': typeof OnboardingRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/share/router': typeof ShareRouterRoute
   '/dashboard/employees/$id': typeof DashboardEmployeesIdRoute
   '/dashboard/documents': typeof DashboardDocumentsIndexRoute
   '/dashboard/employees': typeof DashboardEmployeesIndexRoute
@@ -279,12 +293,12 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/onboarding': typeof OnboardingRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
-  '/share/router': typeof ShareRouterRoute
   '/dashboard/employees/$id': typeof DashboardEmployeesIdRoute
   '/dashboard/documents/': typeof DashboardDocumentsIndexRoute
   '/dashboard/employees/': typeof DashboardEmployeesIndexRoute
@@ -298,12 +312,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/share'
     | '/about'
     | '/onboarding'
     | '/auth/login'
     | '/auth/sign'
     | '/auth/signup'
-    | '/share/router'
     | '/dashboard/employees/$id'
     | '/dashboard/documents'
     | '/dashboard/employees'
@@ -314,12 +328,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/share'
     | '/about'
     | '/onboarding'
     | '/auth/login'
     | '/auth/sign'
     | '/auth/signup'
-    | '/share/router'
     | '/dashboard/employees/$id'
     | '/dashboard/documents'
     | '/dashboard/employees'
@@ -330,12 +344,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/share'
     | '/about'
     | '/onboarding'
     | '/auth/login'
     | '/auth/sign'
     | '/auth/signup'
-    | '/share/router'
     | '/dashboard/employees/$id'
     | '/dashboard/documents/'
     | '/dashboard/employees/'
@@ -348,27 +362,23 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
+  ShareRouteRoute: typeof ShareRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   OnboardingRoute: typeof OnboardingRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignRoute: typeof AuthSignRoute
   AuthSignupRoute: typeof AuthSignupRoute
-  ShareRouterRoute: typeof ShareRouterRoute
-  ShareDealsDealIdDocumentIdRoute: typeof ShareDealsDealIdDocumentIdRoute
-  ShareDealsDealIdIndexRoute: typeof ShareDealsDealIdIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
+  ShareRouteRoute: ShareRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   OnboardingRoute: OnboardingRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignRoute: AuthSignRoute,
   AuthSignupRoute: AuthSignupRoute,
-  ShareRouterRoute: ShareRouterRoute,
-  ShareDealsDealIdDocumentIdRoute: ShareDealsDealIdDocumentIdRoute,
-  ShareDealsDealIdIndexRoute: ShareDealsDealIdIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -383,14 +393,12 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/dashboard",
+        "/share",
         "/about",
         "/onboarding",
         "/auth/login",
         "/auth/sign",
-        "/auth/signup",
-        "/share/router",
-        "/share/deals/$dealId/$documentId",
-        "/share/deals/$dealId/"
+        "/auth/signup"
       ]
     },
     "/": {
@@ -403,6 +411,13 @@ export const routeTree = rootRoute
         "/dashboard/documents/",
         "/dashboard/employees/",
         "/dashboard/documents/folders/$folderPath"
+      ]
+    },
+    "/share": {
+      "filePath": "share/route.tsx",
+      "children": [
+        "/share/deals/$dealId/$documentId",
+        "/share/deals/$dealId/"
       ]
     },
     "/about": {
@@ -419,9 +434,6 @@ export const routeTree = rootRoute
     },
     "/auth/signup": {
       "filePath": "auth/signup.tsx"
-    },
-    "/share/router": {
-      "filePath": "share/router.tsx"
     },
     "/dashboard/employees/$id": {
       "filePath": "dashboard/employees/$id.tsx",
@@ -440,10 +452,12 @@ export const routeTree = rootRoute
       "parent": "/dashboard"
     },
     "/share/deals/$dealId/$documentId": {
-      "filePath": "share/deals/$dealId/$documentId.tsx"
+      "filePath": "share/deals/$dealId/$documentId.tsx",
+      "parent": "/share"
     },
     "/share/deals/$dealId/": {
-      "filePath": "share/deals/$dealId/index.tsx"
+      "filePath": "share/deals/$dealId/index.tsx",
+      "parent": "/share"
     }
   }
 }

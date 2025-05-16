@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/share/deals/$dealId/")({
   component: DealPageComponent,
+
   pendingComponent: DealPagePendingComponent,
   loader: async ({ params }) => {
     const deal = await getDeal(params.dealId);
