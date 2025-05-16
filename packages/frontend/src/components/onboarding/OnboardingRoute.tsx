@@ -1,5 +1,4 @@
 import { OnboardingForm } from "./OnboardingForm";
-import { Logo } from "../ui/logo";
 import { Button } from "../ui/button";
 import { cx } from "../../lib/utils";
 import { useLocation } from "@tanstack/react-router";
@@ -14,10 +13,12 @@ import {
 
 interface Step {
   name: string;
-  step: "profile" | "company" | "banks" | "employees";
+  step: "profile" | "signature" | "company";
   question: string;
   subtitle: string;
 }
+
+export type OnboardingStepType = Step["step"];
 
 const steps: Step[] = [
   {
@@ -27,23 +28,16 @@ const steps: Step[] = [
     subtitle: "Ваше имя и фото",
   },
   {
+    name: "E-Signature",
+    step: "signature",
+    question: "Подпишите с помощью ЭЦП",
+    subtitle: "Загрузите файл ЭЦП и введите пароль",
+  },
+  {
     name: "Company",
     step: "company",
     question: "Расскажите про вашу компанию",
     subtitle: "Название компании, тип, адрес, телефон, OKED, BIN, UGD",
-  },
-  {
-    name: "Banks",
-    step: "banks",
-    question: "Расскажите о банковских реквизитах",
-    subtitle: "Название банка, БИК, номер счета",
-  },
-  {
-    name: "Employees",
-    step: "employees",
-    question: "Расскажите о сотрудниках компании",
-    subtitle:
-      "Имя, роль, адрес, ИИН, дата рождения, ID UDOS, дата выдачи UDOS, кто выдал UDOS",
   },
 ];
 
@@ -52,12 +46,12 @@ function StepProgress({ currentStep }: { currentStep: string }) {
 
   return (
     <div aria-label="Onboarding progress">
-      <ol className="mx-auto flex w-24 flex-nowrap gap-1 md:w-fit">
+      <ol className="mx-auto flex justify-center w-48 flex-nowrap gap-1 md:w-fit">
         {steps.map((step, index) => (
           <li
             key={step.name}
             className={cx(
-              "h-1 w-12 rounded-full",
+              "h-1 w-24 rounded-full",
               index <= currentStepIndex
                 ? "bg-primary"
                 : "bg-gray-300 dark:bg-gray-700"
@@ -80,7 +74,7 @@ function StepProgress({ currentStep }: { currentStep: string }) {
 
 export function OnboardingRoute() {
   const [scrolled, setScrolled] = useState(false);
-  const [currentStep, setCurrentStep] = useState<Step["step"]>("profile");
+  const [currentStep, setCurrentStep] = useState<OnboardingStepType>("profile");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -101,26 +95,26 @@ export function OnboardingRoute() {
         )}
       >
         <div
-          className="hidden flex-nowrap items-center gap-0.5 md:flex"
+          className="flex-nowrap items-center gap-0.5 md:flex"
           aria-hidden="true"
         >
-          <span className="mt-0.5 text-lg font-semibold text-gray-900 dark:text-gray-50">
+          <span className="text-lg font-semibold tracking-tighter text-gray-900 dark:text-gray-50">
             ИнфоБух
           </span>
         </div>
         <StepProgress currentStep={currentStep} />
-        <Button variant="ghost" className="ml-auto w-fit" asChild>
-          <a href="/dashboard">Пропустить</a>
-        </Button>
       </header>
-      <main className="container mx-auto max-w-lg mb-20 mt-28 px-4">
+      <main className="container mx-auto max-w-lg mb-20 mt-28">
         <Card className="shadow-none border-none">
           <CardHeader>
             <CardTitle>{currentStepData?.question}</CardTitle>
             <CardDescription>{currentStepData?.subtitle}</CardDescription>
           </CardHeader>
           <CardContent>
-            <OnboardingForm onStepChange={setCurrentStep} />
+            <OnboardingForm
+              currentStep={currentStep}
+              onStepChange={setCurrentStep}
+            />
           </CardContent>
         </Card>
       </main>

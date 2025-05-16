@@ -40,6 +40,10 @@ export const profile = pgTable("profile", {
 	email: varchar("email", { length: 256 }).notNull(),
 });
 
+export const profileRelations = relations(profile, ({ many }) => ({
+	legalEntities: many(legalEntities),
+}));
+
 export const onboardingStatus = pgTable("onboarding_status", {
 	userId: uuid("user_id")
 		.primaryKey()

@@ -65,6 +65,8 @@ export const documentsFlutterRelations = relations(
 	}),
 );
 
+export const documentFlutterZodSchema = createSelectSchema(documentsFlutter);
+
 // New table for document read status
 export const documentFlutterReadStatus = pgTable(
 	"document_flutter_read_status",

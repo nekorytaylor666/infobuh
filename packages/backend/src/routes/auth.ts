@@ -11,7 +11,7 @@ import {
 } from "@accounting-kz/db";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
-import { zValidator } from "hono-openapi/zod";
+import { validator } from "hono-openapi/zod";
 
 const router = new Hono<HonoEnv>();
 
@@ -46,7 +46,6 @@ const OnboardingStatusSchema = z.object({
 
 const OnboardingDataSchema = z.object({
 	name: z.string().min(1).describe("User's full name"),
-	email: z.string().email().describe("User's email"),
 	image: z.string().optional().describe("User's profile picture URL"),
 	legalEntity: z.object({
 		name: z.string().min(1).describe("Legal entity name"),
@@ -159,84 +158,81 @@ router.post(
 			// Validate request body
 			const validatedData = OnboardingDataSchema.parse(data);
 
-			// Update profile with name and image
-			await c.env.db
-				.update(profile)
-				.set({
-					name: validatedData.name,
-					image: validatedData.image,
-				})
-				.where(eq(profile.id, userId));
+			await c.env.db.transaction(async (tx) => {
+				// Update profile with name and image
+				await tx
+					.update(profile)
+					.set({
+						name: validatedData.name,
+						image: validatedData.image,
+					})
+					.where(eq(profile.id, userId));
 
-			// Create legal entity
-			const [legalEntity] = await c.env.db
-				.insert(legalEntities)
-				.values({
-					profileId: userId,
-					name: validatedData.legalEntity.name,
-					image: validatedData.legalEntity.image,
-					type: validatedData.legalEntity.type,
-					address: validatedData.legalEntity.address,
-					phone: validatedData.legalEntity.phone,
-					oked: validatedData.legalEntity.oked,
-					bin: validatedData.legalEntity.bin,
-					registrationDate: new Date(
-						validatedData.legalEntity.registrationDate,
-					),
-					ugd: validatedData.legalEntity.ugd,
-				})
-				.returning();
+				// Create legal entity
+				const [legalEntity] = await tx
+					.insert(legalEntities)
+					.values({
+						profileId: userId,
+						name: validatedData.legalEntity.name,
+						image: validatedData.legalEntity.image,
+						type: validatedData.legalEntity.type,
+						address: validatedData.legalEntity.address,
+						phone: validatedData.legalEntity.phone,
+						oked: validatedData.legalEntity.oked,
+						bin: validatedData.legalEntity.bin,
+						registrationDate: new Date(
+							validatedData.legalEntity.registrationDate,
+						),
+						ugd: validatedData.legalEntity.ugd,
+					})
+					.returning();
 
-			// Create banks if provided
-			if (validatedData.banks && validatedData.banks.length > 0) {
-				await c.env.db.insert(banks).values(
-					validatedData.banks.map((bank) => ({
-						legalEntityId: legalEntity.id,
-						name: bank.name,
-						bik: bank.bik,
-						account: bank.account,
-					})),
-				);
-			}
+				// Create banks if provided
+				if (validatedData.banks && validatedData.banks.length > 0) {
+					await tx.insert(banks).values(
+						validatedData.banks.map((bank) => ({
+							legalEntityId: legalEntity.id,
+							name: bank.name,
+							bik: bank.bik,
+							account: bank.account,
+						})),
+					);
+				}
 
-			// Create employees if provided
-			if (validatedData.employees && validatedData.employees.length > 0) {
-				await c.env.db.insert(employees).values(
-					validatedData.employees.map((employee) => ({
-						legalEntityId: legalEntity.id,
-						fullName: employee.fullName,
-						pfp: employee.pfp,
-						role: employee.role,
-						address: employee.address,
-						iin: employee.iin,
-						dateOfBirth: new Date(employee.dateOfBirth).toISOString(),
-						udosId: employee.udosId,
-						udosDateGiven: new Date(employee.udosDateGiven).toISOString(),
-						udosWhoGives: employee.udosWhoGives,
-					})),
-				);
-			}
+				// Create employees if provided
+				if (validatedData.employees && validatedData.employees.length > 0) {
+					await tx.insert(employees).values(
+						validatedData.employees.map((employee) => ({
+							legalEntityId: legalEntity.id,
+							fullName: employee.fullName,
+							pfp: employee.pfp,
+							role: employee.role,
+							address: employee.address,
+							iin: employee.iin,
+							dateOfBirth: new Date(employee.dateOfBirth).toISOString(),
+							udosId: employee.udosId,
+							udosDateGiven: new Date(employee.udosDateGiven).toISOString(),
+							udosWhoGives: employee.udosWhoGives,
+						})),
+					);
+				}
 
-			// Update onboarding status
-			await c.env.db
-				.update(onboardingStatus)
-				.set({
-					isComplete: true,
-					currentStep: "completed",
-					completedAt: new Date(),
-				})
-				.where(eq(onboardingStatus.userId, userId));
+				// Update onboarding status
+				await tx
+					.update(onboardingStatus)
+					.set({
+						isComplete: true,
+						currentStep: "completed",
+						completedAt: new Date(),
+					})
+					.where(eq(onboardingStatus.userId, userId));
+			});
 
 			// Get updated profile with relations
 			const updatedProfile = await c.env.db.query.profile.findFirst({
 				where: eq(profile.id, userId),
 				with: {
-					legalEntities: {
-						with: {
-							banks: true,
-							employees: true,
-						},
-					},
+					legalEntities: true,
 				},
 			});
 

@@ -11,6 +11,7 @@ import {
 	legalEntities,
 	dealDocumentsFlutter,
 	documentsFlutter,
+	documentFlutterZodSchema,
 	inArray,
 } from "@accounting-kz/db";
 import { describeRoute } from "hono-openapi";
@@ -738,6 +739,93 @@ dealRouter.delete(
 			console.error("Error removing document from deal:", error);
 			if (error instanceof HTTPException) throw error;
 			return c.json({ error: "Failed to remove document from deal" }, 500);
+		}
+	},
+);
+
+// Get a specific document from a deal
+dealRouter.get(
+	"/:dealId/documents/:documentFlutterId",
+	describeRoute({
+		description: "Get a specific document associated with a deal.",
+		tags: ["Deals", "Deal Documents"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+			{
+				name: "documentFlutterId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the documentFlutter",
+			},
+		],
+		responses: {
+			200: {
+				description: "Document details.",
+				content: {
+					"application/json": {
+						// Assuming documentsFlutter schema is available or create one
+						schema: documentFlutterZodSchema, // Updated placeholder
+					},
+				},
+			},
+			401: { description: "Unauthorized" },
+			404: { description: "Deal-Document association or Document not found." },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		try {
+			const { dealId, documentFlutterId } = c.req.param();
+
+			// Validate UUIDs
+			const paramsValidation = dealDocumentPathParamsSchema.safeParse({
+				dealId,
+				documentFlutterId,
+			});
+			if (!paramsValidation.success) {
+				return c.json({ error: "Invalid Deal ID or Document ID format" }, 400);
+			}
+
+			// 1. Check if the deal-document association exists
+			const association = await c.env.db.query.dealDocumentsFlutter.findFirst({
+				where: and(
+					eq(dealDocumentsFlutter.dealId, dealId),
+					eq(dealDocumentsFlutter.documentFlutterId, documentFlutterId),
+				),
+				columns: { documentFlutterId: true }, // We only need to confirm existence
+			});
+
+			if (!association) {
+				return c.json({ error: "Deal-Document association not found" }, 404);
+			}
+
+			// 2. Fetch the actual document
+			const document = await c.env.db.query.documentsFlutter.findFirst({
+				where: eq(documentsFlutter.id, documentFlutterId),
+				// Add 'with' if you need related data from the document itself
+			});
+
+			if (!document) {
+				// This case should be rare if association exists, but good for consistency
+				return c.json({ error: "Document not found" }, 404);
+			}
+
+			return c.json(document);
+		} catch (error) {
+			console.error("Error fetching document from deal:", error);
+			if (error instanceof z.ZodError) {
+				// This might be redundant if paramsValidation catches it, but good for other Zod errors
+				return c.json({ error: error.errors }, 400);
+			}
+			if (error instanceof HTTPException) throw error;
+			return c.json({ error: "Failed to fetch document from deal" }, 500);
 		}
 	},
 );

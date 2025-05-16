@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "../ui/button";
 import { useNavigate } from "@tanstack/react-router";
-import { BankForm } from "./BankForm";
-import { EmployeeForm } from "./EmployeeForm";
 import { ProfileForm } from "./ProfileForm";
 import { CompanyForm } from "./CompanyForm";
+import { SignatureForm } from "./SignatureForm";
 import { toast } from "sonner";
 import { useAuthContext } from "../../lib/auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -12,21 +11,19 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { onboardingSchema, type OnboardingData } from "./schema";
 import { getOnboardingStatus, submitOnboarding } from "../../lib/api";
-
-type OnboardingStep = "profile" | "company" | "banks" | "employees";
+import type { OnboardingStepType } from "./OnboardingRoute";
 
 interface OnboardingFormProps {
-  onStepChange: (step: OnboardingStep) => void;
+  currentStep: OnboardingStepType;
+  onStepChange: (step: OnboardingStepType) => void;
 }
 
-export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
+export function OnboardingForm({
+  currentStep,
+  onStepChange,
+}: OnboardingFormProps) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
-  const [step, setStep] = useState<OnboardingStep>("profile");
-
-  useEffect(() => {
-    onStepChange(step);
-  }, [step, onStepChange]);
 
   // Query onboarding status
   const { isLoading } = useQuery({
@@ -57,14 +54,11 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
         registrationDate: "",
         ugd: "",
       },
-      banks: [],
-      employees: [],
     },
   });
 
   const {
     handleSubmit,
-
     formState: { errors },
     trigger,
     setValue,
@@ -77,7 +71,6 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
       if (!user?.id) throw new Error("User ID is required");
       return submitOnboarding(user.id, {
         ...data,
-        email: user.email || data.email,
       });
     },
     onSuccess: () => {
@@ -92,10 +85,14 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
   });
 
   const handleNext = async () => {
-    switch (step) {
+    switch (currentStep) {
       case "profile": {
         const isValid = await trigger(["name"]);
-        if (isValid) setStep("company");
+        if (isValid) onStepChange("signature");
+        break;
+      }
+      case "signature": {
+        // SignatureForm handles its own progression via onSuccess
         break;
       }
       case "company": {
@@ -110,43 +107,21 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
           "legalEntity.ugd",
         ]);
         if (isValid) {
-          setStep("banks");
+          formRef.current?.requestSubmit(); // Submit form after company step
         }
-        break;
-      }
-      case "banks": {
-        setStep("employees");
-        break;
-      }
-      case "employees": {
-        console.log(methods.getValues());
-        console.log(methods.formState.isValid);
-        console.log(methods.formState.errors);
-        formRef.current?.requestSubmit();
         break;
       }
     }
   };
 
   const handleBack = () => {
-    switch (step) {
+    switch (currentStep) {
+      case "signature":
+        onStepChange("profile");
+        break;
       case "company":
-        setStep("profile");
+        onStepChange("signature");
         break;
-      case "banks":
-        setStep("company");
-        break;
-      case "employees":
-        setStep("banks");
-        break;
-    }
-  };
-
-  const handleSkip = () => {
-    if (step === "banks") {
-      setStep("employees");
-    } else if (step === "employees") {
-      formRef.current?.requestSubmit();
     }
   };
 
@@ -167,58 +142,40 @@ export function OnboardingForm({ onStepChange }: OnboardingFormProps) {
         ref={formRef}
         onSubmit={handleSubmit((data) => submitMutation.mutate(data))}
       >
-        {step === "profile" && <ProfileForm />}
-        {step === "company" && (
+        {currentStep === "profile" && <ProfileForm />}
+        {currentStep === "signature" && (
+          <SignatureForm onSuccess={() => onStepChange("company")} />
+        )}
+        {currentStep === "company" && (
           <>
             <CompanyForm />
-            <div className="mt-4 text-sm text-muted-foreground">
-              * Банки и сотрудники могут быть добавлены позже
-            </div>
           </>
-        )}
-        {step === "banks" && (
-          <BankForm
-            banks={methods.watch("banks")}
-            onChange={(banks) => setValue("banks", banks)}
-          />
-        )}
-        {step === "employees" && (
-          <EmployeeForm
-            employees={methods.watch("employees")}
-            onChange={(employees) => setValue("employees", employees)}
-          />
         )}
 
         <div className="mt-8 flex justify-between">
-          {step !== "profile" && (
+          {currentStep !== "profile" && (
             <Button
               type="button"
               variant="outline"
               onClick={handleBack}
               disabled={submitMutation.isPending}
             >
-              Back
+              Назад
             </Button>
           )}
-          <div className="flex gap-2">
-            {(step === "banks" || step === "employees") && (
+          <div className="flex gap-2 ml-auto">
+            {currentStep !== "signature" && (
               <Button
                 type="button"
-                variant="outline"
-                onClick={handleSkip}
+                className={currentStep === "profile" ? "w-full" : ""}
+                onClick={handleNext}
                 disabled={submitMutation.isPending}
               >
-                Пропустить
+                {currentStep === "company"
+                  ? "Завершить настройку"
+                  : "Продолжить"}
               </Button>
             )}
-            <Button
-              type="button"
-              className={step === "profile" ? "w-full" : ""}
-              onClick={handleNext}
-              disabled={submitMutation.isPending}
-            >
-              {step === "employees" ? "Завершить настройку" : "Продолжить"}
-            </Button>
           </div>
         </div>
       </form>

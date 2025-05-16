@@ -1,21 +1,17 @@
+import { getDealDocument } from "@/lib/api";
+import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar } from "@radix-ui/react-avatar";
-import { createFileRoute } from "@tanstack/react-router";
 import {
   Download,
   User,
   Paperclip,
   MessageCircle,
   Signature,
+  ArrowLeft,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
@@ -23,10 +19,48 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import { useMediaQuery } from "@/hooks/use-media-query";
-
-import "@silk-hq/components/layered-styles";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { getDeal } from "@/lib/api";
+import { Skeleton } from "@/components/ui/skeleton";
+export const Route = createFileRoute("/share/deals/$dealId/$documentId")({
+  component: DealDocumentPageComponent,
+  pendingComponent: DealDocumentPendingComponent,
+
+  loader: async ({ params }) => {
+    const document = await getDealDocument(params.dealId, params.documentId);
+    console.log(document);
+    const pathForSupabase = document.filePath;
+
+    let pdfUrl = null;
+    let pdfError = null;
+
+    try {
+      const { data: urlData } = await supabase.storage
+        .from("documents")
+        .getPublicUrl(pathForSupabase);
+      console.log(urlData);
+
+      if (urlData?.publicUrl) {
+        pdfUrl = urlData.publicUrl;
+      } else {
+        pdfError = "Не удалось получить валидную ссылку на документ.";
+      }
+    } catch (e: unknown) {
+      let errorMessage = "Неизвестная ошибка при загрузке PDF";
+      if (e instanceof Error) {
+        errorMessage = `Ошибка: ${e.message}`;
+      }
+      console.error("Error processing PDF:", e);
+      pdfError = errorMessage;
+    }
+
+    console.log(pdfUrl);
+    return {
+      document,
+      pdfUrl,
+      pdfError,
+    };
+  },
+});
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -91,165 +125,33 @@ const mockComments = [
     text: "Отлично, спасибо за подтверждение!",
     timestamp: "A",
   },
-  {
-    id: "1",
-    author: "sender",
-    text: "Здравствуйте, я отправил счет за услуги прошлого месяца. Пожалуйста, дайте знать, если все в порядке.",
-    timestamp: "A",
-  },
-  {
-    id: "2",
-    author: "receiver",
-    text: "Спасибо за счет. Я заметил расхождение в итоговой сумме. Не могли бы вы проверить начисления за дополнительные услуги?",
-    timestamp: "A",
-  },
-  {
-    id: "3",
-    author: "sender",
-    text: "Дополнительная плата взимается за дополнительные часы поддержки, которые мы предоставили 10 и 11 числа. Дайте знать, если вам нужны дополнительные детали.",
-    timestamp: "A",
-  },
-  {
-    id: "4",
-    author: "receiver",
-    text: "Понятно! Теперь все сходится. Все выглядит хорошо — я произведу оплату до пятницы.",
-    timestamp: "A",
-  },
-  {
-    id: "5",
-    author: "sender",
-    text: "Отлично, спасибо за подтверждение!",
-    timestamp: "A",
-  },
-  {
-    id: "1",
-    author: "sender",
-    text: "Здравствуйте, я отправил счет за услуги прошлого месяца. Пожалуйста, дайте знать, если все в порядке.",
-    timestamp: "A",
-  },
-  {
-    id: "2",
-    author: "receiver",
-    text: "Спасибо за счет. Я заметил расхождение в итоговой сумме. Не могли бы вы проверить начисления за дополнительные услуги?",
-    timestamp: "A",
-  },
-  {
-    id: "3",
-    author: "sender",
-    text: "Дополнительная плата взимается за дополнительные часы поддержки, которые мы предоставили 10 и 11 числа. Дайте знать, если вам нужны дополнительные детали.",
-    timestamp: "A",
-  },
-  {
-    id: "4",
-    author: "receiver",
-    text: "Понятно! Теперь все сходится. Все выглядит хорошо — я произведу оплату до пятницы.",
-    timestamp: "A",
-  },
-  {
-    id: "5",
-    author: "sender",
-    text: "Отлично, спасибо за подтверждение!",
-    timestamp: "A",
-  },
-  {
-    id: "1",
-    author: "sender",
-    text: "Здравствуйте, я отправил счет за услуги прошлого месяца. Пожалуйста, дайте знать, если все в порядке.",
-    timestamp: "A",
-  },
-  {
-    id: "2",
-    author: "receiver",
-    text: "Спасибо за счет. Я заметил расхождение в итоговой сумме. Не могли бы вы проверить начисления за дополнительные услуги?",
-    timestamp: "A",
-  },
-  {
-    id: "3",
-    author: "sender",
-    text: "Дополнительная плата взимается за дополнительные часы поддержки, которые мы предоставили 10 и 11 числа. Дайте знать, если вам нужны дополнительные детали.",
-    timestamp: "A",
-  },
-  {
-    id: "4",
-    author: "receiver",
-    text: "Понятно! Теперь все сходится. Все выглядит хорошо — я произведу оплату до пятницы.",
-    timestamp: "A",
-  },
-  {
-    id: "5",
-    author: "sender",
-    text: "Отлично, спасибо за подтверждение!",
-    timestamp: "A",
-  },
 ];
 
-export const Route = createFileRoute("/share/deals/$deal")({
-  component: DealPageComponent,
-  loader: async ({ params }) => {
-    const deal = await getDeal(params.deal);
-    return deal;
-  },
-});
-
-export function DealPageComponent() {
-  const dealDetails = Route.useLoaderData();
+export function DealDocumentPageComponent() {
+  const { dealId } = Route.useParams();
+  const { document, pdfUrl, pdfError } = Route.useLoaderData();
 
   const data = {
     ...mockKazakhInvoiceData,
-    companyName: dealDetails?.title || mockKazakhInvoiceData.companyName,
+    companyName: mockKazakhInvoiceData.companyName,
   };
 
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loadingPdf, setLoadingPdf] = useState(true);
-  const [pdfError, setPdfError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
 
   const [isDesktopCommentsVisible, setIsDesktopCommentsVisible] =
     useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  useEffect(() => {
-    const fetchAndDisplayPdf = async () => {
-      setLoadingPdf(true);
-      setPdfError(null);
-      const hardcodedPath =
-        "790c2f39-4e1e-490f-9b31-61242b4588cd/1747229474107-doverennost_14.05.25_18-22-09.pdf";
-
-      try {
-        const { data: urlData } = supabase.storage
-          .from("documents")
-          .getPublicUrl(hardcodedPath);
-
-        if (urlData?.publicUrl) {
-          setPdfUrl(urlData.publicUrl);
-        } else {
-          setPdfError("Не удалось получить валидную ссылку на документ.");
-          setPdfUrl(null);
-        }
-      } catch (e: unknown) {
-        let errorMessage = "Неизвестная ошибка при загрузке PDF";
-        if (e instanceof Error) {
-          errorMessage = `Ошибка: ${e.message}`;
-        }
-        console.error("Error processing PDF:", e);
-        setPdfError(errorMessage);
-        setPdfUrl(null);
-      }
-      setLoadingPdf(false);
-    };
-
-    fetchAndDisplayPdf();
-  }, []);
-
   const handleDownload = () => {
     if (pdfUrl) {
-      const link = document.createElement("a");
+      const link = window.document.createElement("a");
       link.href = pdfUrl;
       const filename = pdfUrl.substring(pdfUrl.lastIndexOf("/") + 1);
       link.download = filename || "document.pdf";
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
     }
   };
 
@@ -264,9 +166,9 @@ export function DealPageComponent() {
       <div className="p-3 sm:p-4 text-sm md:text-base font-medium text-foreground border-b">
         Комментарии
       </div>
-      <ScrollArea className="flex-1 p-3 sm:p-4">
+      <ScrollArea className="flex-1 px-4">
         {mockComments.map((comment) => (
-          <div key={comment.id} className="mb-6">
+          <div key={comment.id} className="mb-4 first:mt-4">
             {comment.author === "receiver" && (
               <div className="mb-1 flex justify-end text-xs text-muted-foreground">
                 {/* Display timestamp or author initial if needed */}
@@ -336,7 +238,7 @@ export function DealPageComponent() {
 
   return (
     <div
-      className="max-h-screen bg-white text-foreground "
+      className="max-h-screen h-screen bg-white text-foreground "
       style={{
         backgroundImage:
           "radial-gradient(circle, #e5e5e5 1px, transparent 1px)",
@@ -349,28 +251,24 @@ export function DealPageComponent() {
         <div className="grid grid-rows-[auto_1fr] max-h-screen w-full md:max-w-4xl mx-auto h-full">
           <div className="flex items-center justify-between p-3 sm:p-4 bg-card md:bg-transparent border-b border-border md:border-b-0">
             <div className="flex items-center gap-2">
+              <Link
+                to="/share/deals/$dealId"
+                params={{ dealId: dealId }}
+                className="flex items-center gap-2"
+              >
+                <Button variant="ghost" size="icon">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
               <CompanyLogo />
               <span className="font-medium text-sm sm:text-base text-foreground">
-                {dealDetails?.title || data.clientName}
+                {data.clientName || document.receiverName || "Клиент"}
               </span>
             </div>
-            <div className="rounded-md bg-secondary px-2.5 py-1 text-xs sm:text-sm font-semibold">
-              <span className="text-orange-500">Оплачен</span>
-            </div>
           </div>
-          <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-16rem)] overflow-auto">
+          <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-16rem)]  ">
             <div className="h-full w-full flex flex-col items-center justify-center">
-              {loadingPdf && (
-                <p className="flex-1 flex items-center justify-center text-muted-foreground">
-                  Загрузка документа...
-                </p>
-              )}
-              {pdfError && (
-                <p className="flex-1 flex items-center justify-center text-destructive-foreground bg-destructive p-4 rounded-md">
-                  {pdfError}
-                </p>
-              )}
-              {pdfUrl && !loadingPdf && !pdfError && (
+              {pdfUrl && (
                 <Document
                   file={pdfUrl}
                   onLoadSuccess={({ numPages: nextNumPages }) => {
@@ -379,36 +277,33 @@ export function DealPageComponent() {
                   }}
                   onLoadError={(error) => {
                     console.error("Error loading PDF document:", error);
-                    setPdfError(`Ошибка загрузки PDF: ${error.message}`);
                     setLoadingPdf(false);
                   }}
-                  loading={
-                    <p className="text-muted-foreground">
-                      Загрузка документа...
-                    </p>
-                  }
+                  loading={<Skeleton className="h-screen w-full" />}
                   error={
                     <p className="text-destructive-foreground">
                       Не удалось загрузить PDF.
                     </p>
                   }
-                  className="h-full w-full flex flex-col items-center overflow-y-auto"
+                  className="h-full w-full flex flex-col items-center pb-20"
                 >
-                  {Array.from(new Array(numPages || 0), (el, index) => (
-                    <Page
-                      key={`page_${index + 1}`}
-                      pageNumber={index + 1}
-                      width={Math.min(800, window.innerWidth)}
-                      renderAnnotationLayer={false}
-                      renderTextLayer={true}
-                    />
-                  ))}
+                  <ScrollArea className="h-full w-full flex flex-col items-center">
+                    {Array.from(new Array(numPages || 0), (el, index) => (
+                      <Page
+                        key={`page_${index + 1}`}
+                        pageNumber={index + 1}
+                        width={Math.min(
+                          800,
+                          typeof window !== "undefined"
+                            ? window.innerWidth
+                            : 800
+                        )}
+                        renderAnnotationLayer={false}
+                        renderTextLayer={true}
+                      />
+                    ))}
+                  </ScrollArea>
                 </Document>
-              )}
-              {!pdfUrl && !loadingPdf && !pdfError && (
-                <p className="flex-1 flex items-center justify-center text-muted-foreground">
-                  Предварительный просмотр документа недоступен.
-                </p>
               )}
             </div>
           </div>
@@ -489,6 +384,48 @@ export function DealPageComponent() {
               </DialogContent>
             </Dialog>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DealDocumentPendingComponent() {
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  return (
+    <div
+      className="max-h-screen h-screen bg-white text-foreground "
+      style={{
+        backgroundImage:
+          "radial-gradient(circle, #e5e5e5 1px, transparent 1px)",
+        backgroundSize: "20px 20px",
+      }}
+    >
+      <div
+        className={`grid ${isMobile ? "grid-cols-1" : "md:grid-cols-[1fr_auto]"} w-full h-full`}
+      >
+        <div className="grid grid-rows-[auto_1fr] max-h-screen w-full md:max-w-4xl mx-auto h-full">
+          <div className="flex items-center justify-between p-3 sm:p-4 bg-card md:bg-transparent border-b border-border md:border-b-0">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-10 w-10 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-6 w-32" />
+            </div>
+          </div>
+          <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-16rem)]">
+            <div className="h-full w-full flex flex-col items-center justify-center">
+              <Skeleton className="h-full w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Persistent Bottom Pill Navbar Placeholder */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 px-6 bg-transparent z-50">
+        <div className="max-w-xs mx-auto justify-around items-center bg-card/95 backdrop-blur-sm p-2 grid grid-cols-3 gap-2 rounded-lg shadow-xl border border-border/50">
+          <Skeleton className="h-12 w-full rounded-md" />
+          <Skeleton className="h-12 w-full rounded-md" />
+          <Skeleton className="h-12 w-full rounded-md" />
         </div>
       </div>
     </div>

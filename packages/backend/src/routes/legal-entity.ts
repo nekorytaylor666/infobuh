@@ -14,6 +14,7 @@ import "zod-openapi/extend";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { findEntity } from "@accounting-kz/bin-verifier";
+import { findUgdByAddressComponents } from "../services/ugdService";
 const router = new Hono<HonoEnv>();
 
 router.get(
@@ -110,6 +111,7 @@ router.post(
 				},
 			},
 			400: { description: "Invalid input" },
+			401: { description: "Unauthorized" },
 			500: { description: "Internal server error" },
 		},
 	}),
@@ -117,7 +119,6 @@ router.post(
 	zValidator("json", legalEntityInsertSchema),
 	async (c) => {
 		try {
-			// Get the profile ID from context (e.g. set by middleware during auth)
 			const userId = c.get("userId") as unknown as string;
 			if (!userId) {
 				return c.json({ error: "Unauthorized" }, 401);
@@ -131,7 +132,9 @@ router.post(
 				.values({
 					...validatedData,
 					profileId: userId,
-					registrationDate: new Date(validatedData.registrationDate),
+					registrationDate: validatedData.registrationDate
+						? new Date(validatedData.registrationDate)
+						: null,
 				})
 				.returning();
 
@@ -161,6 +164,7 @@ router.put(
 					},
 				},
 			},
+			400: { description: "Invalid input" },
 			404: {
 				description: "Legal entity not found",
 			},
@@ -176,7 +180,10 @@ router.put(
 			const data = await c.req.json();
 			const validatedData = legalEntityUpdateSchema.partial().parse(data);
 
-			if (validatedData.registrationDate) {
+			if (
+				validatedData.registrationDate &&
+				typeof validatedData.registrationDate === "string"
+			) {
 				validatedData.registrationDate = new Date(
 					validatedData.registrationDate,
 				);
@@ -212,6 +219,11 @@ router.delete(
 		responses: {
 			200: {
 				description: "Legal entity deleted",
+				content: {
+					"application/json": {
+						schema: z.object({ message: z.string() }),
+					},
+				},
 			},
 			404: {
 				description: "Legal entity not found",
@@ -318,19 +330,33 @@ router.get(
 
 // Bin verifier route (ensure it uses the imported findEntity)
 router.get("/verify-bin", async (c) => {
-	const query = c.req.query("q");
-	if (!query) {
-		return c.json({ error: "Query parameter 'q' is required" }, 400);
+	const queryBin = c.req.query("q");
+	if (!queryBin) {
+		return c.json({ error: "Query parameter 'q' (BIN) is required" }, 400);
 	}
-	// findEntity now handles the initialization check internally
-	const entity = await c.env.db.query.binRegistry.findFirst({
-		where: (binRegistry, { eq }) => eq(binRegistry.bin, query),
+
+	const entityFromRegistry = await c.env.db.query.binRegistry.findFirst({
+		where: (binRegistry, { eq }) => eq(binRegistry.bin, queryBin),
 	});
-	if (!entity) {
-		// Consider differentiating between "not found" and "not initialized", though findEntity logs a warning if not initialized.
-		return c.json({ error: "Entity not found or verifier not ready" }, 404);
+
+	if (!entityFromRegistry) {
+		return c.json({ error: "Entity not found in BIN registry" }, 404);
 	}
-	return c.json(entity);
+
+	// Attempt to find UGD using the locality name from the BIN registry
+	const ugdInfo = await findUgdByAddressComponents({
+		localityName:
+			entityFromRegistry.localityNameRu || entityFromRegistry.localityNameKz,
+	});
+
+	// Combine BIN registry data with UGD code
+	const responseData = {
+		...entityFromRegistry,
+		ugdCode: ugdInfo ? ugdInfo.code : null,
+		ugdName: ugdInfo ? ugdInfo.originalName : null,
+	};
+
+	return c.json(responseData);
 });
 
 export default router;

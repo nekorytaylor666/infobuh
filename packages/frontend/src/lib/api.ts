@@ -1,6 +1,10 @@
 import axios from "axios";
 import { supabase } from "./supabase";
-import type { DealWithRelations, LegalEntity } from "@accounting-kz/db";
+import type {
+	DealDocuments,
+	DealWithRelations,
+	LegalEntity,
+} from "@accounting-kz/db";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -102,5 +106,12 @@ export async function getEmployee(legalEntityId: string, employeeId: string) {
 export async function getDeal(dealId: string) {
 	const response = await api.get<DealWithRelations>(`/deals/${dealId}`);
 
+	return response.data;
+}
+
+export async function getDealDocument(dealId: string, documentId: string) {
+	const response = await api.get<DealDocuments>(
+		`/deals/${dealId}/documents/${documentId}`,
+	);
 	return response.data;
 }

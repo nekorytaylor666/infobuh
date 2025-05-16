@@ -75,7 +75,7 @@ export const dealDocumentsFlutterRelations = relations(
 	}),
 );
 
-type DealDocuments = typeof dealDocumentsFlutter.$inferSelect;
+export type DealDocuments = typeof dealDocumentsFlutter.$inferSelect;
 type DealComments = typeof comments.$inferSelect;
 
 export type DealWithRelations = typeof deals.$inferSelect & {
