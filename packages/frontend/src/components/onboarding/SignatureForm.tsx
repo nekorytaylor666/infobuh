@@ -6,6 +6,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { toast } from "sonner";
 import type { OnboardingData } from "./schema";
+import { api } from "@/lib/api";
 
 const signatureSchema = z.object({
   signatureFile: z
@@ -193,21 +194,18 @@ export function SignatureForm({ onSuccess }: SignatureFormProps) {
             // Now, verify BIN and get more details
             try {
               const bin = binFromSubject || iinFromSubject;
-              const verifyBinUrl = `http://localhost:3000/legal-entity/verify-bin?q=${bin}`;
-              const binRegistryResponse = await fetch(verifyBinUrl);
+              const verifyBinUrl = `/legal-entity/verify-bin?q=${bin}`;
+              const binRegistryResponse = await api.get(verifyBinUrl);
               console.log("BIN Registry response:", binRegistryResponse);
 
-              if (!binRegistryResponse.ok) {
-                const errorData = await binRegistryResponse
-                  .json()
-                  .catch(() => null);
+              if (binRegistryResponse.status !== 200) {
+                const errorData = binRegistryResponse.data;
                 toast.error(
                   `Ошибка при проверке БИН ${binFromSubject}: ${errorData?.error || binRegistryResponse.statusText}`
                 );
                 // Proceed with EDS data if any
               } else {
-                const registryData: BinRegistryData =
-                  await binRegistryResponse.json();
+                const registryData: BinRegistryData = binRegistryResponse.data;
 
                 console.log(
                   "BIN Registry response:",

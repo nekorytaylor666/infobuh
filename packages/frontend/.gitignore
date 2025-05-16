@@ -20,3 +20,9 @@ dist/
 # Env
 .env
 .env.local
+.env.production
+.env.development
+.env.test
+.env.staging
+.env.test
+.env.test
