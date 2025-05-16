@@ -26,7 +26,7 @@ import { env } from "hono/adapter";
 import { createDbClient } from "@accounting-kz/db";
 import type { HonoEnv } from "./env";
 import { firebaseAdminApp } from "./services/notification"; // Import initialized app
-import { dealRouter, router } from "./routes/deal";
+import { dealRouter } from "./routes/deal";
 // Load environment variables
 config({ path: ".env" });
 

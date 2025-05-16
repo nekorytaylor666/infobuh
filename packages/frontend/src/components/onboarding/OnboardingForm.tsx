@@ -1,6 +1,11 @@
 import { useEffect, useRef } from "react";
 import { Button } from "../ui/button";
-import { useNavigate } from "@tanstack/react-router";
+import {
+  useLoaderData,
+  useNavigate,
+  useParams,
+  useSearch,
+} from "@tanstack/react-router";
 import { ProfileForm } from "./ProfileForm";
 import { CompanyForm } from "./CompanyForm";
 import { SignatureForm } from "./SignatureForm";
@@ -24,7 +29,7 @@ export function OnboardingForm({
 }: OnboardingFormProps) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
-
+  const { returnTo } = useSearch({ from: "/onboarding" });
   // Query onboarding status
   const { isLoading } = useQuery({
     queryKey: ["onboardingStatus", user?.id],
@@ -75,7 +80,7 @@ export function OnboardingForm({
     },
     onSuccess: () => {
       toast.success("Your account has been created successfully");
-      navigate({ to: "/dashboard" });
+      navigate({ to: returnTo || "/dashboard" });
     },
     onError: (error) => {
       toast.error(

@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { authService } from "../../services/auth";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useSearch,
+} from "@tanstack/react-router";
 export const Route = createFileRoute("/auth/login")({
   component: LoginPage,
+  validateSearch: (search) => {
+    return {
+      returnTo: search.returnTo as string,
+    };
+  },
 });
 
 function LoginPage() {
@@ -11,7 +20,7 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
+  const { returnTo } = useSearch({ from: "/auth/login" });
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -19,7 +28,7 @@ function LoginPage() {
 
     try {
       await authService.signIn(email, password);
-      navigate({ to: "/" });
+      navigate({ to: returnTo || "/" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in");
     } finally {

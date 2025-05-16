@@ -16,11 +16,11 @@ import {
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/esm/Page/AnnotationLayer.css";
-import "react-pdf/dist/esm/Page/TextLayer.css";
+
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+
 export const Route = createFileRoute("/share/deals/$dealId/$documentId")({
   component: DealDocumentPageComponent,
   pendingComponent: DealDocumentPendingComponent,
@@ -266,7 +266,7 @@ export function DealDocumentPageComponent() {
               </span>
             </div>
           </div>
-          <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-16rem)]  ">
+          <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-12rem)] overflow-hidden">
             <div className="h-full w-full flex flex-col items-center justify-center">
               {pdfUrl && (
                 <Document
@@ -285,7 +285,7 @@ export function DealDocumentPageComponent() {
                       Не удалось загрузить PDF.
                     </p>
                   }
-                  className="h-full w-full flex flex-col items-center pb-20"
+                  className="h-full w-full flex flex-col items-center pb-20 sm:pb-0"
                 >
                   <ScrollArea className="h-full w-full flex flex-col items-center">
                     {Array.from(new Array(numPages || 0), (el, index) => (
@@ -299,7 +299,7 @@ export function DealDocumentPageComponent() {
                             : 800
                         )}
                         renderAnnotationLayer={false}
-                        renderTextLayer={true}
+                        renderTextLayer={false}
                       />
                     ))}
                   </ScrollArea>
@@ -412,7 +412,7 @@ function DealDocumentPendingComponent() {
               <Skeleton className="h-6 w-32" />
             </div>
           </div>
-          <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-16rem)]">
+          <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-12rem)]">
             <div className="h-full w-full flex flex-col items-center justify-center">
               <Skeleton className="h-full w-full" />
             </div>

@@ -5,10 +5,13 @@ import { getOnboardingStatus } from "@/lib/api";
 export const Route = createFileRoute("/onboarding")({
   component: OnboardingRoute,
   validateSearch: (search) => {
-    return { userId: search.userId as string };
+    return {
+      userId: search.userId as string,
+      returnTo: search.returnTo as string,
+    };
   },
-  loaderDeps: ({ search: { userId } }) => ({ userId }),
-  loader: async ({ deps: { userId } }) => {
+  loaderDeps: ({ search: { userId, returnTo } }) => ({ userId, returnTo }),
+  loader: async ({ deps: { userId, returnTo } }) => {
     return { status: "" };
   },
 });

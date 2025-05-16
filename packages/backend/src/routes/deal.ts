@@ -360,7 +360,7 @@ dealRouter.get(
 			const id = c.req.param("id");
 
 			const deal = await c.env.db.query.deals.findFirst({
-				where: and(eq(deals.id, id)),
+				where: eq(deals.id, id),
 				with: {
 					dealDocumentsFlutter: {
 						with: {
@@ -783,19 +783,7 @@ dealRouter.get(
 	}),
 	async (c) => {
 		try {
-			const userId = c.get("userId");
-			if (!userId) {
-				return c.json({ error: "Unauthorized" }, 401);
-			}
-
 			const { dealId, documentFlutterId } = c.req.param();
-
-			const legalEntitiesData = await c.env.db.query.legalEntities.findMany({
-				where: eq(legalEntities.profileId, userId),
-			});
-			if (!legalEntitiesData) {
-				return c.json({ error: "Legal entity not found" }, 404);
-			}
 
 			// Validate UUIDs
 			const paramsValidation = dealDocumentPathParamsSchema.safeParse({
@@ -821,19 +809,7 @@ dealRouter.get(
 
 			// 2. Fetch the actual document
 			const document = await c.env.db.query.documentsFlutter.findFirst({
-				where: and(
-					eq(documentsFlutter.id, documentFlutterId),
-					or(
-						inArray(
-							documentsFlutter.legalEntityId,
-							legalEntitiesData.map((le) => le.id),
-						),
-						inArray(
-							documentsFlutter.receiverBin,
-							legalEntitiesData.map((le) => le.bin),
-						),
-					),
-				),
+				where: eq(documentsFlutter.id, documentFlutterId),
 				// Add 'with' if you need related data from the document itself
 			});
 

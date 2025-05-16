@@ -92,7 +92,7 @@ export async function getLegalEntity() {
 }
 
 export async function getLegalEntityByUserId(token: string) {
-	const response = await api.get<LegalEntity>("/legal-entity/all", {
+	const response = await api.get<LegalEntity[]>("/legal-entity/all", {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
