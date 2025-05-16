@@ -357,28 +357,10 @@ dealRouter.get(
 	}),
 	async (c) => {
 		try {
-			const userId = c.get("userId");
-			if (!userId) {
-				return c.json({ error: "Unauthorized" }, 401);
-			}
-
-			const legalEntitiesData = await c.env.db.query.legalEntities.findMany({
-				where: eq(legalEntities.profileId, userId),
-			});
-			if (!legalEntitiesData) {
-				return c.json({ error: "Legal entity not found" }, 404);
-			}
-
 			const id = c.req.param("id");
 
 			const deal = await c.env.db.query.deals.findFirst({
-				where: and(
-					eq(deals.id, id),
-					inArray(
-						deals.legalEntityId,
-						legalEntitiesData.map((le) => le.id),
-					),
-				),
+				where: and(eq(deals.id, id)),
 				with: {
 					dealDocumentsFlutter: {
 						with: {
