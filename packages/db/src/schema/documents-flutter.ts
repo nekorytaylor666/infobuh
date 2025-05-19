@@ -35,6 +35,7 @@ export const documentsFlutter = pgTable(
 		fields: jsonb("fields").notNull(),
 		filePath: text("file_path").notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
 		index("documents_flutter_legal_entity_id_idx").on(table.legalEntityId),

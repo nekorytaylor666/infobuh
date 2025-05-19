@@ -5,6 +5,7 @@ import {
 	uuid,
 	varchar,
 	date,
+	integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { legalEntities } from "./legal-entities";
@@ -21,6 +22,9 @@ export const employees = pgTable("employees", {
 	address: text("address").notNull(),
 	iin: varchar("iin", { length: 12 }).notNull(),
 	dateOfBirth: date("date_of_birth").notNull(),
+	salary: integer("salary").notNull(),
+	socialStatus: varchar("social_status").notNull(),
+	residency: varchar("residency").notNull(),
 	udosId: varchar("udos_id", { length: 100 }).notNull(),
 	udosDateGiven: date("udos_date_given").notNull(),
 	udosWhoGives: varchar("udos_who_gives", { length: 256 }).notNull(),

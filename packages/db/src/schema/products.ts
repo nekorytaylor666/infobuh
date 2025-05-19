@@ -21,6 +21,8 @@ export const products = pgTable("products", {
 	measurement: varchar("measurement", { length: 50 }).notNull(),
 	price: integer("price").notNull(),
 	vat: integer("vat").notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const productZodSchema = createSelectSchema(products);

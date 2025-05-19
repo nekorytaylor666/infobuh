@@ -287,11 +287,11 @@ dealRouter.get(
 		responses: {
 			200: {
 				description: "List of deals for the receiver BIN",
-				content: {
-					"application/json": {
-						schema: z.array(dealZodSchema),
-					},
-				},
+				// content: {
+				// 	"application/json": {
+				// 		schema: z.array(dealZodSchema),
+				// 	},
+				// },
 			},
 			401: { description: "Unauthorized" },
 			404: { description: "No deals found for this receiver BIN" },
