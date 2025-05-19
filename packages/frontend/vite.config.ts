@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import path from "path";
+import { analyzer } from "vite-bundle-analyzer";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -12,6 +13,7 @@ export default defineConfig({
 				plugins: [["babel-plugin-react-compiler"]],
 			},
 		}),
+		analyzer(),
 	],
 
 	resolve: {

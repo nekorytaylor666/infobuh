@@ -238,6 +238,13 @@ dealRouter.get(
 			const dealsList = await c.env.db.query.deals.findMany({
 				where: eq(deals.legalEntityId, legalEntityId),
 				orderBy: [desc(deals.createdAt)],
+				with: {
+					dealDocumentsFlutter: {
+						with: {
+							documentFlutter: true,
+						},
+					},
+				},
 				// You might want to include relations like comments or documents here in the future
 				// with: { comments: true, dealDocumentsFlutter: true }
 			});
@@ -247,7 +254,14 @@ dealRouter.get(
 				return c.json({ error: "No deals found for this legal entity" }, 404);
 			}
 
-			return c.json(dealsList);
+			const dealsWithDocuments = dealsList.map((deal) => ({
+				...deal,
+				documentsFlutter: deal.dealDocumentsFlutter.map(
+					(dealDocument) => dealDocument.documentFlutter,
+				),
+			}));
+
+			return c.json(dealsWithDocuments);
 		} catch (error) {
 			console.error("Error fetching deals for legal entity:", error);
 			return c.json({ error: "Failed to fetch deals" }, 500);

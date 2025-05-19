@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Document, Page, pdfjs } from "react-pdf";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -37,7 +36,6 @@ export const Route = createFileRoute("/share/deals/$dealId/$documentId")({
       const { data: urlData } = await supabase.storage
         .from("documents")
         .getPublicUrl(pathForSupabase);
-      console.log(urlData);
 
       if (urlData?.publicUrl) {
         pdfUrl = urlData.publicUrl;
@@ -53,7 +51,6 @@ export const Route = createFileRoute("/share/deals/$dealId/$documentId")({
       pdfError = errorMessage;
     }
 
-    console.log(pdfUrl);
     return {
       document,
       pdfUrl,
@@ -61,11 +58,6 @@ export const Route = createFileRoute("/share/deals/$dealId/$documentId")({
     };
   },
 });
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
 
 const mockKazakhInvoiceData = {
   companyName: `ТОО "Рога и Копыта"`,
@@ -269,41 +261,13 @@ export function DealDocumentPageComponent() {
           <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-12rem)] overflow-hidden">
             <div className="h-full w-full flex flex-col items-center justify-center">
               {pdfUrl && (
-                <Document
-                  file={pdfUrl}
-                  onLoadSuccess={({ numPages: nextNumPages }) => {
-                    setNumPages(nextNumPages);
-                    setLoadingPdf(false);
-                  }}
-                  onLoadError={(error) => {
-                    console.error("Error loading PDF document:", error);
-                    setLoadingPdf(false);
-                  }}
-                  loading={<Skeleton className="h-screen w-full" />}
-                  error={
-                    <p className="text-destructive-foreground">
-                      Не удалось загрузить PDF.
-                    </p>
-                  }
-                  className="h-full w-full flex flex-col items-center pb-20 sm:pb-0"
-                >
-                  <ScrollArea className="h-full w-full flex flex-col items-center">
-                    {Array.from(new Array(numPages || 0), (el, index) => (
-                      <Page
-                        key={`page_${index + 1}`}
-                        pageNumber={index + 1}
-                        width={Math.min(
-                          800,
-                          typeof window !== "undefined"
-                            ? window.innerWidth
-                            : 800
-                        )}
-                        renderAnnotationLayer={false}
-                        renderTextLayer={false}
-                      />
-                    ))}
-                  </ScrollArea>
-                </Document>
+                <iframe
+                  src={pdfUrl + "#toolbar=0&navpanes=0&scrollbar=0"}
+                
+                 
+                  className="h-full w-full pb-20 md:pb-0"
+                  title="PDF Viewer"
+                />
               )}
             </div>
           </div>

@@ -12,6 +12,7 @@
     "build:production": "vite build --mode production"
   },
   "devDependencies": {
+    "@accounting-kz/db": "workspace:*",
     "@biomejs/biome": "1.9.4",
     "@tailwindcss/forms": "^0.5.10",
     "@tanstack/router-plugin": "^1.95.1",
@@ -21,12 +22,11 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "@accounting-kz/db": "workspace:*",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vite-bundle-analyzer": "^0.20.2"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
-    "@internationalized/date": "^3.7.0",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-avatar": "^1.1.2",
     "@radix-ui/react-checkbox": "^1.1.3",
@@ -48,10 +48,6 @@
     "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.5",
     "@radix-ui/react-tooltip": "^1.2.3",
-    "@react-aria/datepicker": "^3.13.0",
-    "@react-stately/datepicker": "^3.12.0",
-    "@remixicon/react": "^4.6.0",
-    "@silk-hq/components": "^0.9.3",
     "@supabase/supabase-js": "^2.47.12",
     "@tanstack/react-form": "^0.41.1",
     "@tanstack/react-query": "^5.63.0",
@@ -59,10 +55,6 @@
     "@tanstack/react-table": "^8.20.6",
     "@tanstack/router-devtools": "^1.95.1",
     "@tanstack/zod-form-adapter": "^0.41.1",
-    "@uppy/core": "^4.4.2",
-    "@uppy/dashboard": "^4.3.1",
-    "@uppy/drag-drop": "^4.1.1",
-    "@uppy/tus": "^4.2.2",
     "axios": "^1.7.9",
     "babel-plugin-react-compiler": "19.0.0-beta-63e3235-20250105",
     "class-variance-authority": "^0.7.1",
@@ -75,8 +67,6 @@
     "react-day-picker": "8.10.1",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
-    "react-pdf": "^9.2.1",
-    "recharts": "^2.15.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0",
     "tailwind-variants": "^0.3.1",
