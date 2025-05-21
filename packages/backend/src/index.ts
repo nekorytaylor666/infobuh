@@ -27,6 +27,7 @@ import { createDbClient } from "@accounting-kz/db";
 import type { HonoEnv } from "./env";
 import { firebaseAdminApp } from "./services/notification"; // Import initialized app
 import { dealRouter } from "./routes/deal";
+import { appVersionsRouter } from "./routes/app-versions";
 // Load environment variables
 config({ path: ".env" });
 
@@ -111,6 +112,7 @@ app.route("/products", productsRouter);
 app.route("/docs-flutter", documentsFlutterRouter);
 app.route("/fcm-token", fcmTokenRouter);
 app.route("/deals", dealRouter);
+app.route("/app-versions", appVersionsRouter);
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
 });
