@@ -26,9 +26,11 @@ appVersionsRouter.get("/ios", describeRoute({
     },
 }),
     async (c) => {
-        const version = c.env.db.query.appVersions.findFirst({
+        const version = await c.env.db.query.appVersions.findFirst({
             where: eq(appVersions.type, 'IOS')
         })
+        
+        console.log(version)
         return c.json(version, 201);
     }
 );
@@ -49,7 +51,7 @@ appVersionsRouter.get("/android", describeRoute({
     },
 }),
     async (c) => {
-        const version = c.env.db.query.appVersions.findFirst({
+        const version = await c.env.db.query.appVersions.findFirst({
             where: eq(appVersions.type, 'ANDROID')
         })
         return c.json(version, 201);
