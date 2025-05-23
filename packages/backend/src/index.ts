@@ -96,7 +96,7 @@ app.get(
 app.get("/health-check", (c) => {
 	return c.json({ message: "All good", status: 200 });
 });
-
+app.route("/app-versions", appVersionsRouter);
 app.use("*", authMiddleware);
 app.route("/documents", documentsRouter);
 app.route("/document-templates", documentTemplatesRouter);
@@ -112,7 +112,7 @@ app.route("/products", productsRouter);
 app.route("/docs-flutter", documentsFlutterRouter);
 app.route("/fcm-token", fcmTokenRouter);
 app.route("/deals", dealRouter);
-app.route("/app-versions", appVersionsRouter);
+
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });
 });
