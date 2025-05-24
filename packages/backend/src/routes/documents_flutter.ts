@@ -825,14 +825,11 @@ documentsFlutterRouter.post(
 			}
 
 			// 5.5) Send CMS to Verifier Service
-			const verifierResponse = await fetch(
-				"https://verifier.example.com/verify",
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ cms: ncaLayerResult.cms }),
-				},
-			);
+			const verifierResponse = await fetch(`${NCALAYER_URL}/cms/verify`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ cms: ncaLayerResult.cms }),
+			});
 
 			if (!verifierResponse.ok) {
 				let verifierErrorData: { message?: string } = {};
