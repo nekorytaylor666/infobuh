@@ -20,7 +20,7 @@ import { sendNotificationToLegalEntityByBin } from "../services/notification";
 
 export const documentsFlutterRouter = new Hono<HonoEnv>();
 
-const NCALAYER_URL = "https://signer.infobuh.com/";
+const NCALAYER_URL = "https://signer.infobuh.com";
 
 // GET documents by receiver BIN
 documentsFlutterRouter.get(
@@ -830,6 +830,7 @@ documentsFlutterRouter.post(
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ cms: ncaLayerResult.cms }),
 			});
+			console.log("verifierResponse", verifierResponse);
 
 			if (!verifierResponse.ok) {
 				let verifierErrorData: { message?: string } = {};
@@ -850,7 +851,7 @@ documentsFlutterRouter.post(
 			}
 
 			const verifierResult = await verifierResponse.json();
-			const signerInfo = verifierResult.signers?.[0]?.signers?.[0];
+			const signerInfo = verifierResult.signers?.[0]?.certificates?.signature;
 			const tspInfo = verifierResult.signers?.[0]?.tsp;
 
 			// 6) Insert signature record into your new table:
