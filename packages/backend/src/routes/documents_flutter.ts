@@ -851,7 +851,7 @@ documentsFlutterRouter.post(
 			}
 
 			const verifierResult = await verifierResponse.json();
-			const signerInfo = verifierResult.signers?.[0]?.certificates?.signature;
+			const signerInfo = verifierResult.signers?.[0]?.certificates?.[0];
 			const tspInfo = verifierResult.signers?.[0]?.tsp;
 
 			// 6) Insert signature record into your new table:
