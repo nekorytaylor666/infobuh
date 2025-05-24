@@ -145,6 +145,34 @@ export const documentSignaturesFlutter = pgTable(
 		legalEntityId: uuid("legal_entity_id")
 			.references(() => legalEntities.id)
 			.notNull(),
+
+		// Fields from verifier service
+		isValid: boolean("is_valid"),
+		notBefore: timestamp("not_before"),
+		notAfter: timestamp("not_after"),
+		keyUsage: varchar("key_usage", { length: 255 }),
+		serialNumber: varchar("serial_number", { length: 255 }),
+		signAlg: varchar("sign_alg", { length: 255 }),
+		signature: text("signature"),
+		subjectCommonName: varchar("subject_common_name", { length: 255 }),
+		subjectLastName: varchar("subject_last_name", { length: 255 }),
+		subjectSurName: varchar("subject_sur_name", { length: 255 }),
+		subjectEmail: varchar("subject_email", { length: 255 }),
+		subjectOrganization: text("subject_organization"),
+		subjectIin: varchar("subject_iin", { length: 12 }),
+		subjectBin: varchar("subject_bin", { length: 12 }),
+		subjectCountry: varchar("subject_country", { length: 2 }),
+		subjectLocality: varchar("subject_locality", { length: 255 }),
+		subjectState: varchar("subject_state", { length: 255 }),
+		issuerCommonName: varchar("issuer_common_name", { length: 255 }),
+		issuerOrganization: text("issuer_organization"),
+		issuerIin: varchar("issuer_iin", { length: 12 }),
+		issuerBin: varchar("issuer_bin", { length: 12 }),
+		tspSerialNumber: varchar("tsp_serial_number", { length: 255 }),
+		tspGenTime: timestamp("tsp_gen_time"),
+		tspPolicy: varchar("tsp_policy", { length: 255 }),
+		tspHashAlgorithm: varchar("tsp_hash_algorithm", { length: 255 }),
+		tspHash: varchar("tsp_hash", { length: 255 }),
 	},
 );
 

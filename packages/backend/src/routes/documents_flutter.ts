@@ -817,12 +817,44 @@ documentsFlutterRouter.post(
 				);
 			}
 
-			const result = await response.json();
+			const ncaLayerResult = await response.json();
 
-			if (!result.cms) {
-				console.error("NCALayer response missing CMS data:", result);
+			if (!ncaLayerResult.cms) {
+				console.error("NCALayer response missing CMS data:", ncaLayerResult);
 				throw new Error("No CMS data received from NCALayer");
 			}
+
+			// 5.5) Send CMS to Verifier Service
+			const verifierResponse = await fetch(
+				"https://verifier.example.com/verify",
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ cms: ncaLayerResult.cms }),
+				},
+			);
+
+			if (!verifierResponse.ok) {
+				let verifierErrorData: { message?: string } = {};
+				try {
+					verifierErrorData = await verifierResponse.json();
+				} catch (parseError) {
+					console.error("Failed to parse verifier error response:", parseError);
+				}
+				console.error(
+					"Verifier service error:",
+					verifierResponse.status,
+					verifierErrorData,
+				);
+				throw new Error(
+					verifierErrorData?.message ||
+						`Verifier service responded with status: ${verifierResponse.status}`,
+				);
+			}
+
+			const verifierResult = await verifierResponse.json();
+			const signerInfo = verifierResult.signers?.[0]?.signers?.[0];
+			const tspInfo = verifierResult.signers?.[0]?.tsp;
 
 			// 6) Insert signature record into your new table:
 			const [signature] = await c.env.db
@@ -830,9 +862,38 @@ documentsFlutterRouter.post(
 				.values({
 					documentFlutterId: id,
 					signerId,
-					cms: result.cms,
+					cms: ncaLayerResult.cms,
 					signedAt: new Date(),
 					legalEntityId,
+					// Populate from verifierResult
+					isValid: verifierResult.valid,
+					notBefore: signerInfo?.notBefore
+						? new Date(signerInfo.notBefore)
+						: null,
+					notAfter: signerInfo?.notAfter ? new Date(signerInfo.notAfter) : null,
+					keyUsage: signerInfo?.keyUsage,
+					serialNumber: signerInfo?.serialNumber,
+					signAlg: signerInfo?.signAlg,
+					signature: signerInfo?.signature,
+					subjectCommonName: signerInfo?.subject?.commonName,
+					subjectLastName: signerInfo?.subject?.lastName,
+					subjectSurName: signerInfo?.subject?.surName,
+					subjectEmail: signerInfo?.subject?.email,
+					subjectOrganization: signerInfo?.subject?.organization,
+					subjectIin: signerInfo?.subject?.iin,
+					subjectBin: signerInfo?.subject?.bin,
+					subjectCountry: signerInfo?.subject?.country,
+					subjectLocality: signerInfo?.subject?.locality,
+					subjectState: signerInfo?.subject?.state,
+					issuerCommonName: signerInfo?.issuer?.commonName,
+					issuerOrganization: signerInfo?.issuer?.organization,
+					issuerIin: signerInfo?.issuer?.iin,
+					issuerBin: signerInfo?.issuer?.bin,
+					tspSerialNumber: tspInfo?.serialNumber,
+					tspGenTime: tspInfo?.genTime ? new Date(tspInfo.genTime) : null,
+					tspPolicy: tspInfo?.policy,
+					tspHashAlgorithm: tspInfo?.tspHashAlgorithm,
+					tspHash: tspInfo?.hash,
 				})
 				.returning();
 
