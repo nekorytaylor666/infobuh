@@ -32,6 +32,7 @@
     "performance-now": "^2.1.0",
     "pg": "^8.11.3",
     "postgres": "^3.4.3",
+    "posthog-node": "^4.17.2",
     "react": "^19.0.0",
     "zod": "^3.24.2",
     "zod-openapi": "^4.2.3",

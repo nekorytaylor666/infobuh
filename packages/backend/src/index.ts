@@ -4,6 +4,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { openAPISpecs } from "hono-openapi";
+import { env } from "hono/adapter";
+import { PostHog } from "posthog-node";
 import authRouter from "./routes/auth";
 import legalEntityRouter from "./routes/legal-entity";
 import employeesRouter from "./routes/employees";
@@ -15,14 +17,10 @@ import { apiReference } from "@scalar/hono-api-reference";
 import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
 import { documentsFlutterRouter } from "./routes/documents_flutter";
-import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import { documentTemplatesRouter } from "./routes/document-templates";
-import { initializeBinData, findEntity } from "@accounting-kz/bin-verifier";
 import { prettyJSON } from "hono/pretty-json";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { env } from "hono/adapter";
+import { createMiddleware } from "hono/factory";
 import { createDbClient } from "@accounting-kz/db";
 import type { HonoEnv } from "./env";
 import { firebaseAdminApp } from "./services/notification"; // Import initialized app
@@ -60,10 +58,83 @@ if (!process.env.DATABASE_URL) {
 }
 app.use("*", async (c, next) => {
 	c.env.DATABASE_URL = process.env.DATABASE_URL as string;
+	c.env.POSTHOG_PUBLIC_KEY = process.env.POSTHOG_PUBLIC_KEY as string;
 	c.env.db = dbClient;
 	c.env.supabase = supabase;
 	c.env.firebaseAdmin = firebaseAdminApp;
 	await next();
+});
+
+const posthogServerMiddleware = createMiddleware(async (c, next) => {
+	const { POSTHOG_PUBLIC_KEY } = env<{ POSTHOG_PUBLIC_KEY: string }>(c);
+	// Ensure POSTHOG_PUBLIC_KEY is available
+	if (!POSTHOG_PUBLIC_KEY) {
+		console.error(
+			"POSTHOG_PUBLIC_KEY is not set. PostHog middleware will not run.",
+		);
+		await next();
+		return;
+	}
+	const posthog = new PostHog(POSTHOG_PUBLIC_KEY, {
+		host: "https://eu.i.posthog.com",
+	});
+
+	// TODO: Replace 'distinct_id_of_user' with actual user identification logic
+	// For example, you might get it from c.get('userId') if you have auth middleware setting it
+	const distinctId = c.get("userId") || "anonymous_user"; // Fallback to anonymous if no user ID
+
+	posthog.capture({
+		distinctId: distinctId,
+		event: "api_request",
+		properties: {
+			path: c.req.path,
+			method: c.req.method,
+			// Add any other relevant properties
+		},
+	});
+	await posthog.shutdown();
+	await next();
+});
+
+// Apply PostHog middleware - place it after CORS and logger, but before authMiddleware if you need userId
+app.use("*", posthogServerMiddleware);
+
+app.onError((err, c) => {
+	const { POSTHOG_PUBLIC_KEY } = env<{ POSTHOG_PUBLIC_KEY: string }>(c);
+	// Ensure POSTHOG_PUBLIC_KEY is available
+	if (POSTHOG_PUBLIC_KEY) {
+		const posthog = new PostHog(POSTHOG_PUBLIC_KEY, {
+			host: "https://eu.i.posthog.com",
+		});
+		// TODO: Replace 'user_distinct_id_with_err_rethrow' with actual user identification logic
+		const distinctId = c.get("userId") || "anonymous_user_error"; // Fallback for error reporting
+
+		posthog.captureException(
+			new Error(err.message, { cause: err }),
+			distinctId,
+			{
+				path: c.req.path,
+				method: c.req.method,
+				url: c.req.url,
+				headers: c.req.header(),
+				// ... other properties
+			},
+		);
+		posthog.shutdown();
+	} else {
+		console.error(
+			"POSTHOG_PUBLIC_KEY is not set. Error will not be reported to PostHog.",
+		);
+	}
+	// Default Hono error handling
+	console.error(`Error: ${err.message}`, err);
+	return c.json(
+		{
+			error: "Internal Server Error",
+			message: err.message,
+		},
+		500,
+	);
 });
 
 app.get(

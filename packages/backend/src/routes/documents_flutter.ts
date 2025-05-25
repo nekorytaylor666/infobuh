@@ -12,6 +12,7 @@ import {
 	isNull,
 	inArray,
 	legalEntities,
+	getTableColumns,
 } from "@accounting-kz/db";
 import { HTTPException } from "hono/http-exception";
 import { describeRoute } from "hono-openapi";
@@ -254,11 +255,16 @@ documentsFlutterRouter.get(
 				message: "Missing legalEntityId query parameter",
 			});
 		}
+		const columns = Object.fromEntries(
+			Object.entries(getTableColumns(documentSignaturesFlutter)).map(
+				([key, value]) => [key, true],
+			),
+		);
 
 		const doc = await c.env.db.query.documentsFlutter.findFirst({
 			where: and(
 				eq(documentsFlutter.id, id),
-				eq(documentsFlutter.legalEntityId, legalEntityId),
+				// eq(documentsFlutter.legalEntityId, legalEntityId),
 			),
 			with: {
 				signatures: {
@@ -266,6 +272,7 @@ documentsFlutterRouter.get(
 						signer: true,
 					},
 					columns: {
+						...columns,
 						cms: includeCmsBoolean,
 					},
 				},

@@ -1,13 +1,14 @@
-import { Context, Next } from "hono";
+import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "hono/adapter";
 
 export async function authMiddleware(c: Context, next: Next) {
-	// if (process.env.NODE_ENV === "development") {
-	// 	await next();
-	// 	return;
-	// }
+	if (process.env.NODE_ENV === "development") {
+		c.set("userId", process.env.TEST_USER_ID);
+		await next();
+		return;
+	}
 	const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = env<{
 		SUPABASE_URL: string;
 		SUPABASE_SERVICE_ROLE_KEY: string;

@@ -8,6 +8,7 @@ export type HonoEnv = {
 		supabase: typeof supabase;
 		db: Database;
 		firebaseAdmin: FirebaseApp;
+		POSTHOG_PUBLIC_KEY: string;
 	};
 	Variables: {
 		userId: string; // Added userId
