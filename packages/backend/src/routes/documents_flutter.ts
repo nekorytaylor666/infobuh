@@ -264,7 +264,7 @@ documentsFlutterRouter.get(
 		const doc = await c.env.db.query.documentsFlutter.findFirst({
 			where: and(
 				eq(documentsFlutter.id, id),
-				// eq(documentsFlutter.legalEntityId, legalEntityId),
+				eq(documentsFlutter.legalEntityId, legalEntityId),
 			),
 			with: {
 				signatures: {
