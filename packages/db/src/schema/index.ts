@@ -11,3 +11,5 @@ export * from "./banks";
 export * from "./deal";
 export * from "./comments";
 export * from "./app-versions";
+// Accounting schemas
+export * from "./accounting";

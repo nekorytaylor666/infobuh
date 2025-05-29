@@ -13,6 +13,7 @@ import banksRouter from "./routes/banks";
 import partnersRouter from "./routes/partners";
 import productsRouter from "./routes/products";
 import fcmTokenRouter from "./routes/fcm-token";
+import accountingRouter from "./routes/accounting";
 import { apiReference } from "@scalar/hono-api-reference";
 import { authMiddleware } from "./middleware/auth";
 import { documentsRouter } from "./routes/documents";
@@ -97,7 +98,7 @@ const posthogServerMiddleware = createMiddleware(async (c, next) => {
 });
 
 // Apply PostHog middleware - place it after CORS and logger, but before authMiddleware if you need userId
-app.use("*", posthogServerMiddleware);
+// app.use("*", posthogServerMiddleware);
 
 app.onError((err, c) => {
 	const { POSTHOG_PUBLIC_KEY } = env<{ POSTHOG_PUBLIC_KEY: string }>(c);
@@ -183,6 +184,7 @@ app.route("/products", productsRouter);
 app.route("/docs-flutter", documentsFlutterRouter);
 app.route("/fcm-token", fcmTokenRouter);
 app.route("/deals", dealRouter);
+app.route("/accounting", accountingRouter);
 
 app.get("/", (c) => {
 	return c.json({ message: "Hello from Hono!" });

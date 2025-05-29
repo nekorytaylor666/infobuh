@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as PrivacyPolicyImport } from './routes/privacy-policy'
 import { Route as OnboardingImport } from './routes/onboarding'
 import { Route as LegalImport } from './routes/legal'
+import { Route as AccountingImport } from './routes/accounting'
 import { Route as AboutImport } from './routes/about'
 import { Route as ShareRouteImport } from './routes/share/route'
 import { Route as IndexImport } from './routes/index'
@@ -40,6 +41,12 @@ const OnboardingRoute = OnboardingImport.update({
 const LegalRoute = LegalImport.update({
   id: '/legal',
   path: '/legal',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AccountingRoute = AccountingImport.update({
+  id: '/accounting',
+  path: '/accounting',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -116,6 +123,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutImport
+      parentRoute: typeof rootRoute
+    }
+    '/accounting': {
+      id: '/accounting'
+      path: '/accounting'
+      fullPath: '/accounting'
+      preLoaderRoute: typeof AccountingImport
       parentRoute: typeof rootRoute
     }
     '/legal': {
@@ -197,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/accounting': typeof AccountingRoute
   '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
@@ -211,6 +226,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/accounting': typeof AccountingRoute
   '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
@@ -226,6 +242,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/accounting': typeof AccountingRoute
   '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
@@ -242,6 +259,7 @@ export interface FileRouteTypes {
     | '/'
     | '/share'
     | '/about'
+    | '/accounting'
     | '/legal'
     | '/onboarding'
     | '/privacy-policy'
@@ -255,6 +273,7 @@ export interface FileRouteTypes {
     | '/'
     | '/share'
     | '/about'
+    | '/accounting'
     | '/legal'
     | '/onboarding'
     | '/privacy-policy'
@@ -268,6 +287,7 @@ export interface FileRouteTypes {
     | '/'
     | '/share'
     | '/about'
+    | '/accounting'
     | '/legal'
     | '/onboarding'
     | '/privacy-policy'
@@ -283,6 +303,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ShareRouteRoute: typeof ShareRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
+  AccountingRoute: typeof AccountingRoute
   LegalRoute: typeof LegalRoute
   OnboardingRoute: typeof OnboardingRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
@@ -295,6 +316,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ShareRouteRoute: ShareRouteRouteWithChildren,
   AboutRoute: AboutRoute,
+  AccountingRoute: AccountingRoute,
   LegalRoute: LegalRoute,
   OnboardingRoute: OnboardingRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
@@ -316,6 +338,7 @@ export const routeTree = rootRoute
         "/",
         "/share",
         "/about",
+        "/accounting",
         "/legal",
         "/onboarding",
         "/privacy-policy",
@@ -336,6 +359,9 @@ export const routeTree = rootRoute
     },
     "/about": {
       "filePath": "about.tsx"
+    },
+    "/accounting": {
+      "filePath": "accounting.tsx"
     },
     "/legal": {
       "filePath": "legal.tsx"
