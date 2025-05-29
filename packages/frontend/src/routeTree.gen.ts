@@ -11,7 +11,9 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as PrivacyPolicyImport } from './routes/privacy-policy'
 import { Route as OnboardingImport } from './routes/onboarding'
+import { Route as LegalImport } from './routes/legal'
 import { Route as AboutImport } from './routes/about'
 import { Route as ShareRouteImport } from './routes/share/route'
 import { Route as IndexImport } from './routes/index'
@@ -23,9 +25,21 @@ import { Route as ShareDealsDealIdDocumentIdImport } from './routes/share/deals/
 
 // Create/Update Routes
 
+const PrivacyPolicyRoute = PrivacyPolicyImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const OnboardingRoute = OnboardingImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LegalRoute = LegalImport.update({
+  id: '/legal',
+  path: '/legal',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -104,11 +118,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalImport
+      parentRoute: typeof rootRoute
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingImport
+      parentRoute: typeof rootRoute
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyImport
       parentRoute: typeof rootRoute
     }
     '/auth/login': {
@@ -169,7 +197,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -181,7 +211,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -194,7 +226,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -208,7 +242,9 @@ export interface FileRouteTypes {
     | '/'
     | '/share'
     | '/about'
+    | '/legal'
     | '/onboarding'
+    | '/privacy-policy'
     | '/auth/login'
     | '/auth/sign'
     | '/auth/signup'
@@ -219,7 +255,9 @@ export interface FileRouteTypes {
     | '/'
     | '/share'
     | '/about'
+    | '/legal'
     | '/onboarding'
+    | '/privacy-policy'
     | '/auth/login'
     | '/auth/sign'
     | '/auth/signup'
@@ -230,7 +268,9 @@ export interface FileRouteTypes {
     | '/'
     | '/share'
     | '/about'
+    | '/legal'
     | '/onboarding'
+    | '/privacy-policy'
     | '/auth/login'
     | '/auth/sign'
     | '/auth/signup'
@@ -243,7 +283,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ShareRouteRoute: typeof ShareRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
+  LegalRoute: typeof LegalRoute
   OnboardingRoute: typeof OnboardingRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignRoute: typeof AuthSignRoute
   AuthSignupRoute: typeof AuthSignupRoute
@@ -253,7 +295,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ShareRouteRoute: ShareRouteRouteWithChildren,
   AboutRoute: AboutRoute,
+  LegalRoute: LegalRoute,
   OnboardingRoute: OnboardingRoute,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignRoute: AuthSignRoute,
   AuthSignupRoute: AuthSignupRoute,
@@ -272,7 +316,9 @@ export const routeTree = rootRoute
         "/",
         "/share",
         "/about",
+        "/legal",
         "/onboarding",
+        "/privacy-policy",
         "/auth/login",
         "/auth/sign",
         "/auth/signup"
@@ -291,8 +337,14 @@ export const routeTree = rootRoute
     "/about": {
       "filePath": "about.tsx"
     },
+    "/legal": {
+      "filePath": "legal.tsx"
+    },
     "/onboarding": {
       "filePath": "onboarding.tsx"
+    },
+    "/privacy-policy": {
+      "filePath": "privacy-policy.tsx"
     },
     "/auth/login": {
       "filePath": "auth/login.tsx"
