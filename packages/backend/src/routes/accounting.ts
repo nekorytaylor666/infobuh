@@ -80,14 +80,19 @@ accountingRouter.get("/currencies", async (c) => {
 
 accountingRouter.get("/accounts", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
+
 		const service = new AccountingService(c.env.db);
 		const accountType = c.req.query("type");
 
 		let accounts;
 		if (accountType) {
-			accounts = await service.getAccountsByType(accountType as any);
+			accounts = await service.getAccountsByType(accountType as any, legalEntityId);
 		} else {
-			accounts = await service.getAccounts();
+			accounts = await service.getAccounts(legalEntityId);
 		}
 
 		return c.json({
@@ -108,8 +113,12 @@ accountingRouter.get("/accounts", async (c) => {
 
 accountingRouter.get("/accounts/hierarchy", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const service = new AccountingService(c.env.db);
-		const hierarchy = await service.getAccountHierarchy();
+		const hierarchy = await service.getAccountHierarchy(legalEntityId);
 
 		return c.json({
 			success: true,
@@ -129,9 +138,13 @@ accountingRouter.get("/accounts/hierarchy", async (c) => {
 
 accountingRouter.get("/accounts/:id", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const id = c.req.param("id");
 		const service = new AccountingService(c.env.db);
-		const account = await service.getAccountById(id);
+		const account = await service.getAccountById(id, legalEntityId);
 
 		if (!account) {
 			return c.json(
@@ -161,9 +174,13 @@ accountingRouter.get("/accounts/:id", async (c) => {
 
 accountingRouter.get("/accounts/:id/ledger", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const id = c.req.param("id");
 		const service = new AccountingService(c.env.db);
-		const ledger = await service.getAccountLedger(id);
+		const ledger = await service.getAccountLedger(id, legalEntityId);
 
 		return c.json({
 			success: true,
@@ -193,7 +210,6 @@ const createJournalEntrySchema = z
 		lines: z
 			.array(
 				z.object({
-					
 					accountId: z.string().uuid(),
 					debitAmount: z.number().min(0).default(0),
 					creditAmount: z.number().min(0).default(0),
@@ -224,6 +240,16 @@ accountingRouter.post(
 	zValidator("json", createJournalEntrySchema),
 	async (c) => {
 		try {
+			const userId = c.get("userId") as string | undefined;
+			const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+
+			if (!userId) {
+				return c.json({ success: false, error: "Unauthorized: User ID is missing." }, 401);
+			}
+			if (!legalEntityId) {
+				return c.json({ success: false, error: "Bad Request: Legal entity ID is missing from query parameters." }, 400);
+			}
+
 			const data = c.req.valid("json");
 			const service = new AccountingService(c.env.db);
 
@@ -233,9 +259,10 @@ accountingRouter.post(
 				{
 					...entryData,
 					status: "draft",
-					createdBy: "bb534d65-c423-4dde-a02a-89f6ca86ae89", // In real app, get from auth context
+					createdBy: userId,
+					legalEntityId: legalEntityId,
 				},
-				lines
+				lines,
 			);
 
 			return c.json({
@@ -258,8 +285,12 @@ accountingRouter.post(
 
 accountingRouter.get("/journal-entries", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const service = new AccountingService(c.env.db);
-		const entries = await service.getJournalEntries();
+		const entries = await service.getJournalEntries(legalEntityId);
 
 		return c.json({
 			success: true,
@@ -279,10 +310,14 @@ accountingRouter.get("/journal-entries", async (c) => {
 
 accountingRouter.get("/journal-entries/:id", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const id = c.req.param("id");
 		const service = new AccountingService(c.env.db);
 
-		const entry = await service.getJournalEntryById(id);
+		const entry = await service.getJournalEntryById(id, legalEntityId);
 		const lines = entry ? await service.getJournalEntryLines(id) : [];
 
 		if (!entry) {
@@ -316,10 +351,19 @@ accountingRouter.get("/journal-entries/:id", async (c) => {
 
 accountingRouter.post("/journal-entries/:id/post", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		const userId = c.get("userId") as string | undefined;
+
+		if (!userId) {
+			return c.json({ success: false, error: "Unauthorized: User ID is missing." }, 401);
+		}
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Bad Request: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const id = c.req.param("id");
 		const service = new AccountingService(c.env.db);
 
-		await service.postJournalEntry(id);
+		await service.postJournalEntry(id, legalEntityId, userId);
 
 		return c.json({
 			success: true,
@@ -341,8 +385,12 @@ accountingRouter.post("/journal-entries/:id/post", async (c) => {
 
 accountingRouter.get("/reports/trial-balance", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const service = new AccountingService(c.env.db);
-		const trialBalance = await service.getTrialBalance();
+		const trialBalance = await service.getTrialBalance(legalEntityId);
 
 		// Calculate totals
 		const totalDebits = trialBalance.reduce(
@@ -379,8 +427,12 @@ accountingRouter.get("/reports/trial-balance", async (c) => {
 
 accountingRouter.get("/reports/balance-sheet", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const service = new AccountingService(c.env.db);
-		const balanceSheet = await service.getBalanceSheet();
+		const balanceSheet = await service.getBalanceSheet(legalEntityId);
 
 		return c.json({
 			success: true,
@@ -400,8 +452,12 @@ accountingRouter.get("/reports/balance-sheet", async (c) => {
 
 accountingRouter.get("/reports/income-statement", async (c) => {
 	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
 		const service = new AccountingService(c.env.db);
-		const incomeStatement = await service.getIncomeStatement();
+		const incomeStatement = await service.getIncomeStatement(legalEntityId);
 
 		return c.json({
 			success: true,

@@ -38,7 +38,7 @@ export const additionalCurrencies: NewCurrency[] = [
 ];
 
 // Kazakhstan Chart of Accounts based on local standards
-export const kazakhstanChartOfAccounts: (Omit<NewAccount, "parentId"> & {
+export const kazakhstanChartOfAccounts: (Omit<NewAccount, "parentId" | "legalEntityId"> & {
 	parentCode?: string;
 })[] = [
 	// ASSETS (1000-1999)

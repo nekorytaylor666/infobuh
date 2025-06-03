@@ -11,6 +11,7 @@ import { relations } from "drizzle-orm";
 import { z } from "zod";
 import { accounts } from "./accounts";
 import { journalEntryLines } from "./journal-entries";
+import { legalEntities } from "../legal-entities";
 
 export const generalLedger = pgTable("general_ledger", {
 	id: uuid("id").primaryKey().defaultRandom(),
@@ -20,6 +21,9 @@ export const generalLedger = pgTable("general_ledger", {
 	journalEntryLineId: uuid("journal_entry_line_id")
 		.notNull()
 		.references(() => journalEntryLines.id),
+	legalEntityId: uuid("legal_entity_id")
+		.notNull()
+		.references(() => legalEntities.id, { onDelete: "cascade" }),
 	transactionDate: date("transaction_date").notNull(),
 	debitAmount: bigint("debit_amount", { mode: "number" }).default(0).notNull(),
 	creditAmount: bigint("credit_amount", { mode: "number" })
@@ -39,6 +43,10 @@ export const generalLedgerRelations = relations(generalLedger, ({ one }) => ({
 		fields: [generalLedger.journalEntryLineId],
 		references: [journalEntryLines.id],
 	}),
+	legalEntity: one(legalEntities, {
+		fields: [generalLedger.legalEntityId],
+		references: [legalEntities.id],
+	}),
 }));
 
 export const insertGeneralLedgerSchema = createInsertSchema(generalLedger, {
@@ -47,6 +55,7 @@ export const insertGeneralLedgerSchema = createInsertSchema(generalLedger, {
 	creditAmount: z.number().min(0).default(0),
 	runningBalance: z.number(),
 	description: z.string().optional(),
+	legalEntityId: z.string().uuid(),
 });
 
 export const selectGeneralLedgerSchema = createSelectSchema(generalLedger);

@@ -24,7 +24,18 @@ import {
 	asc,
 	desc,
 	sql,
+	isNull,
 } from "@accounting-kz/db";
+
+// Define a type for the structure returned by getTrialBalance and used in reporting
+interface TrialBalanceAccountItem {
+	accountCode: string;
+	accountName: string;
+	accountType: AccountType;
+	debitBalance: number;
+	creditBalance: number;
+	balance?: number; // Optional net balance, can be added during processing
+}
 
 export class AccountingService {
 	constructor(private db: Database) {}
@@ -69,134 +80,132 @@ export class AccountingService {
 		return account;
 	}
 
-	async getAccountById(id: string): Promise<Account | null> {
+	async getAccountById(id: string, legalEntityId: string): Promise<Account | null> {
 		const [account] = await this.db
 			.select()
 			.from(accounts)
-			.where(eq(accounts.id, id))
+			.where(and(eq(accounts.id, id), eq(accounts.legalEntityId, legalEntityId)))
 			.limit(1);
 
 		return account || null;
 	}
 
-	async getAccountByCode(code: string): Promise<Account | null> {
+	async getAccountByCode(code: string, legalEntityId: string): Promise<Account | null> {
 		const [account] = await this.db
 			.select()
 			.from(accounts)
-			.where(eq(accounts.code, code))
+			.where(and(eq(accounts.code, code), eq(accounts.legalEntityId, legalEntityId)))
 			.limit(1);
 
 		return account || null;
 	}
 
-	async getAccounts(): Promise<Account[]> {
+	async getAccounts(legalEntityId: string): Promise<Account[]> {
 		return await this.db
 			.select()
 			.from(accounts)
-			.where(eq(accounts.isActive, true))
+			.where(and(eq(accounts.isActive, true), eq(accounts.legalEntityId, legalEntityId)))
 			.orderBy(asc(accounts.code));
 	}
 
-	async getAccountsByType(accountType: AccountType): Promise<Account[]> {
+	async getAccountsByType(accountType: AccountType, legalEntityId: string): Promise<Account[]> {
 		return await this.db
 			.select()
 			.from(accounts)
 			.where(
-				and(eq(accounts.accountType, accountType), eq(accounts.isActive, true)),
+				and(
+					eq(accounts.accountType, accountType),
+					eq(accounts.isActive, true),
+					eq(accounts.legalEntityId, legalEntityId)
+				),
 			)
 			.orderBy(asc(accounts.code));
 	}
 
-	async getChildAccounts(parentId: string): Promise<Account[]> {
+	async getChildAccounts(parentId: string, legalEntityId: string): Promise<Account[]> {
 		return await this.db
 			.select()
 			.from(accounts)
-			.where(and(eq(accounts.parentId, parentId), eq(accounts.isActive, true)))
+			.where(and(eq(accounts.parentId, parentId), eq(accounts.isActive, true), eq(accounts.legalEntityId, legalEntityId)))
 			.orderBy(asc(accounts.code));
 	}
 
-	async getAccountHierarchy(): Promise<Account[]> {
-		// Get all accounts and organize them hierarchically
-		const allAccounts = await this.getAccounts();
-		return this.buildAccountTree(allAccounts);
+	async getAccountHierarchy(legalEntityId: string): Promise<Account[]> {
+		const allAccounts = await this.getAccounts(legalEntityId);
+		return this.buildAccountTree(allAccounts, null, legalEntityId);
 	}
 
 	private buildAccountTree(
-		accounts: Account[],
+		allAccounts: Account[],
 		parentId: string | null = null,
+		legalEntityId: string
 	): Account[] {
-		return accounts
+		return allAccounts
 			.filter((account) => account.parentId === parentId)
 			.map((account) => ({
 				...account,
-				children: this.buildAccountTree(accounts, account.id),
+				children: this.buildAccountTree(allAccounts, account.id, legalEntityId),
 			}));
 	}
 
 	// ===== JOURNAL ENTRY OPERATIONS =====
 
 	async createJournalEntry(
-		entryData: Omit<NewJournalEntry, "totalDebit" | "totalCredit">,
-		lines: Omit<NewJournalEntryLine, "journalEntryId" | "lineNumber">[],
+		entryData: Omit<NewJournalEntry, "id" | "totalDebit" | "totalCredit" | "createdAt" | "updatedAt">,
+		lines: Omit<NewJournalEntryLine, "id" | "journalEntryId" | "lineNumber" | "createdAt" | "updatedAt">[],
 	): Promise<JournalEntry | null> {
 		try {
-			
-		
-		return await this.db.transaction(async (trx) => {
-			// Calculate totals
-			const totalDebit = lines.reduce(
-				(sum, line) => sum + (line.debitAmount || 0),
-				0,
-			);
-			const totalCredit = lines.reduce(
-				(sum, line) => sum + (line.creditAmount || 0),
-				0,
-			);
-
-			if (totalDebit !== totalCredit) {
-				throw new Error(
-					`Debits (${totalDebit}) must equal credits (${totalCredit})`,
+			return await this.db.transaction(async (trx) => {
+				const totalDebit = lines.reduce(
+					(sum, line) => sum + (line.debitAmount || 0),
+					0,
 				);
-			}
+				const totalCredit = lines.reduce(
+					(sum, line) => sum + (line.creditAmount || 0),
+					0,
+				);
 
-			// Create journal entry
-			const [entry] = await trx
-				.insert(journalEntries)
-				.values({
-					...entryData,
-					totalDebit: totalDebit,
-					totalCredit: totalCredit,
-				})
-				.returning();
+				if (Math.abs(totalDebit - totalCredit) >= 0.01) {
+					throw new Error(
+						`Debits (${totalDebit}) must equal credits (${totalCredit})`,
+					);
+				}
+				
+				const [entry] = await trx
+					.insert(journalEntries)
+					.values({
+						...entryData,
+						totalDebit: totalDebit,
+						totalCredit: totalCredit,
+					})
+					.returning();
 
-			// Create journal entry lines
-			const entryLines = lines.map((line, index) => ({
-				...line,
-				journalEntryId: entry.id,
-				lineNumber: index + 1,
-			}));
+				const entryLines = lines.map((line, index) => ({
+					...line,
+					journalEntryId: entry.id,
+					lineNumber: index + 1,
+				}));
 
-			await trx.insert(journalEntryLines).values(entryLines);
+				await trx.insert(journalEntryLines).values(entryLines);
 
-			return entry;
-		});
+				return entry;
+			});
 		} catch (error) {
-			console.log(error)
+			console.error("Error creating journal entry:", error);
 			return null;
 		}
 	}
 
-	async postJournalEntry(entryId: string): Promise<void> {
+	async postJournalEntry(entryId: string, legalEntityId: string, userId: string): Promise<void> {
 		await this.db.transaction(async (trx) => {
-			// Get journal entry and lines
 			const [entry] = await trx
 				.select()
 				.from(journalEntries)
-				.where(eq(journalEntries.id, entryId))
+				.where(and(eq(journalEntries.id, entryId), eq(journalEntries.legalEntityId, legalEntityId)))
 				.limit(1);
 
 			if (!entry) {
-				throw new Error("Journal entry not found");
+				throw new Error("Journal entry not found or not associated with this legal entity");
 			}
 
 			if (entry.status === "posted") {
@@ -208,23 +217,23 @@ export class AccountingService {
 				.from(journalEntryLines)
 				.where(eq(journalEntryLines.journalEntryId, entryId));
 
-			// Update journal entry status
 			await trx
 				.update(journalEntries)
-				.set({ status: "posted" })
+				.set({ status: "posted", approvedBy: userId, updatedAt: new Date() })
 				.where(eq(journalEntries.id, entryId));
 
-			// Post to general ledger
 			for (const line of lines) {
 				const runningBalance = await this.calculateRunningBalance(
 					trx,
 					line.accountId,
 					line.debitAmount - line.creditAmount,
+					legalEntityId,
 				);
 
 				await trx.insert(generalLedger).values({
 					accountId: line.accountId,
 					journalEntryLineId: line.id,
+					legalEntityId: legalEntityId,
 					transactionDate: entry.entryDate,
 					debitAmount: line.debitAmount,
 					creditAmount: line.creditAmount,
@@ -239,30 +248,32 @@ export class AccountingService {
 		trx: any,
 		accountId: string,
 		changeAmount: number,
+		legalEntityId: string,
 	): Promise<number> {
 		const [lastEntry] = await trx
-			.select()
+			.select({ runningBalance: generalLedger.runningBalance })
 			.from(generalLedger)
-			.where(eq(generalLedger.accountId, accountId))
-			.orderBy(desc(generalLedger.createdAt))
+			.where(and(eq(generalLedger.accountId, accountId), eq(generalLedger.legalEntityId, legalEntityId)))
+			.orderBy(desc(generalLedger.createdAt), desc(generalLedger.id))
 			.limit(1);
 
 		const previousBalance = lastEntry?.runningBalance || 0;
 		return previousBalance + changeAmount;
 	}
 
-	async getJournalEntries(): Promise<JournalEntry[]> {
+	async getJournalEntries(legalEntityId: string): Promise<JournalEntry[]> {
 		return await this.db
 			.select()
 			.from(journalEntries)
-			.orderBy(desc(journalEntries.entryDate));
+			.where(eq(journalEntries.legalEntityId, legalEntityId))
+			.orderBy(desc(journalEntries.entryDate), desc(journalEntries.createdAt));
 	}
 
-	async getJournalEntryById(id: string): Promise<JournalEntry | null> {
+	async getJournalEntryById(id: string, legalEntityId: string): Promise<JournalEntry | null> {
 		const [entry] = await this.db
 			.select()
 			.from(journalEntries)
-			.where(eq(journalEntries.id, id))
+			.where(and(eq(journalEntries.id, id), eq(journalEntries.legalEntityId, legalEntityId)))
 			.limit(1);
 
 		return entry || null;
@@ -278,7 +289,7 @@ export class AccountingService {
 
 	// ===== REPORTING OPERATIONS =====
 
-	async getTrialBalance(): Promise<
+	async getTrialBalance(legalEntityId: string): Promise<
 		{
 			accountCode: string;
 			accountName: string;
@@ -289,47 +300,56 @@ export class AccountingService {
 	> {
 		const result = await this.db
 			.select({
-				accountId: generalLedger.accountId,
 				accountCode: accounts.code,
 				accountName: accounts.name,
 				accountType: accounts.accountType,
-				totalDebits: sql<number>`COALESCE(SUM(${generalLedger.debitAmount}), 0)`,
-				totalCredits: sql<number>`COALESCE(SUM(${generalLedger.creditAmount}), 0)`,
+				totalDebits: sql<number>`COALESCE(SUM(${generalLedger.debitAmount}), 0)`.mapWith(Number),
+				totalCredits: sql<number>`COALESCE(SUM(${generalLedger.creditAmount}), 0)`.mapWith(Number),
 			})
 			.from(generalLedger)
-			.innerJoin(accounts, eq(generalLedger.accountId, accounts.id))
+			.innerJoin(accounts, 
+				and(
+					eq(generalLedger.accountId, accounts.id),
+					eq(accounts.legalEntityId, legalEntityId)
+				)
+			)
+			.where(eq(generalLedger.legalEntityId, legalEntityId))
 			.groupBy(
-				generalLedger.accountId,
 				accounts.code,
 				accounts.name,
 				accounts.accountType,
+				accounts.id
 			)
 			.orderBy(asc(accounts.code));
-
+		
 		return result.map((row) => {
-			const netBalance = row.totalDebits - row.totalCredits;
-			const isDebitBalance = ["asset", "expense"].includes(
-				row.accountType as string,
-			);
+			const rawDebit = Number(row.totalDebits) || 0;
+			const rawCredit = Number(row.totalCredits) || 0;
+			const netBalance = rawDebit - rawCredit;
+		
+			const isDebitType = ["asset", "expense"].includes(row.accountType as string);
+			let debitBalance = 0;
+			let creditBalance = 0;
 
+			if (isDebitType) {
+				if (netBalance >= 0) debitBalance = netBalance;
+				else creditBalance = Math.abs(netBalance);
+			} else {
+				if (netBalance <= 0) creditBalance = Math.abs(netBalance);
+				else debitBalance = netBalance;
+			}
+			
 			return {
 				accountCode: row.accountCode,
 				accountName: row.accountName,
 				accountType: row.accountType,
-				debitBalance: isDebitBalance && netBalance > 0 ? netBalance : 0,
-				creditBalance:
-					!isDebitBalance && netBalance < 0
-						? Math.abs(netBalance)
-						: isDebitBalance && netBalance < 0
-							? Math.abs(netBalance)
-							: !isDebitBalance && netBalance > 0
-								? netBalance
-								: 0,
+				debitBalance,
+				creditBalance,
 			};
 		});
 	}
 
-	async getAccountLedger(accountId: string): Promise<
+	async getAccountLedger(accountId: string, legalEntityId: string): Promise<
 		{
 			transactionDate: string;
 			description: string | null;
@@ -339,6 +359,11 @@ export class AccountingService {
 			entryNumber: string;
 		}[]
 	> {
+		const account = await this.getAccountById(accountId, legalEntityId);
+		if (!account) {
+			throw new Error("Account not found or does not belong to the specified legal entity.");
+		}
+
 		const result = await this.db
 			.select({
 				transactionDate: generalLedger.transactionDate,
@@ -357,91 +382,128 @@ export class AccountingService {
 				journalEntries,
 				eq(journalEntryLines.journalEntryId, journalEntries.id),
 			)
-			.where(eq(generalLedger.accountId, accountId))
+			.where(and(eq(generalLedger.accountId, accountId), eq(generalLedger.legalEntityId, legalEntityId)))
 			.orderBy(
 				asc(generalLedger.transactionDate),
 				asc(generalLedger.createdAt),
+				asc(generalLedger.id)
 			);
 
-		return result;
+		return result.map(row => ({
+			...row,
+			debitAmount: Number(row.debitAmount), 
+			creditAmount: Number(row.creditAmount),
+			runningBalance: Number(row.runningBalance)
+		}));
 	}
 
-	async getBalanceSheet(): Promise<{
-		assets: { current: number; nonCurrent: number; total: number };
-		liabilities: { current: number; nonCurrent: number; total: number };
-		equity: { total: number };
+	async getBalanceSheet(legalEntityId: string): Promise<{
+		assets: { currentAccounts: TrialBalanceAccountItem[]; nonCurrentAccounts: TrialBalanceAccountItem[]; current: number; nonCurrent: number; total: number };
+		liabilities: { currentAccounts: TrialBalanceAccountItem[]; nonCurrentAccounts: TrialBalanceAccountItem[]; current: number; nonCurrent: number; total: number };
+		equity: { accounts: TrialBalanceAccountItem[]; total: number };
+		retainedEarnings: number;
+		totalLiabilitiesAndEquity: number;
 	}> {
-		const accounts = await this.getTrialBalance();
+		const trialBalanceAccounts = await this.getTrialBalance(legalEntityId);
 
-		const assets = accounts.filter((acc) => acc.accountType === "asset");
-		const liabilities = accounts.filter(
-			(acc) => acc.accountType === "liability",
-		);
-		const equity = accounts.filter((acc) => acc.accountType === "equity");
+		const assetsList: TrialBalanceAccountItem[] = [];
+		const liabilitiesList: TrialBalanceAccountItem[] = [];
+		const equityList: TrialBalanceAccountItem[] = [];
 
-		// Simplified categorization - in practice you'd have more sophisticated logic
-		const currentAssets = assets.filter((acc) =>
-			acc.accountCode.startsWith("11"),
-		); // 1100-1199
-		const nonCurrentAssets = assets.filter((acc) =>
-			acc.accountCode.startsWith("12"),
-		); // 1200+
+		let totalAssets = 0;
+		let totalLiabilities = 0;
+		let totalEquity = 0;
 
-		const currentLiabilities = liabilities.filter((acc) =>
-			acc.accountCode.startsWith("20"),
-		); // 2000-2099
-		const nonCurrentLiabilities = liabilities.filter((acc) =>
-			acc.accountCode.startsWith("21"),
-		); // 2100+
+		trialBalanceAccounts.forEach(acc => {
+			const balance = acc.debitBalance - acc.creditBalance;
+			const accountDetail: TrialBalanceAccountItem = { ...acc, balance };
+
+			if (acc.accountType === "asset") {
+				assetsList.push(accountDetail);
+				totalAssets += balance;
+			} else if (acc.accountType === "liability") {
+				liabilitiesList.push(accountDetail);
+				totalLiabilities -= balance;
+			} else if (acc.accountType === "equity") {
+				equityList.push(accountDetail);
+				totalEquity -= balance;
+			}
+		});
+		
+		const currentAssetsAccounts = assetsList.filter(acc => acc.accountCode.startsWith("10") || acc.accountCode.startsWith("11") || acc.accountCode.startsWith("12") || acc.accountCode.startsWith("13"));
+		const nonCurrentAssetsAccounts = assetsList.filter(acc => acc.accountCode.startsWith("2"));
+		
+		const currentLiabilitiesAccounts = liabilitiesList.filter(acc => acc.accountCode.startsWith("30") || acc.accountCode.startsWith("31") || acc.accountCode.startsWith("33"));
+		const nonCurrentLiabilitiesAccounts = liabilitiesList.filter(acc => acc.accountCode.startsWith("40") || acc.accountCode.startsWith("41"));
+		
+		const currentAssetsTotal = currentAssetsAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+		const nonCurrentAssetsTotal = nonCurrentAssetsAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+
+		const currentLiabilitiesTotal = currentLiabilitiesAccounts.reduce((sum, acc) => sum - (acc.balance || 0), 0);
+		const nonCurrentLiabilitiesTotal = nonCurrentLiabilitiesAccounts.reduce((sum, acc) => sum - (acc.balance || 0), 0);
+		
+		const incomeStatement = await this.getIncomeStatement(legalEntityId);
+		const retainedEarningsOrCurrentYearNetIncome = incomeStatement.netIncome;
+
+		const reportedEquityTotal = totalEquity + retainedEarningsOrCurrentYearNetIncome;
 
 		return {
 			assets: {
-				current: currentAssets.reduce((sum, acc) => sum + acc.debitBalance, 0),
-				nonCurrent: nonCurrentAssets.reduce(
-					(sum, acc) => sum + acc.debitBalance,
-					0,
-				),
-				total: assets.reduce((sum, acc) => sum + acc.debitBalance, 0),
+				currentAccounts: currentAssetsAccounts,
+				nonCurrentAccounts: nonCurrentAssetsAccounts,
+				current: currentAssetsTotal,
+				nonCurrent: nonCurrentAssetsTotal,
+				total: totalAssets,
 			},
 			liabilities: {
-				current: currentLiabilities.reduce(
-					(sum, acc) => sum + acc.creditBalance,
-					0,
-				),
-				nonCurrent: nonCurrentLiabilities.reduce(
-					(sum, acc) => sum + acc.creditBalance,
-					0,
-				),
-				total: liabilities.reduce((sum, acc) => sum + acc.creditBalance, 0),
+				currentAccounts: currentLiabilitiesAccounts,
+				nonCurrentAccounts: nonCurrentLiabilitiesAccounts,
+				current: currentLiabilitiesTotal,
+				nonCurrent: nonCurrentLiabilitiesTotal,
+				total: totalLiabilities,
 			},
 			equity: {
-				total: equity.reduce((sum, acc) => sum + acc.creditBalance, 0),
+				accounts: equityList,
+				total: reportedEquityTotal,
 			},
+			retainedEarnings: retainedEarningsOrCurrentYearNetIncome,
+			totalLiabilitiesAndEquity: totalLiabilities + reportedEquityTotal,
 		};
 	}
 
-	async getIncomeStatement(): Promise<{
+	async getIncomeStatement(legalEntityId: string): Promise<{
+		revenueItems: TrialBalanceAccountItem[];
+		expenseItems: TrialBalanceAccountItem[];
 		revenue: { total: number };
-		expenses: { total: number };
+		costOfSales?: { total: number };
+		grossProfit?: number;
+		operatingExpenses?: { total: number };
+		operatingIncome?: number;
+		otherIncome?: { total: number };
+		otherExpenses?: { total: number };
+		incomeBeforeTax?: number;
+		incomeTax?: { total: number };
 		netIncome: number;
 	}> {
-		const accounts = await this.getTrialBalance();
+		const trialBalanceAccounts = await this.getTrialBalance(legalEntityId);
 
-		const revenue = accounts.filter((acc) => acc.accountType === "revenue");
-		const expenses = accounts.filter((acc) => acc.accountType === "expense");
+		const revenueAccounts = trialBalanceAccounts.filter((acc) => acc.accountType === "revenue");
+		const expenseAccounts = trialBalanceAccounts.filter((acc) => acc.accountType === "expense");
 
-		const totalRevenue = revenue.reduce(
-			(sum, acc) => sum + acc.creditBalance,
+		const totalRevenue = revenueAccounts.reduce(
+			(sum, acc) => sum + acc.creditBalance - acc.debitBalance,
 			0,
 		);
-		const totalExpenses = expenses.reduce(
-			(sum, acc) => sum + acc.debitBalance,
+		const totalExpenses = expenseAccounts.reduce(
+			(sum, acc) => sum + acc.debitBalance - acc.creditBalance,
 			0,
 		);
 
 		return {
+			revenueItems: revenueAccounts,
+			expenseItems: expenseAccounts,
 			revenue: { total: totalRevenue },
-			expenses: { total: totalExpenses },
+			operatingExpenses: { total: totalExpenses },
 			netIncome: totalRevenue - totalExpenses,
 		};
 	}

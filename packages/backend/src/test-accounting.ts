@@ -4,6 +4,9 @@
  */
 
 const BASE_URL = "http://localhost:3000/accounting";
+// Define a placeholder Legal Entity ID. 
+// !! REPLACE THIS with an actual legalEntityId from your test data or seed script !!
+const testLegalEntityId = "fe4d7f2a-adda-4db9-9d18-772bded63c29"; 
 
 interface ApiResponse<T = any> {
 	success: boolean;
@@ -35,13 +38,21 @@ interface JournalEntry {
 }
 
 async function makeRequest<T>(
-	url: string,
+	path: string, // Renamed from url to path for clarity, as BASE_URL is prepended
 	options?: RequestInit,
+	isLegalEntityScoped: boolean = true, // Flag to indicate if legalEntityId should be added
 ): Promise<ApiResponse<T>> {
 	try {
-		const response = await fetch(`${BASE_URL}${url}`, {
+		let fullPath = path;
+		if (isLegalEntityScoped && testLegalEntityId) {
+			fullPath = path.includes('?') ? `${path}&legalEntityId=${testLegalEntityId}` : `${path}?legalEntityId=${testLegalEntityId}`;
+		}
+
+		const response = await fetch(`${BASE_URL}${fullPath}`, {
 			headers: {
 				"Content-Type": "application/json",
+				// Assuming your auth middleware sets a test user ID, if not, you might need a test token
+				// "Authorization": "Bearer your_test_jwt_token_if_needed"
 				...options?.headers,
 			},
 			...options,
@@ -49,7 +60,7 @@ async function makeRequest<T>(
 
 		return await response.json();
 	} catch (error) {
-		console.error(`Request failed: ${url}`, error);
+		console.error(`Request failed: ${BASE_URL}${path}`, error);
 		throw error;
 	}
 }
@@ -59,26 +70,26 @@ async function testAccountingSystem() {
 	console.log("=".repeat(50));
 
 	try {
-		// 1. Test basic connectivity
+		// 1. Test basic connectivity (not legal entity scoped)
 		console.log("\n1. Testing system connectivity...");
-		const testResponse = await makeRequest("/test");
+		const testResponse = await makeRequest("/test", {}, false); 
 		console.log("✅ System test:", testResponse);
 
-		// 2. Seed the database
+		// 2. Seed the database (not legal entity scoped)
 		console.log("\n2. Seeding database...");
-		const seedResponse = await makeRequest("/seed", { method: "POST" });
+		const seedResponse = await makeRequest("/seed", { method: "POST" }, false);
 		console.log("✅ Database seeded:", seedResponse);
 
-		// 3. Create sample transactions
+		// 3. Create sample transactions (not legal entity scoped, assuming seed handles LE association if needed)
 		console.log("\n3. Creating sample transactions...");
 		const transactionsResponse = await makeRequest("/seed/transactions", {
 			method: "POST",
-		});
+		}, false);
 		console.log("✅ Sample transactions:", transactionsResponse);
 
-		// 4. Test currencies
+		// 4. Test currencies (assuming global, not legal entity scoped)
 		console.log("\n4. Testing currencies...");
-		const currenciesResponse = await makeRequest<Currency[]>("/currencies");
+		const currenciesResponse = await makeRequest<Currency[]>("/currencies", {}, false);
 		console.log(
 			"✅ Currencies:",
 			currenciesResponse.data?.length || 0,
@@ -89,18 +100,18 @@ async function testAccountingSystem() {
 			currenciesResponse.data?.map((c: Currency) => `${c.code} (${c.name})`) || [],
 		);
 
-		// 5. Test accounts
+		// 5. Test accounts (scoped to legalEntityId)
 		console.log("\n5. Testing accounts...");
-		const accountsResponse = await makeRequest<Account[]>("/accounts");
+		const accountsResponse = await makeRequest<Account[]>("/accounts"); // Will add legalEntityId by default
 		console.log(
 			"✅ Accounts:",
 			accountsResponse.data?.length || 0,
 			"accounts found",
 		);
 
-		// 6. Test account hierarchy
+		// 6. Test account hierarchy (scoped to legalEntityId)
 		console.log("\n6. Testing account hierarchy...");
-		const hierarchyResponse = await makeRequest<Account[]>("/accounts/hierarchy");
+		const hierarchyResponse = await makeRequest<Account[]>("/accounts/hierarchy"); // Will add legalEntityId
 		console.log("✅ Account hierarchy loaded");
 		console.log(
 			"Root accounts:",
@@ -317,6 +328,13 @@ async function createSampleJournalEntry() {
 	}
 }
 
+async function getJournalEntries() {
+	const entriesResponse = await makeRequest<JournalEntry[]>("/journal-entries");
+	console.log("✅ Journal entries:", entriesResponse.data?.length || 0, "entries found");
+	console.log(entriesResponse.data);
+	return entriesResponse.data;
+}
+
 // Run tests
 console.log("🚀 Starting Accounting System Tests");
 console.log("Make sure the server is running on http://localhost:3000");
@@ -326,4 +344,5 @@ console.log("");
 setTimeout(async () => {
 	await testAccountingSystem();
 	await createSampleJournalEntry();
+	await getJournalEntries();
 }, 1000);

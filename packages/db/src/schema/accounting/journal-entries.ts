@@ -14,6 +14,7 @@ import { z } from "zod";
 import { type EntryStatus, ENTRY_STATUSES } from "./enums";
 import { accounts } from "./accounts";
 import { currencies } from "./currencies";
+import { legalEntities } from "../legal-entities";
 
 export const journalEntries = pgTable(
 	"journal_entries",
@@ -30,6 +31,9 @@ export const journalEntries = pgTable(
 		currencyId: uuid("currency_id")
 			.notNull()
 			.references(() => currencies.id),
+		legalEntityId: uuid("legal_entity_id")
+			.notNull()
+			.references(() => legalEntities.id, { onDelete: "cascade" }),
 		totalDebit: bigint("total_debit", { mode: "number" }).notNull(),
 		totalCredit: bigint("total_credit", { mode: "number" }).notNull(),
 		createdBy: uuid("created_by").notNull(),
@@ -75,6 +79,10 @@ export const journalEntriesRelations = relations(
 			fields: [journalEntries.currencyId],
 			references: [currencies.id],
 		}),
+		legalEntity: one(legalEntities, {
+			fields: [journalEntries.legalEntityId],
+			references: [legalEntities.id],
+		}),
 		// Note: User relations will be added when auth schema is properly integrated
 	}),
 );
@@ -100,9 +108,11 @@ export const insertJournalEntrySchema = createInsertSchema(journalEntries, {
 	reference: z.string().max(100).optional(),
 	status: z.enum(ENTRY_STATUSES).default("draft"),
 	currencyId: z.string().uuid(),
+	legalEntityId: z.string().uuid(),
 	totalDebit: z.number().min(0),
 	totalCredit: z.number().min(0),
-}).refine((data) => data.totalDebit === data.totalCredit, {
+}).omit({ createdBy: true })
+.refine((data) => data.totalDebit === data.totalCredit, {
 	message: "Total debits must equal total credits",
 	path: ["totalCredit"],
 });
