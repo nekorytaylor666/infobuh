@@ -156,6 +156,28 @@ export class AccountingService {
 	): Promise<JournalEntry | null> {
 		try {
 			return await this.db.transaction(async (trx) => {
+				// Check if all accounts exist concurrently
+				const accountExistenceChecks = lines.map(async (line) => {
+					const account = await trx
+						.select({ id: accounts.id })
+						.from(accounts)
+						.where(
+							and(
+								eq(accounts.id, line.accountId),
+								eq(accounts.legalEntityId, entryData.legalEntityId),
+								eq(accounts.isActive, true),
+							),
+						)
+						.limit(1);
+					if (account.length === 0) {
+						throw new Error(
+							`Account with ID ${line.accountId} not found or not active for legal entity ${entryData.legalEntityId}.`,
+						);
+					}
+				});
+
+				await Promise.all(accountExistenceChecks);
+
 				const totalDebit = lines.reduce(
 					(sum, line) => sum + (line.debitAmount || 0),
 					0,

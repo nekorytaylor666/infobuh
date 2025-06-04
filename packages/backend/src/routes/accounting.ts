@@ -12,7 +12,13 @@ const accountingRouter = new Hono<HonoEnv>();
 accountingRouter.post("/seed", async (c) => {
 	try {
 		const seedService = new AccountingSeedService(c.env.db);
-		const result = await seedService.seedDatabase();
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		const userId = c.get("userId") as string | undefined;
+
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Bad Request: Legal entity ID is missing from query parameters." }, 400);
+		}
+		const result = await seedService.seedDatabase(legalEntityId, userId);
 
 		return c.json({
 			success: true,
@@ -34,7 +40,16 @@ accountingRouter.post("/seed", async (c) => {
 accountingRouter.post("/seed/transactions", async (c) => {
 	try {
 		const seedService = new AccountingSeedService(c.env.db);
-		const result = await seedService.createSampleTransactions();
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		const userId = c.get("userId") as string | undefined;
+
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Bad Request: Legal entity ID is missing from query parameters." }, 400);
+		}
+		if (!userId) {
+			return c.json({ success: false, error: "Unauthorized: User ID is missing." }, 401);
+		}
+		const result = await seedService.createSampleTransactions(legalEntityId, userId);
 
 		return c.json({
 			success: true,
@@ -480,9 +495,11 @@ accountingRouter.get("/reports/income-statement", async (c) => {
 accountingRouter.get("/test", async (c) => {
 	try {
 		const service = new AccountingService(c.env.db);
+		const legalEntityId = c.req.query("legalEntityId") || "test-legal-entity-id";
+		
 		const currencies = await service.getCurrencies();
-		const accounts = await service.getAccounts();
-		const entries = await service.getJournalEntries();
+		const accounts = await service.getAccounts(legalEntityId);
+		const entries = await service.getJournalEntries(legalEntityId);
 
 		return c.json({
 			success: true,
