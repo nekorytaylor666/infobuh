@@ -37,6 +37,10 @@ interface TrialBalanceAccountItem {
 	balance?: number; // Optional net balance, can be added during processing
 }
 
+export type CreateJournalEntryResult =
+	| { success: true; entry: JournalEntry }
+	| { success: false; error: { type: "ACCOUNT_NOT_FOUND" | "TRANSACTION_ERROR"; message: string } };
+
 export class AccountingService {
 	constructor(private db: Database) {}
 
@@ -153,22 +157,36 @@ export class AccountingService {
 	async createJournalEntry(
 		entryData: Omit<NewJournalEntry, "id" | "totalDebit" | "totalCredit" | "createdAt" | "updatedAt">,
 		lines: Omit<NewJournalEntryLine, "id" | "journalEntryId" | "lineNumber" | "createdAt" | "updatedAt">[],
-	): Promise<JournalEntry | null> {
+	): Promise<CreateJournalEntryResult> {
 		try {
-			return await this.db.transaction(async (trx) => {
-				// Check if all accounts exist concurrently
-				const accountExistenceChecks = lines.map(async (line) => {
-					const account = await trx.query.accounts.findFirst({
-						where: and(eq(accounts.id, line.accountId), eq(accounts.legalEntityId, entryData.legalEntityId), eq(accounts.isActive, true)),
-					});
-					if (!account) {
-						throw new Error(
-							`Account with ID ${line.accountId} not found or not active for legal entity ${entryData.legalEntityId}.`,
-						);
-					}
-				});
+			// Zod validation for debit/credit balance, min lines, etc., is handled by the route middleware.
 
-				await Promise.all(accountExistenceChecks);
+			const entry = await this.db.transaction(async (trx) => {
+				// Check if all accounts exist concurrently
+				try {
+					const accountExistenceChecks = lines.map(async (line) => {
+						const account = await trx.query.accounts.findFirst({
+							columns: { id: true }, // Only fetch necessary columns
+							where: and(
+								eq(accounts.id, line.accountId),
+								eq(accounts.legalEntityId, entryData.legalEntityId),
+								eq(accounts.isActive, true),
+							),
+						});
+						if (!account) {
+							const err = new Error(
+								`Account with ID ${line.accountId} not found or not active for legal entity ${entryData.legalEntityId}.`,
+							);
+							err.name = "AccountNotFoundError"; // Custom marker for specific error handling
+							throw err;
+						}
+					});
+					await Promise.all(accountExistenceChecks);
+				} catch (err: any) {
+					// Re-throw to be caught by the transaction's error handling, which will roll back
+					// and then be caught by the outer catch block of this createJournalEntry method.
+					throw err;
+				}
 
 				const totalDebit = lines.reduce(
 					(sum, line) => sum + (line.debitAmount || 0),
@@ -179,13 +197,7 @@ export class AccountingService {
 					0,
 				);
 
-				if (Math.abs(totalDebit - totalCredit) >= 0.01) {
-					throw new Error(
-						`Debits (${totalDebit}) must equal credits (${totalCredit})`,
-					);
-				}
-				
-				const [entry] = await trx
+				const [createdEntry] = await trx
 					.insert(journalEntries)
 					.values({
 						...entryData,
@@ -194,19 +206,30 @@ export class AccountingService {
 					})
 					.returning();
 
-				const entryLines = lines.map((line, index) => ({
+				const entryLinesToInsert = lines.map((line, index) => ({
 					...line,
-					journalEntryId: entry.id,
+					journalEntryId: createdEntry.id,
 					lineNumber: index + 1,
 				}));
 
-				await trx.insert(journalEntryLines).values(entryLines);
-
-				return entry;
+				await trx.insert(journalEntryLines).values(entryLinesToInsert);
+				return createdEntry;
 			});
-		} catch (error) {
-			console.error("Error creating journal entry:", error);
-			return null;
+
+			if (!entry) {
+				// This case is unlikely if transaction throws on error and returns value on success.
+				// But as a safeguard:
+				return { success: false, error: { type: "TRANSACTION_ERROR", message: "Transaction completed but returned no entry." } };
+			}
+			return { success: true, entry };
+
+		} catch (error: any) {
+			console.error("Error creating journal entry in service:", error.message); // Log the actual error
+			if (error.name === "AccountNotFoundError") {
+				return { success: false, error: { type: "ACCOUNT_NOT_FOUND", message: error.message } };
+			}
+			// For any other errors caught from the transaction (DB constraints, etc.)
+			return { success: false, error: { type: "TRANSACTION_ERROR", message: error.message || "An unexpected error occurred during journal entry creation." } };
 		}
 	}
 

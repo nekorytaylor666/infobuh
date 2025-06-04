@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { AccountingService } from "../lib/accounting-service/accounting-service.index";
+import { AccountingService, type CreateJournalEntryResult } from "../lib/accounting-service/accounting-service.index";
 import { AccountingSeedService } from "../lib/accounting-service/seed-service";
 import type { HonoEnv } from "../env";
 
@@ -270,7 +270,7 @@ accountingRouter.post(
 
 			const { lines, ...entryData } = data;
 
-			const entry = await service.createJournalEntry(
+			const result: CreateJournalEntryResult = await service.createJournalEntry(
 				{
 					...entryData,
 					status: "draft",
@@ -279,21 +279,31 @@ accountingRouter.post(
 				},
 				lines,
 			);
-			if (!entry) {
-				return c.json({ success: false, error: "Failed to create journal entry" }, 500);
+
+			if (!result.success) {
+				switch (result.error.type) {
+					case "ACCOUNT_NOT_FOUND":
+						return c.json({ success: false, error: "Bad Request", message: result.error.message }, 400);
+					case "TRANSACTION_ERROR":
+						return c.json({ success: false, error: "Internal Server Error", message: "Failed to create journal entry due to a server issue. Check server logs for details." }, 500);
+					default:
+						console.error("Unhandled error type from createJournalEntry in route:", (result.error as any));
+						return c.json({ success: false, error: "Internal Server Error", message: "An unexpected error occurred while processing the journal entry." }, 500);
+				}
 			}
 
 			return c.json({
 				success: true,
-				data: entry,
+				data: result.entry,
 				message: "Journal entry created successfully",
 			});
-		} catch (error) {
+		} catch (error: any) {
+			console.error("Unexpected error in POST /journal-entries route:", error);
 			return c.json(
 				{
 					success: false,
-					error: "Failed to create journal entry",
-					message: error instanceof Error ? error.message : "Unknown error",
+					error: "Internal Server Error",
+					message: error.message || "An unexpected critical error occurred.",
 				},
 				500,
 			);
