@@ -3,6 +3,8 @@
  * Run this to test all accounting functionality
  */
 
+import { accounts, and, createDbClient, eq } from "@accounting-kz/db";
+
 const BASE_URL = "http://localhost:3000/accounting";
 // Define a placeholder Legal Entity ID. 
 // !! REPLACE THIS with an actual legalEntityId from your test data or seed script !!
@@ -342,7 +344,17 @@ console.log("");
 
 // Wait a bit for server to be ready
 setTimeout(async () => {
-	await testAccountingSystem();
-	await createSampleJournalEntry();
-	await getJournalEntries();
+	// await testAccountingSystem();
+	// await createSampleJournalEntry();
+	// await getJournalEntries();
+	const db = createDbClient(process.env.DATABASE_URL as string);
+	const account =  await db
+						.select({ id: accounts.id })
+						.from(accounts)
+						.where(
+							and(
+								eq(accounts.id, "e1929fca-a409-478a-8b4f-2913f3763454"),
+							),
+						)
+	console.log(account);
 }, 1000);

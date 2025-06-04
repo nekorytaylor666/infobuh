@@ -1,9 +1,4 @@
-import { findUgdByAddressComponents } from "./services/ugdService";
 
-findUgdByAddressComponents({
-	localityName:
-		"ТУРКЕСТАНСКАЯ ОБЛАСТЬ, ТОЛЕБИЙСКИЙ РАЙОН, ТАСАРЫКСКИЙ С.О., С.ХАНАРЫК",
-});
 
 // async function runUgdTests() {
 // 	console.log("Running UGD Service Tests...");

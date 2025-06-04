@@ -158,18 +158,10 @@ export class AccountingService {
 			return await this.db.transaction(async (trx) => {
 				// Check if all accounts exist concurrently
 				const accountExistenceChecks = lines.map(async (line) => {
-					const account = await trx
-						.select({ id: accounts.id })
-						.from(accounts)
-						.where(
-							and(
-								eq(accounts.id, line.accountId),
-								eq(accounts.legalEntityId, entryData.legalEntityId),
-								eq(accounts.isActive, true),
-							),
-						)
-						.limit(1);
-					if (account.length === 0) {
+					const account = await trx.query.accounts.findFirst({
+						where: and(eq(accounts.id, line.accountId), eq(accounts.legalEntityId, entryData.legalEntityId), eq(accounts.isActive, true)),
+					});
+					if (!account) {
 						throw new Error(
 							`Account with ID ${line.accountId} not found or not active for legal entity ${entryData.legalEntityId}.`,
 						);
