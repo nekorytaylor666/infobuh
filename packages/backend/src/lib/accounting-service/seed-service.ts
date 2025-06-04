@@ -247,14 +247,8 @@ export class AccountingSeedService {
 // Run seeding if this file is run directly
 if (require.main === module) {
 	// !!! IMPORTANT: Replace with actual IDs for testing standalone seeding !!!
-	const defaultTestLegalEntityId = "fe4d7f2a-adda-4db9-9d18-772bded63c29"; 
-	const defaultTestUserId = "40309566-fdc6-4b8e-9bb7-68c15f7ce335";
-
-	if (defaultTestLegalEntityId === "fe4d7f2a-adda-4db9-9d18-772bded63c29" || defaultTestUserId === "40309566-fdc6-4b8e-9bb7-68c15f7ce335") {
-		console.warn("⚠️ WARNING: Standalone seed script is using placeholder Legal Entity ID and User ID.");
-		console.warn("Please update defaultTestLegalEntityId and defaultTestUserId in seed-service.ts for proper seeding.");
-		// process.exit(1); // Optionally exit if not configured
-	}
+	const defaultTestLegalEntityId = ["2cc7dc33-f82a-4248-b969-f1d7902250ce", "05c5f8ca-d4e6-4a68-9e70-8482829702e2","ea881ca4-7049-4330-a1ee-aeb81c3a49b3"]; 
+	const defaultTestUserId = "1bfd1699-c849-43bb-8e23-f528f3bd4a0c";
 
 	const dbUrl = process.env.DATABASE_URL;
 	if (!dbUrl) {
@@ -264,16 +258,8 @@ if (require.main === module) {
 	const dbClient = createDbClient(dbUrl);
 	const seedService = new AccountingSeedService(dbClient);
 
-	seedService
-		.seedDatabase(defaultTestLegalEntityId, defaultTestUserId)
-		.then((result) => {
-			console.log("✅ Seeding completed successfully (standalone run)!");
-			console.log(result);
-			process.exit(0);
-		})
-		.catch((error) => {
-			console.error("❌ Seeding failed (standalone run):", error);
-			process.exit(1);
-		});
+	seedService.seedDatabase(defaultTestLegalEntityId[0], defaultTestUserId);
+	seedService.seedDatabase(defaultTestLegalEntityId[1], defaultTestUserId);
+	seedService.seedDatabase(defaultTestLegalEntityId[2], defaultTestUserId);
 }
 

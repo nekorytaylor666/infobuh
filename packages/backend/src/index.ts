@@ -2,7 +2,6 @@ import { config } from "dotenv";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { openAPISpecs } from "hono-openapi";
 import { env } from "hono/adapter";
 import { PostHog } from "posthog-node";
@@ -37,9 +36,98 @@ if (!process.env.DATABASE_URL) {
 // Create database client
 const dbClient = createDbClient(process.env.DATABASE_URL);
 
+// Custom logger middleware
+const customRequestLogger = createMiddleware(async (c, next) => {
+	const start = Date.now();
+	const { method } = c.req;
+	const path = c.req.path;
+
+	let reqLog = `--> ${method} ${path}`;
+
+	if (c.req.raw.body && c.req.header("content-length") && Number(c.req.header("content-length")) > 0) {
+		const reqClone = c.req.raw.clone();
+		try {
+			const contentType = c.req.header("content-type");
+			if (contentType?.includes("application/json")) {
+				const requestBody = await reqClone.json();
+				reqLog += `
+Request Body (JSON):
+${JSON.stringify(requestBody, null, 2)}`;
+			} else if (contentType?.includes("text")) {
+				const requestBody = await reqClone.text();
+				reqLog += `
+Request Body (Text):
+${requestBody}`;
+			} else if (contentType?.includes("form")) {
+				reqLog += `
+Request Body: Form data (type: ${contentType})`;
+			} else {
+				reqLog += `
+Request Body: Opaque data (type: ${contentType})`;
+			}
+		} catch (e: any) {
+			reqLog += `
+Error reading request body for logging: ${e.message}`;
+		}
+	}
+	console.log(reqLog);
+
+	await next();
+
+	const ms = Date.now() - start;
+	let resLog = `<-- ${method} ${path} ${c.res.status} ${ms}ms`;
+
+	if (c.res && c.res.body) {
+		const resClone = c.res.clone();
+		try {
+			const responseContentType = resClone.headers.get("content-type");
+			if (responseContentType?.includes("application/json")) {
+				const responseBody = await resClone.json();
+				resLog += `
+Response Body (JSON):
+${JSON.stringify(responseBody, null, 2)}`;
+			} else if (responseContentType?.includes("text")) {
+				const responseBody = await resClone.text();
+				const MAX_TEXT_LENGTH = 1000;
+				if (responseBody.length > MAX_TEXT_LENGTH) {
+					resLog += `
+Response Body (Text):
+${responseBody.substring(0, MAX_TEXT_LENGTH)}... (truncated)`;
+				} else {
+					resLog += `
+Response Body (Text):
+${responseBody}`;
+				}
+			} else if (resClone.body) {
+				resLog += `
+Response Body: Opaque data (type: ${responseContentType}, size: ${resClone.headers.get('content-length') || 'unknown'})`;
+			}
+		} catch (e: any) {
+			try {
+				const resClone2 = c.res.clone();
+				const textBody = await resClone2.text();
+				const MAX_TEXT_LENGTH = 1000;
+				if (textBody.length > MAX_TEXT_LENGTH) {
+					resLog += `
+Response Body (Fallback to Text):
+${textBody.substring(0, MAX_TEXT_LENGTH)}... (truncated)`;
+				} else {
+					resLog += `
+Response Body (Fallback to Text):
+${textBody}`;
+				}
+			} catch (e2: any) {
+				resLog += `
+Error reading response body for logging: ${e.message} (Primary) / ${e2.message} (Fallback)`;
+			}
+		}
+	}
+	console.log(resLog);
+});
+
 const app = new Hono<HonoEnv>();
 
-app.use("*", logger());
+app.use("*", customRequestLogger);
 app.use("*", prettyJSON());
 app.use(
 	"*",

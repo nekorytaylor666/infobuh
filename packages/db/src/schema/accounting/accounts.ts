@@ -15,7 +15,7 @@ import { legalEntities } from "../legal-entities";
 
 export const accounts = pgTable("accounts", {
 	id: uuid("id").primaryKey().defaultRandom(),
-	code: varchar("code", { length: 10 }).notNull().unique(),
+	code: varchar("code", { length: 10 }).notNull(),
 	name: varchar("name", { length: 255 }).notNull(),
 	accountType: varchar("account_type", { length: 20 })
 		.notNull()
