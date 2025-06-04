@@ -279,6 +279,9 @@ accountingRouter.post(
 				},
 				lines,
 			);
+			if (!entry) {
+				return c.json({ success: false, error: "Failed to create journal entry" }, 500);
+			}
 
 			return c.json({
 				success: true,
