@@ -156,8 +156,15 @@ const formatCurrency = (amount: number): string => {
 
 // Format date to DD.MM.YYYY
 const formatDate = (dateString: string): string => {
-  const [year, month, day] = dateString.split("-");
-  return `${day}.${month}.${year}`;
+  if (!dateString) return "";
+  try {
+    const [year, month, day] = dateString.split("-");
+    if (!year || !month || !day) return "";
+    return `${day}.${month}.${year}`;
+  } catch (error) {
+    console.warn("Invalid date format:", dateString);
+    return "";
+  }
 };
 
 // Type for the template data

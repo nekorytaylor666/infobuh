@@ -74,6 +74,12 @@ async function generateWaybill(
 	const vatRate = 0.12; // 12% VAT
 	const vatAmount = totalAmount * vatRate;
 
+	// Helper function to format date to YYYY-MM-DD string
+	const formatDateToString = (date: Date | undefined): string => {
+		if (!date) return "";
+		return date.toISOString().split('T')[0];
+	};
+
 	// 4. Prepare template data
 	const templateData = {
 		// Company info
@@ -88,9 +94,9 @@ async function generateWaybill(
 
 		// Waybill details
 		waybillNumber: input.waybillNumber,
-		waybillDate: input.waybillDate,
+		waybillDate: formatDateToString(input.waybillDate),
 		contractNumber: input.contractNumber || "",
-		contractDate: input.contractDate || "",
+		contractDate: formatDateToString(input.contractDate),
 
 		// Client info
 		clientName: client.name,

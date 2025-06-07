@@ -28,6 +28,9 @@ const EmployeeSchema = z.object({
 	address: z.string().min(1).describe("Employee address"),
 	iin: z.string().min(12).max(12).describe("Employee IIN"),
 	dateOfBirth: z.string().describe("Employee date of birth"),
+	residency: z.string().min(1).describe("Employee residency"),
+	salary: z.number().describe("Employee salary"),
+	socialStatus: z.string().min(1).describe("Employee social status"),
 	udosId: z.string().min(1).describe("Employee UDOS ID"),
 	udosDateGiven: z.string().describe("Date when UDOS was given"),
 	udosWhoGives: z.string().min(1).describe("Who gave the UDOS"),
@@ -204,7 +207,10 @@ router.post(
 					await tx.insert(employees).values(
 						validatedData.employees.map((employee) => ({
 							legalEntityId: legalEntity.id,
-							fullName: employee.fullName,
+							fullName: employee.fullName,	
+							residency: employee.residency,
+							salary: employee.salary,
+							socialStatus: employee.socialStatus,
 							pfp: employee.pfp,
 							role: employee.role,
 							address: employee.address,

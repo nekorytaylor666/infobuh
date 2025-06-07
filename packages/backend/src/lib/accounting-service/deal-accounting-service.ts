@@ -7,8 +7,10 @@ import {
     deals as dealsTable,
 	Database,
 	eq,
+	dealDocumentsFlutter,
 } from "@accounting-kz/db";
 import { AccountingService } from "./accounting-service.index";
+import { DocumentGenerationService, type DocumentGenerationResult } from "./document-generation-service";
 
 export interface CreateDealJournalEntryParams {
 	dealId: string;
@@ -62,7 +64,11 @@ export interface ReconciliationReport {
 }
 
 export class DealAccountingService {
-	constructor(private db: Database) {}
+	private documentGenerationService: DocumentGenerationService;
+
+	constructor(private db: Database) {
+		this.documentGenerationService = new DocumentGenerationService(db);
+	}
 
 	async createDealWithAccounting(params: {
 		receiverBin: string;
@@ -89,6 +95,7 @@ export class DealAccountingService {
 				status: "active",
 				legalEntityId: params.legalEntityId,
 			}).returning();
+			
 			// 2. Create journal entry for the invoice
 			const entryNumber = await this.generateEntryNumber(params.legalEntityId);
 			
@@ -130,7 +137,36 @@ export class DealAccountingService {
 				entryType: "invoice",
 			});
 
-			return { deal, journalEntry: journalEntryResult.entry };
+			// 4. Generate document automatically
+			const documentResult = await this.documentGenerationService.generateDocumentForDeal({
+				dealId: deal.id,
+				dealType: params.dealType,
+				legalEntityId: params.legalEntityId,
+				receiverBin: params.receiverBin,
+				title: params.title,
+				description: params.description,
+				totalAmount: params.totalAmount,
+				createdBy: params.createdBy,
+			});
+
+			let generatedDocument: DocumentGenerationResult | null = null;
+			if (documentResult.success) {
+				// 5. Link document with deal
+				await tx.insert(dealDocumentsFlutter).values({
+					dealId: deal.id,
+					documentFlutterId: documentResult.documentId,
+				});
+				generatedDocument = documentResult;
+			} else {
+				// Log error but don't fail the transaction
+				console.error("Failed to generate document for deal:", documentResult.error);
+			}
+
+			return { 
+				deal, 
+				journalEntry: journalEntryResult.entry,
+				document: generatedDocument,
+			};
 		});
 	}
 

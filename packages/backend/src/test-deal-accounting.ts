@@ -118,6 +118,11 @@ async function testDealAccountingSystem() {
 			type: serviceDeal.deal.dealType,
 			amount: serviceDeal.deal.totalAmount,
 			journalEntryId: serviceDeal.journalEntry.id,
+			document: serviceDeal.document ? {
+				success: serviceDeal.document.success,
+				documentType: serviceDeal.document.success ? serviceDeal.document.documentType : undefined,
+				fileName: serviceDeal.document.success ? serviceDeal.document.fileName : undefined,
+			} : null,
 		});
 
 		// 2. Частичная оплата
@@ -214,6 +219,11 @@ async function testDealAccountingSystem() {
 			dealId: productDeal.deal.id,
 			type: productDeal.deal.dealType,
 			amount: productDeal.deal.totalAmount,
+			document: productDeal.document ? {
+				success: productDeal.document.success,
+				documentType: productDeal.document.success ? productDeal.document.documentType : undefined,
+				fileName: productDeal.document.success ? productDeal.document.fileName : undefined,
+			} : null,
 		});
 
 		// 7. Тестирование генерации документов
@@ -279,6 +289,8 @@ async function testDealAccountingSystem() {
 		console.log("- ✅ Генерация актов сверки");
 		console.log("- ✅ Выявление дисбалансов");
 		console.log("- ✅ Типизация документов по типу сделки");
+		console.log("- ✅ Автоматическая генерация документов при создании сделок");
+		console.log("- ✅ Интеграция документооборота с бухгалтерским учетом");
 		console.log("- ✅ Полный цикл продажи товаров с себестоимостью");
 		console.log("- ✅ Сценарий АВР с проводками продавца и покупателя");
 		console.log("- ✅ Зеркальные проводки покупателя и продавца для товаров");
