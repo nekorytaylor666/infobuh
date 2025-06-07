@@ -9,6 +9,7 @@ export * from "./bin-registry";
 export * from "./partners";
 export * from "./banks";
 export * from "./deal";
+export { dealJournalEntries, dealJournalEntriesRelations } from "./deal";
 export * from "./comments";
 export * from "./app-versions";
 // Accounting schemas

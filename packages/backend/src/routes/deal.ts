@@ -14,14 +14,333 @@ import {
 	documentFlutterZodSchema,
 	inArray,
 	or,
+	DEAL_TYPES,
+	DEAL_STATUSES,
 } from "@accounting-kz/db";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 import "zod-openapi/extend";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { HTTPException } from "hono/http-exception";
+import { DealAccountingService } from "../lib/accounting-service/deal-accounting-service";
 
 const dealRouter = new Hono<HonoEnv>();
+
+// Schema for creating a deal with accounting
+const createDealWithAccountingSchema = z.object({
+	receiverBin: z.string().length(12, "Receiver BIN must be 12 characters"),
+	title: z.string().min(1, "Title is required"),
+	description: z.string().optional(),
+	dealType: z.enum(DEAL_TYPES),
+	totalAmount: z.number().min(0, "Total amount must be positive"),
+	currencyId: z.string().uuid(),
+	accountsReceivableId: z.string().uuid(),
+	revenueAccountId: z.string().uuid(),
+});
+
+// Schema for recording payment
+const recordPaymentSchema = z.object({
+	amount: z.number().min(0, "Payment amount must be positive"),
+	description: z.string().optional(),
+	reference: z.string().optional(),
+	currencyId: z.string().uuid(),
+	cashAccountId: z.string().uuid(),
+	accountsReceivableId: z.string().uuid(),
+});
+
+// Create a new deal with accounting integration
+dealRouter.post(
+	"/with-accounting",
+	describeRoute({
+		description: "Create a new deal with automatic accounting entries",
+		tags: ["Deals", "Accounting"],
+		request: {
+			body: {
+				content: {
+					"application/json": {
+						schema: createDealWithAccountingSchema,
+					},
+				},
+			},
+		},
+		responses: {
+			201: {
+				description: "Deal created successfully with accounting entries",
+				content: {
+					"application/json": {
+						schema: z.object({
+							deal: dealZodSchema,
+							journalEntry: z.object({
+								id: z.string(),
+								entryNumber: z.string(),
+								description: z.string().optional(),
+								status: z.string(),
+							}),
+						}),
+					},
+				},
+			},
+			400: { description: "Invalid input" },
+			401: { description: "Unauthorized" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	zValidator("json", createDealWithAccountingSchema),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const legalEntityId = c.req.query("legalEntityId");
+			if (!legalEntityId) {
+				return c.json({ error: "Legal entity ID is required" }, 400);
+			}
+
+			const dealData = c.req.valid("json");
+			const dealAccountingService = new DealAccountingService(c.env.db);
+
+			const result = await dealAccountingService.createDealWithAccounting({
+				...dealData,
+				legalEntityId,
+				createdBy: userId,
+			});
+
+			return c.json(result, 201);
+		} catch (error) {
+			console.error("Error creating deal with accounting:", error);
+			if (error instanceof z.ZodError) {
+				return c.json({ error: error.errors }, 400);
+			}
+			return c.json({ 
+				error: "Failed to create deal", 
+				message: error instanceof Error ? error.message : "Unknown error" 
+			}, 500);
+		}
+	},
+);
+
+// Record payment for a deal
+dealRouter.post(
+	"/:dealId/payments",
+	describeRoute({
+		description: "Record a payment for a specific deal",
+		tags: ["Deals", "Payments", "Accounting"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		request: {
+			body: {
+				content: {
+					"application/json": {
+						schema: recordPaymentSchema,
+					},
+				},
+			},
+		},
+		responses: {
+			200: {
+				description: "Payment recorded successfully",
+				content: {
+					"application/json": {
+						schema: z.object({
+							deal: dealZodSchema,
+							journalEntry: z.object({
+								id: z.string(),
+								entryNumber: z.string(),
+								description: z.string().optional(),
+								status: z.string(),
+							}),
+						}),
+					},
+				},
+			},
+			400: { description: "Invalid input or payment amount exceeds balance" },
+			401: { description: "Unauthorized" },
+			404: { description: "Deal not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	zValidator("json", recordPaymentSchema),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const legalEntityId = c.req.query("legalEntityId");
+			if (!legalEntityId) {
+				return c.json({ error: "Legal entity ID is required" }, 400);
+			}
+
+			const dealId = c.req.param("dealId");
+			const paymentData = c.req.valid("json");
+			const dealAccountingService = new DealAccountingService(c.env.db);
+
+			const result = await dealAccountingService.recordPayment({
+				dealId,
+				...paymentData,
+				legalEntityId,
+				createdBy: userId,
+			});
+
+			return c.json(result);
+		} catch (error) {
+			console.error("Error recording payment:", error);
+			if (error instanceof z.ZodError) {
+				return c.json({ error: error.errors }, 400);
+			}
+			const message = error instanceof Error ? error.message : "Unknown error";
+			const status = message.includes("not found") ? 404 : 
+						   message.includes("exceeds") ? 400 : 500;
+			return c.json({ error: "Failed to record payment", message }, status);
+		}
+	},
+);
+
+// Get deal balance and journal entries
+dealRouter.get(
+	"/:dealId/balance",
+	describeRoute({
+		description: "Get balance information for a specific deal",
+		tags: ["Deals", "Accounting"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		responses: {
+			200: {
+				description: "Deal balance information",
+				content: {
+					"application/json": {
+						schema: z.object({
+							dealId: z.string(),
+							totalAmount: z.number(),
+							paidAmount: z.number(),
+							remainingBalance: z.number(),
+							journalEntries: z.array(z.object({
+								id: z.string(),
+								entryType: z.string(),
+								amount: z.number(),
+								entryDate: z.string(),
+								status: z.string(),
+							})),
+						}),
+					},
+				},
+			},
+			401: { description: "Unauthorized" },
+			404: { description: "Deal not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const dealId = c.req.param("dealId");
+			const dealAccountingService = new DealAccountingService(c.env.db);
+
+			const balance = await dealAccountingService.getDealBalance(dealId);
+			if (!balance) {
+				return c.json({ error: "Deal not found" }, 404);
+			}
+
+			return c.json(balance);
+		} catch (error) {
+			console.error("Error getting deal balance:", error);
+			return c.json({ error: "Failed to get deal balance" }, 500);
+		}
+	},
+);
+
+// Generate reconciliation report
+dealRouter.get(
+	"/:dealId/reconciliation",
+	describeRoute({
+		description: "Generate reconciliation report for a specific deal",
+		tags: ["Deals", "Accounting", "Reports"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		responses: {
+			200: {
+				description: "Reconciliation report",
+				content: {
+					"application/json": {
+						schema: z.object({
+							dealId: z.string(),
+							dealTitle: z.string(),
+							totalAmount: z.number(),
+							paidAmount: z.number(),
+							remainingBalance: z.number(),
+							isBalanced: z.boolean(),
+							discrepancies: z.array(z.object({
+								type: z.string(),
+								amount: z.number(),
+								description: z.string(),
+							})),
+							journalEntries: z.array(z.object({
+								id: z.string(),
+								entryNumber: z.string(),
+								entryType: z.string(),
+								amount: z.number(),
+								entryDate: z.string(),
+								status: z.string(),
+							})),
+						}),
+					},
+				},
+			},
+			401: { description: "Unauthorized" },
+			404: { description: "Deal not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const dealId = c.req.param("dealId");
+			const dealAccountingService = new DealAccountingService(c.env.db);
+
+			const report = await dealAccountingService.generateReconciliationReport(dealId);
+			if (!report) {
+				return c.json({ error: "Deal not found" }, 404);
+			}
+
+			return c.json(report);
+		} catch (error) {
+			console.error("Error generating reconciliation report:", error);
+			return c.json({ error: "Failed to generate reconciliation report" }, 500);
+		}
+	},
+);
 
 // Create a new deal
 dealRouter.post(
@@ -952,6 +1271,73 @@ dealRouter.put(
 				return c.json({ error: error.errors }, 400);
 			if (error instanceof HTTPException) throw error;
 			return c.json({ error: "Failed to update documents for deal" }, 500);
+		}
+	},
+);
+
+// Generate document for deal (АВР for services, накладная for products)
+dealRouter.post(
+	"/:dealId/generate-document",
+	describeRoute({
+		description: "Generate appropriate document for deal (АВР for services, накладная for products)",
+		tags: ["Deals", "Documents"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		responses: {
+			200: {
+				description: "Document generated successfully",
+				content: {
+					"application/json": {
+						schema: z.object({
+							documentType: z.string(),
+							documentId: z.string().optional(),
+							message: z.string(),
+						}),
+					},
+				},
+			},
+			401: { description: "Unauthorized" },
+			404: { description: "Deal not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const dealId = c.req.param("dealId");
+			
+			// Get deal to determine type
+			const deal = await c.env.db.query.deals.findFirst({
+				where: eq(deals.id, dealId),
+			});
+
+			if (!deal) {
+				return c.json({ error: "Deal not found" }, 404);
+			}
+
+			const dealAccountingService = new DealAccountingService(c.env.db);
+			const documentType = await dealAccountingService.generateDocumentForDeal(dealId, deal.dealType);
+
+			// Here you would integrate with your document generation service
+			// For now, return the document type that should be generated
+			return c.json({
+				documentType,
+				message: `${deal.dealType === 'service' ? 'АВР (Акт выполненных работ)' : 'Накладная'} готов(а) к генерации`,
+			});
+		} catch (error) {
+			console.error("Error generating document:", error);
+			return c.json({ error: "Failed to generate document" }, 500);
 		}
 	},
 );
