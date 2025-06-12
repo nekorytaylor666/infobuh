@@ -27,6 +27,7 @@ export const kazakhActInputSchema = z.object({
 		.uuid("Invalid customer employee ID")
 		.optional()
 		.nullable(),
+	contactPhone: z.string().optional(),
 	dateOfCompletion: z.date(),
 });
 

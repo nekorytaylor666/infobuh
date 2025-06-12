@@ -1,4 +1,4 @@
-#let kazakhInvoiceTemplate(data) = {
+#let main(data) = {
   // Set document properties
   set page(
     paper: "a4",
@@ -6,7 +6,7 @@
   )
   
   set text(
-    font: "Times New Roman",
+    font: "Helvetica",
     size: 9pt,
     lang: "ru"
   )
@@ -255,47 +255,4 @@
     
     text(size: 9pt)[#data.executorName, #data.executorPosition]
   )
-}
-
-// Test data
-#let testData = (
-  // Seller information
-  sellerName: "ТОО \"COMABOOKSS\"",
-  sellerBin: "250140019272",
-  sellerAccount: "KZ72828282",
-  sellerBik: "CITIKZKA",
-  sellerBank: "АО \"Ситибанк Казахстан\"",
-  knp: "710",
-  
-  // Invoice details
-  invoiceNumber: "1",
-  invoiceDate: "07.06.25",
-  invoiceTime: "20:27:34",
-  
-  // Buyer information
-  buyerName: "LV KAZAKHSTAN",
-  buyerBin: "161040002743",
-  
-  // Contract reference
-  contractReference: "Договор 5, от 2025-05-20",
-  
-  // Items
-  items: (
-    (
-      code: "00004",
-      description: "Блокнот именной о маме",
-      quantity: 5,
-      unit: "шт.",
-      price: 15000.00
-    ),
-  ),
-  
-  // Additional information
-  contactPhone: "87477774873",
-  executorName: "Нурбахыт Байшурин",
-  executorPosition: "Директор",
-  totalInWords: "семьдесят пять тысяч тенге 00 тиын"
-)
-
-// Generate the test document
-#kazakhInvoiceTemplate(testData) 
+} 

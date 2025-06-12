@@ -1,13 +1,14 @@
-import type { Database } from "@accounting-kz/db";
+import type { Bank, Database } from "@accounting-kz/db";
 import { banks, employees, legalEntities, eq } from "@accounting-kz/db";
-import { pdfService } from "../../pdf-service";
+import { typstService } from "../../typst-service";
 import {
 	type InvoiceItem,
 	kazakhInvoiceInputSchema,
 	type KazakhInvoiceInput,
 } from "./schema";
 import { numToFullWords } from "@accounting-kz/utils";
-import { KazakhInvoiceTemplate } from "./template";
+import path from "node:path";
+
 // Template type identifier
 const TEMPLATE_TYPE = "kazakh-invoice";
 
@@ -16,6 +17,22 @@ export interface GenerateInvoiceResult {
 	filePath: string;
 	fileName: string;
 	pdfBuffer: Buffer;
+	fields: {
+		orgName: string;
+		orgAddress: string;
+		orgBin: string;
+		orgIik: string;
+		orgBik: string;
+		buyerName: string;
+		buyerBin: string;
+		codeKnp: string;
+		contract: string;
+		orgPersonName: string | null | undefined;
+		phone: string | null | undefined;
+		selectedBank: Bank | null | undefined;
+		products: InvoiceItem[];
+		idx: string;
+	};
 }
 
 /**
@@ -38,12 +55,10 @@ async function generateInvoice(
 		}),
 		input.executorEmployeeId
 			? db.query.employees.findFirst({
-					where: eq(employees.id, input.executorEmployeeId),
-				})
+				where: eq(employees.id, input.executorEmployeeId),
+			})
 			: null,
 	]);
-
-	console.log(seller, sellerBank, client, executor);
 
 	// 2. Validate entities exist
 	if (!seller) {
@@ -67,24 +82,24 @@ async function generateInvoice(
 	// 4. Prepare template data
 	const templateData = {
 		// Company info
-		companyName: seller.name,
-		bin: seller.bin,
-		kbe: seller.ugd || "",
-		account: sellerBank?.account || "",
-		bik: sellerBank?.bik || "",
-		bank: sellerBank?.name || "",
-		sellerImage: seller.image || undefined,
+		sellerName: seller.name,
+		sellerBin: seller.bin,
+		sellerAccount: sellerBank?.account || "",
+		sellerBik: sellerBank?.bik || "",
+		sellerBank: sellerBank?.name || "",
+		knp: input.knp || "710",
 
 		// Invoice details
 		invoiceNumber: input.invoiceNumber,
-		invoiceDate: input.invoiceDate,
-		contractNumber: input.contractNumber,
-		contractDate: input.contractDate,
+		invoiceDate: input.invoiceDate.toLocaleDateString("ru-RU"),
+		invoiceTime: input.invoiceDate.toLocaleTimeString("ru-RU"),
 
-		// Client info
-		clientName: client.name,
-		clientBin: client.bin,
-		clientAddress: client.address || "",
+		// Buyer info
+		buyerName: client.name,
+		buyerBin: client.bin,
+
+		// Contract reference
+		contractReference: `Договор ${input.contractNumber}, от ${input.contractDate?.toLocaleDateString("ru-RU")}`,
 
 		// Items and totals
 		items: input.items,
@@ -94,23 +109,47 @@ async function generateInvoice(
 
 		// Additional info
 		executorName: executor?.fullName,
+		executorPosition: executor?.role || "Директор",
 		contactPhone: input.contactPhone,
 	};
 
 	// 5. Generate PDF
-	const pdfBuffer = await pdfService.renderPDF(KazakhInvoiceTemplate, {
-		data: templateData,
-	});
-
-	// 6. Save PDF
+	const templatePath = path.join(__dirname, "template.typ");
 	const fileName = `invoice-${input.sellerLegalEntityId}-${input.clientLegalEntityId}-${input.invoiceNumber}.pdf`;
-	const filePath = await pdfService.savePDF(pdfBuffer, fileName);
+	const { filePath, pdfBuffer } = await typstService.renderPDF(
+		templatePath,
+		templateData,
+		fileName,
+	);
+
+	const formatDate = (date: Date | undefined): string => {
+		if (!date) return "";
+		return date.toLocaleDateString("ru-RU");
+	};
 
 	return {
 		success: true,
 		filePath,
 		fileName,
 		pdfBuffer,
+		fields: {
+			orgName: seller.name,
+			orgAddress: seller.address || "",
+			orgBin: seller.bin,
+			orgIik: sellerBank?.account || "",
+			orgBik: sellerBank?.bik || "",
+			buyerName: client.name,
+			buyerBin: client.bin,
+			codeKnp: input.knp || "710",
+			contract: `Договор №${input.contractNumber} от ${formatDate(
+				input.contractDate,
+			)}`,
+			orgPersonName: executor?.fullName,
+			phone: input.contactPhone,
+			selectedBank: sellerBank,
+			products: input.items,
+			idx: input.invoiceNumber,
+		},
 	};
 }
 

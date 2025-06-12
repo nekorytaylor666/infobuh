@@ -21,81 +21,81 @@ async function testDealAccountingSystem() {
 	try {
 		// Настройка подключения к БД (замените на ваши данные)
 		const db = createDbClient(process.env.DATABASE_URL as string);
-		
+
 		const dealAccountingService = new DealAccountingService(db);
 		const accountingService = new AccountingService(db);
 
-			console.log("🚀 Тестирование системы учета сделок");
-	console.log("📋 Для тестирования требуется инициализированная база данных с seed данными.");
-	console.log("   Выполните: POST /accounting/seed?legalEntityId=test-legal-entity-id");
+		console.log("🚀 Тестирование системы учета сделок");
+		console.log("📋 Для тестирования требуется инициализированная база данных с seed данными.");
+		console.log("   Выполните: POST /accounting/seed?legalEntityId=test-legal-entity-id");
 
-	// Получаем реальные UUID счетов по их кодам
-	console.log("\n🔍 Поиск счетов по кодам...");
-	
-	const accountsReceivable = await db.query.accounts.findFirst({
-		where: and(eq(accounts.code, ACCOUNTS_RECEIVABLE_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
-	});
-	
-	const revenueAccount = await db.query.accounts.findFirst({
-		where: and(eq(accounts.code, REVENUE_ACCOUNT_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
-	});
-	
-	const cashAccount = await db.query.accounts.findFirst({
-		where: and(eq(accounts.code, CASH_ACCOUNT_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
-	});
+		// Получаем реальные UUID счетов по их кодам
+		console.log("\n🔍 Поиск счетов по кодам...");
 
-	// Дополнительные счета для тестирования продажи товаров
-	const inventoryAccount = await db.query.accounts.findFirst({
-		where: and(eq(accounts.code, INVENTORY_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
-	});
-	
-	const costOfGoodsSoldAccount = await db.query.accounts.findFirst({
-		where: and(eq(accounts.code, COST_OF_GOODS_SOLD_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
-	});
-	
-	const accountsPayableAccount = await db.query.accounts.findFirst({
-		where: and(eq(accounts.code, ACCOUNTS_PAYABLE_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
-	});
+		const accountsReceivable = await db.query.accounts.findFirst({
+			where: and(eq(accounts.code, ACCOUNTS_RECEIVABLE_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
+		});
 
-	// Получаем валюту KZT
-	const kztCurrency = await db.query.currencies.findFirst({
-		where: eq(currencies.code, CURRENCY_CODE),
-	});
+		const revenueAccount = await db.query.accounts.findFirst({
+			where: and(eq(accounts.code, REVENUE_ACCOUNT_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
+		});
 
-	if (!accountsReceivable || !revenueAccount || !cashAccount || !inventoryAccount || !costOfGoodsSoldAccount || !accountsPayableAccount || !kztCurrency) {
-		console.error("❌ Не удалось найти необходимые счета или валюту. Убедитесь что база данных инициализирована seed данными.");
-		console.log("Требуемые коды счетов:");
-		console.log(`- ${ACCOUNTS_RECEIVABLE_CODE} (Trade Receivables): ${accountsReceivable ? '✅' : '❌'}`);
-		console.log(`- ${REVENUE_ACCOUNT_CODE} (Sales Revenue): ${revenueAccount ? '✅' : '❌'}`);
-		console.log(`- ${CASH_ACCOUNT_CODE} (Bank Account - KZT): ${cashAccount ? '✅' : '❌'}`);
-		console.log(`- ${INVENTORY_CODE} (Inventory): ${inventoryAccount ? '✅' : '❌'}`);
-		console.log(`- ${COST_OF_GOODS_SOLD_CODE} (Cost of Goods Sold): ${costOfGoodsSoldAccount ? '✅' : '❌'}`);
-		console.log(`- ${ACCOUNTS_PAYABLE_CODE} (Trade Payables): ${accountsPayableAccount ? '✅' : '❌'}`);
-		console.log(`- ${CURRENCY_CODE} (Kazakhstan Tenge): ${kztCurrency ? '✅' : '❌'}`);
-		return;
-	}
+		const cashAccount = await db.query.accounts.findFirst({
+			where: and(eq(accounts.code, CASH_ACCOUNT_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
+		});
 
-	console.log("✅ Найдены счета и валюта:");
-	console.log(`- ${accountsReceivable.code}: ${accountsReceivable.name} (${accountsReceivable.id})`);
-	console.log(`- ${revenueAccount.code}: ${revenueAccount.name} (${revenueAccount.id})`);
-	console.log(`- ${cashAccount.code}: ${cashAccount.name} (${cashAccount.id})`);
-	console.log(`- ${inventoryAccount.code}: ${inventoryAccount.name} (${inventoryAccount.id})`);
-	console.log(`- ${costOfGoodsSoldAccount.code}: ${costOfGoodsSoldAccount.name} (${costOfGoodsSoldAccount.id})`);
-	console.log(`- ${accountsPayableAccount.code}: ${accountsPayableAccount.name} (${accountsPayableAccount.id})`);
-	console.log(`- ${kztCurrency.code}: ${kztCurrency.name} ${kztCurrency.symbol} (${kztCurrency.id})`);
+		// Дополнительные счета для тестирования продажи товаров
+		const inventoryAccount = await db.query.accounts.findFirst({
+			where: and(eq(accounts.code, INVENTORY_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
+		});
 
-	// Тестовые данные с реальными UUID счетов и валюты
-	const testData = {
-		legalEntityId: LEGAL_ENTITY_ID,
-		userId: USER_ID,
-		currencyId: kztCurrency.id,
-		accountsReceivableId: accountsReceivable.id,
-		revenueAccountId: revenueAccount.id,
-		cashAccountId: cashAccount.id,
-		inventoryAccountId: inventoryAccount.id,
-		costOfGoodsSoldAccountId: costOfGoodsSoldAccount.id,
-		accountsPayableId: accountsPayableAccount.id,
-	};
+		const costOfGoodsSoldAccount = await db.query.accounts.findFirst({
+			where: and(eq(accounts.code, COST_OF_GOODS_SOLD_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
+		});
+
+		const accountsPayableAccount = await db.query.accounts.findFirst({
+			where: and(eq(accounts.code, ACCOUNTS_PAYABLE_CODE), eq(accounts.legalEntityId, LEGAL_ENTITY_ID)),
+		});
+
+		// Получаем валюту KZT
+		const kztCurrency = await db.query.currencies.findFirst({
+			where: eq(currencies.code, CURRENCY_CODE),
+		});
+
+		if (!accountsReceivable || !revenueAccount || !cashAccount || !inventoryAccount || !costOfGoodsSoldAccount || !accountsPayableAccount || !kztCurrency) {
+			console.error("❌ Не удалось найти необходимые счета или валюту. Убедитесь что база данных инициализирована seed данными.");
+			console.log("Требуемые коды счетов:");
+			console.log(`- ${ACCOUNTS_RECEIVABLE_CODE} (Trade Receivables): ${accountsReceivable ? '✅' : '❌'}`);
+			console.log(`- ${REVENUE_ACCOUNT_CODE} (Sales Revenue): ${revenueAccount ? '✅' : '❌'}`);
+			console.log(`- ${CASH_ACCOUNT_CODE} (Bank Account - KZT): ${cashAccount ? '✅' : '❌'}`);
+			console.log(`- ${INVENTORY_CODE} (Inventory): ${inventoryAccount ? '✅' : '❌'}`);
+			console.log(`- ${COST_OF_GOODS_SOLD_CODE} (Cost of Goods Sold): ${costOfGoodsSoldAccount ? '✅' : '❌'}`);
+			console.log(`- ${ACCOUNTS_PAYABLE_CODE} (Trade Payables): ${accountsPayableAccount ? '✅' : '❌'}`);
+			console.log(`- ${CURRENCY_CODE} (Kazakhstan Tenge): ${kztCurrency ? '✅' : '❌'}`);
+			return;
+		}
+
+		console.log("✅ Найдены счета и валюта:");
+		console.log(`- ${accountsReceivable.code}: ${accountsReceivable.name} (${accountsReceivable.id})`);
+		console.log(`- ${revenueAccount.code}: ${revenueAccount.name} (${revenueAccount.id})`);
+		console.log(`- ${cashAccount.code}: ${cashAccount.name} (${cashAccount.id})`);
+		console.log(`- ${inventoryAccount.code}: ${inventoryAccount.name} (${inventoryAccount.id})`);
+		console.log(`- ${costOfGoodsSoldAccount.code}: ${costOfGoodsSoldAccount.name} (${costOfGoodsSoldAccount.id})`);
+		console.log(`- ${accountsPayableAccount.code}: ${accountsPayableAccount.name} (${accountsPayableAccount.id})`);
+		console.log(`- ${kztCurrency.code}: ${kztCurrency.name} ${kztCurrency.symbol} (${kztCurrency.id})`);
+
+		// Тестовые данные с реальными UUID счетов и валюты
+		const testData = {
+			legalEntityId: LEGAL_ENTITY_ID,
+			userId: USER_ID,
+			currencyId: kztCurrency.id,
+			accountsReceivableId: accountsReceivable.id,
+			revenueAccountId: revenueAccount.id,
+			cashAccountId: cashAccount.id,
+			inventoryAccountId: inventoryAccount.id,
+			costOfGoodsSoldAccountId: costOfGoodsSoldAccount.id,
+			accountsPayableId: accountsPayableAccount.id,
+		};
 
 		// 1. Создание сделки на услуги
 		console.log("\n📋 1. Создание сделки на услуги");
@@ -226,14 +226,15 @@ async function testDealAccountingSystem() {
 			} : null,
 		});
 
-		// 7. Тестирование генерации документов
-		console.log("\n📄 7. Типы документов для генерации");
-		const serviceDocType = await dealAccountingService.generateDocumentForDeal(serviceDeal.deal.id, "service");
-		const productDocType = await dealAccountingService.generateDocumentForDeal(productDeal.deal.id, "product");
-
-		console.log("✅ Типы документов:", {
-			serviceDocument: serviceDocType, // kazakh-acts (АВР)
-			productDocument: productDocType, // kazakh-waybill (Накладная)
+		// 7. Проверка генерации документов
+		console.log("\n📄 7. Проверка сгенерированных документов");
+		console.log("   - Документ для сделки на услуги (АВР):", {
+			success: serviceDeal.document?.success,
+			fileName: serviceDeal.document?.success ? serviceDeal.document.fileName : serviceDeal.document?.error?.message,
+		});
+		console.log("   - Документ для сделки на товары (Накладная):", {
+			success: productDeal.document?.success,
+			fileName: productDeal.document?.success ? productDeal.document.fileName : productDeal.document?.error?.message,
 		});
 
 		// 8. Тестирование переплаты (демонстрация выявления дисбаланса)
@@ -294,7 +295,7 @@ async function testDealAccountingSystem() {
 		console.log("- ✅ Полный цикл продажи товаров с себестоимостью");
 		console.log("- ✅ Сценарий АВР с проводками продавца и покупателя");
 		console.log("- ✅ Зеркальные проводки покупателя и продавца для товаров");
-		
+
 		console.log("\n📋 Протестированные сценарии проводок:");
 		console.log("1. 🔹 АВР (услуги):");
 		console.log("   Продавец: Дт 1121 - Кт 4110 (выставление), Дт 1112 - Кт 1121 (оплата)");
@@ -322,11 +323,11 @@ async function testProductSaleWithCostOfGoods(
 ) {
 	try {
 		const { accountsReceivable, revenueAccount, cashAccount, inventoryAccount, costOfGoodsSoldAccount } = accounts;
-		
+
 		// 1. Создание сделки на товары
 		console.log("   📋 1. Создание накладной (продавец)");
 		console.log(`   Проводка: Дт ${accountsReceivable.code} (${accountsReceivable.name}) - Кт ${revenueAccount.code} (${revenueAccount.name})`);
-		
+
 		const productDeal = await dealAccountingService.createDealWithAccounting({
 			receiverBin: "123456789012",
 			title: "Продажа канцелярских товаров",
@@ -348,7 +349,7 @@ async function testProductSaleWithCostOfGoods(
 		// 2. Списание товара со склада (себестоимость)
 		console.log("   📦 2. Списание товара со склада (продавец)");
 		console.log(`   Проводка: Дт ${costOfGoodsSoldAccount.code} (${costOfGoodsSoldAccount.name}) - Кт ${inventoryAccount.code} (${inventoryAccount.name})`);
-		
+
 		const costOfGoodsEntry = await accountingService.createJournalEntry(
 			{
 				entryNumber: `COGS-${Date.now()}`,
@@ -383,7 +384,7 @@ async function testProductSaleWithCostOfGoods(
 		// 3. Оплата от покупателя
 		console.log("   💰 3. Поступление оплаты (продавец)");
 		console.log(`   Проводка: Дт ${cashAccount.code} (${cashAccount.name}) - Кт ${accountsReceivable.code} (${accountsReceivable.name})`);
-		
+
 		const payment = await dealAccountingService.recordPayment({
 			dealId: productDeal.deal.id,
 			amount: 250000, // Полная оплата
@@ -425,7 +426,7 @@ async function testServiceTransactionsBothSides(
 
 		console.log("   📋 Продавец: Выставление АВР");
 		console.log(`   Проводка: Дт ${accountsReceivable.code} (${accountsReceivable.name}) - Кт ${revenueAccount.code} (${revenueAccount.name})`);
-		
+
 		// 1. Продавец выставляет АВР
 		const sellerActEntry = await accountingService.createJournalEntry(
 			{
@@ -460,7 +461,7 @@ async function testServiceTransactionsBothSides(
 
 		console.log("   🛒 Покупатель: Получение АВР");
 		console.log(`   Проводка: Дт ${COST_OF_GOODS_SOLD_CODE} (Расходы на услуги) - Кт ${accountsPayableAccount.code} (${accountsPayableAccount.name})`);
-		
+
 		// 2. Покупатель получает АВР (зеркальная проводка)
 		const buyerActEntry = await accountingService.createJournalEntry(
 			{
@@ -495,7 +496,7 @@ async function testServiceTransactionsBothSides(
 
 		console.log("   💰 Продавец: Получение оплаты");
 		console.log(`   Проводка: Дт ${cashAccount.code} (${cashAccount.name}) - Кт ${accountsReceivable.code} (${accountsReceivable.name})`);
-		
+
 		// 3. Продавец получает оплату
 		const sellerPaymentEntry = await accountingService.createJournalEntry(
 			{
@@ -530,7 +531,7 @@ async function testServiceTransactionsBothSides(
 
 		console.log("   💸 Покупатель: Оплата услуг");
 		console.log(`   Проводка: Дт ${accountsPayableAccount.code} (${accountsPayableAccount.name}) - Кт ${cashAccount.code} (${cashAccount.name})`);
-		
+
 		// 4. Покупатель производит оплату
 		const buyerPaymentEntry = await accountingService.createJournalEntry(
 			{
@@ -588,7 +589,7 @@ async function testBuyerSideTransactions(
 
 		console.log("   🛒 Покупатель: Получение товара");
 		console.log(`   Проводка: Дт ${inventoryAccount.code} (${inventoryAccount.name}) - Кт ${accountsPayableAccount.code} (${accountsPayableAccount.name})`);
-		
+
 		// 1. Покупатель получает товар (зеркальная проводка продавца)
 		const buyerReceiveGoods = await accountingService.createJournalEntry(
 			{
@@ -624,7 +625,7 @@ async function testBuyerSideTransactions(
 		// 2. Покупатель оплачивает поставщику
 		console.log("   💸 Покупатель: Оплата поставщику");
 		console.log(`   Проводка: Дт ${accountsPayableAccount.code} (${accountsPayableAccount.name}) - Кт ${cashAccount.code} (${cashAccount.name})`);
-		
+
 		const buyerPayment = await accountingService.createJournalEntry(
 			{
 				entryNumber: `PAY-${Date.now()}`,

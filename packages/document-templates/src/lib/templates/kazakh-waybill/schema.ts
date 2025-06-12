@@ -35,6 +35,7 @@ export const kazakhWaybillInputSchema = z.object({
 		.nullable(),
 	transportOrgName: z.string().optional(),
 	transportResponsiblePerson: z.string().optional(),
+	contactPhone: z.string().optional(),
 });
 
 // Infer types from schemas

@@ -1,13 +1,14 @@
 import type { Database } from "@accounting-kz/db";
-import { banks, employees, legalEntities, eq } from "@accounting-kz/db";
-import { pdfService } from "../../pdf-service";
+import { type Bank, banks, employees, legalEntities, eq } from "@accounting-kz/db";
+import { typstService } from "../../typst-service";
 import {
 	type ActItem,
 	kazakhActInputSchema,
 	type KazakhActInput,
 } from "./schema";
 import { numToFullWords } from "@accounting-kz/utils";
-import { KazakhActTemplate } from "./template";
+import path from "node:path";
+
 // Template type identifier
 const TEMPLATE_TYPE = "kazakh-act";
 
@@ -16,6 +17,23 @@ export interface GenerateActResult {
 	filePath: string;
 	fileName: string;
 	pdfBuffer: Buffer;
+	fields: {
+		orgName: string;
+		orgAddress: string;
+		orgBin: string;
+		buyerName: string;
+		buyerBin: string;
+		contract: string;
+		orgPersonName: string | null | undefined;
+		orgPersonRole: string;
+		buyerPersonName: string | null | undefined;
+		buyerPersonRole: string;
+		phone: string | null | undefined;
+		selectedBank: Bank | null | undefined;
+		products: ActItem[];
+		idx: string;
+		total: number;
+	};
 }
 
 /**
@@ -38,13 +56,13 @@ async function generateAct(
 		}),
 		input.executorEmployeeId
 			? db.query.employees.findFirst({
-					where: eq(employees.id, input.executorEmployeeId),
-				})
+				where: eq(employees.id, input.executorEmployeeId),
+			})
 			: null,
 		input.customerEmployeeId
 			? db.query.employees.findFirst({
-					where: eq(employees.id, input.customerEmployeeId),
-				})
+				where: eq(employees.id, input.customerEmployeeId),
+			})
 			: null,
 	]);
 
@@ -70,7 +88,7 @@ async function generateAct(
 	// Helper function to format date to YYYY-MM-DD string
 	const formatDateToString = (date: Date | undefined): string => {
 		if (!date) return "";
-		return date.toISOString().split('T')[0];
+		return date.toISOString().split("T")[0];
 	};
 
 	// 4. Prepare template data
@@ -111,19 +129,46 @@ async function generateAct(
 	};
 
 	// 5. Generate PDF
-	const pdfBuffer = await pdfService.renderPDF(KazakhActTemplate, {
-		data: templateData,
-	});
-
-	// 6. Save PDF
+	const templatePath = path.join(
+		__dirname,
+		"template.typ",
+	);
 	const fileName = `act-${input.sellerLegalEntityId}-${input.clientLegalEntityId}-${input.actNumber}.pdf`;
-	const filePath = await pdfService.savePDF(pdfBuffer, fileName);
+	const { filePath, pdfBuffer } = await typstService.renderPDF(
+		templatePath,
+		templateData,
+		fileName,
+	);
+
+	const formatDate = (date: Date | undefined): string => {
+		if (!date) return "";
+		return date.toLocaleDateString("ru-RU");
+	};
 
 	return {
 		success: true,
 		filePath,
 		fileName,
 		pdfBuffer,
+		fields: {
+			orgName: seller.name,
+			orgAddress: seller.address || "",
+			orgBin: seller.bin,
+			buyerName: client.name,
+			buyerBin: client.bin,
+			contract: `Договор №${input.contractNumber} от ${formatDate(
+				input.contractDate,
+			)}`,
+			orgPersonName: executor?.fullName,
+			orgPersonRole: executor?.role || "Предприниматель",
+			buyerPersonName: customer?.fullName,
+			buyerPersonRole: customer?.role || "",
+			phone: input.contactPhone,
+			selectedBank: sellerBank,
+			products: input.items,
+			idx: input.actNumber,
+			total: totalAmount,
+		},
 	};
 }
 

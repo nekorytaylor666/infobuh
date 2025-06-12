@@ -13,9 +13,9 @@ export const kazakhInvoiceInputSchema = z.object({
 	sellerLegalEntityId: z.string().uuid("Invalid seller legal entity ID"),
 	clientLegalEntityId: z.string().uuid("Invalid client legal entity ID"),
 	invoiceNumber: z.string().min(1, "Invoice number is required"),
-	invoiceDate: z.string(),
+	invoiceDate: z.date(),
 	contractNumber: z.string().min(1, "Contract number is required"),
-	contractDate: z.string().optional(),
+	contractDate: z.date().optional(),
 	items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
 	executorEmployeeId: z
 		.string()
@@ -23,6 +23,7 @@ export const kazakhInvoiceInputSchema = z.object({
 		.optional()
 		.nullable(),
 	contactPhone: z.string().optional(),
+	knp: z.string().optional(),
 });
 
 // Infer types from schemas

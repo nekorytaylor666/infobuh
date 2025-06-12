@@ -3,8 +3,10 @@ import {
 	createDocumentGenerator,
 	type KazakhActInput,
 	type KazakhWaybillInput,
+	type KazakhInvoiceInput,
 	type ActItem,
 	type WaybillItem,
+	type InvoiceItem,
 } from "@accounting-kz/document-templates";
 import { documentsFlutter } from "@accounting-kz/db";
 import type { DealType } from "./deal-accounting-service";
@@ -117,6 +119,8 @@ export class DocumentGenerationService {
 				}
 			);
 
+			console.log(result);
+
 			if (!result.success) {
 				return result;
 			}
@@ -136,6 +140,7 @@ export class DocumentGenerationService {
 						title: params.title,
 						description: params.description,
 						totalAmount: params.totalAmount,
+						...(result.fields || {}),
 					},
 					filePath: result.filePath,
 				})
@@ -169,76 +174,145 @@ export class DocumentGenerationService {
 		params: DocumentGenerationParams & {
 			sellerLegalEntity: any;
 			clientLegalEntity: any;
-		}
+		},
 	) {
 		const currentDate = new Date();
-		const documentNumber = await this.generateDocumentNumber(params.dealType, params.legalEntityId);
-
-		// Fetch comprehensive data for document generation
+		const documentNumber = await this.generateDocumentNumber(
+			params.dealType,
+			params.legalEntityId,
+		);
 		const documentData = await this.prepareDocumentData(params);
-
-		// Create default item from deal data
 		const defaultItem = {
-			description: params.title + (params.description ? ` - ${params.description}` : ""),
+			description:
+				params.title + (params.description ? ` - ${params.description}` : ""),
 			quantity: 1,
 			unit: params.dealType === "service" ? "услуга" : "шт",
 			price: params.totalAmount,
 		};
 
-		if (documentType === "АВР") {
-			// Generate АВР (Act of Completed Works)
-			const actInput: KazakhActInput = {
-				sellerLegalEntityId: params.legalEntityId,
-				clientLegalEntityId: params.clientLegalEntity?.id || params.legalEntityId,
-				actNumber: documentNumber,
-				actDate: currentDate,
-				contractNumber: `Договор-${params.dealId.slice(0, 8)}`,
-				contractDate: currentDate,
-				items: [defaultItem as ActItem],
-				executorEmployeeId: documentData.primaryEmployee?.id || null,
-				customerEmployeeId: null,
-				dateOfCompletion: currentDate,
-			};
+		const handler =
+			this.documentHandlers[documentType as keyof typeof this.documentHandlers];
 
-			const result = await this.documentGenerator.generate("generateAct", actInput);
-			return {
-				success: true as const,
-				filePath: result.filePath,
-				fileName: result.fileName,
-				documentId: "", // Will be set later
-				documentType: "АВР",
-			};
-		} else if (documentType === "Накладная") {
-			// Generate Накладная (Waybill)
-			const waybillInput: KazakhWaybillInput = {
-				sellerLegalEntityId: params.legalEntityId,
-				clientLegalEntityId: params.clientLegalEntity?.id || params.legalEntityId,
-				waybillNumber: documentNumber,
-				waybillDate: currentDate,
-				contractNumber: `Договор-${params.dealId.slice(0, 8)}`,
-				contractDate: currentDate,
-				items: [defaultItem as WaybillItem],
-				senderEmployeeId: documentData.primaryEmployee?.id || null,
-				receiverEmployeeId: null,
-				releaserEmployeeId: documentData.primaryEmployee?.id || null,
-				transportOrgName: undefined,
-				transportResponsiblePerson: undefined,
-			};
-
-			const result = await this.documentGenerator.generate("generateWaybill", waybillInput);
-			return {
-				success: true as const,
-				filePath: result.filePath,
-				fileName: result.fileName,
-				documentId: "", // Will be set later
-				documentType: "Накладная",
-			};
-		} else {
-			// For other document types (Доверенность, Инвойс, КП, Счет на оплату)
-			// Return a placeholder for now - these would need specific implementations
-			throw new Error(`Document type ${documentType} is not yet implemented`);
+		if (handler) {
+			return handler.call(
+				this,
+				params,
+				documentNumber,
+				currentDate,
+				defaultItem,
+				documentData,
+			);
 		}
+
+		throw new Error(`Document type ${documentType} is not yet implemented`);
 	}
+
+	private async generateAct(
+		params: any,
+		documentNumber: string,
+		currentDate: Date,
+		defaultItem: ActItem,
+		documentData: any,
+	) {
+		const actInput: KazakhActInput = {
+			sellerLegalEntityId: params.legalEntityId,
+			clientLegalEntityId: params.clientLegalEntity?.id || params.legalEntityId,
+			actNumber: documentNumber,
+			actDate: currentDate,
+			contractNumber: `Договор-${params.dealId.slice(0, 8)}`,
+			contractDate: currentDate,
+			items: [defaultItem],
+			executorEmployeeId: documentData.primaryEmployee?.id || null,
+			customerEmployeeId: null,
+			dateOfCompletion: currentDate,
+		};
+
+		const result = await this.documentGenerator.generate("generateAct", actInput);
+		return {
+			success: true as const,
+			filePath: result.filePath,
+			fileName: result.fileName,
+			fields: result.fields,
+			documentId: "", // Will be set later
+			documentType: "АВР" as DocumentType,
+		};
+	}
+
+	private async generateWaybill(
+		params: any,
+		documentNumber: string,
+		currentDate: Date,
+		defaultItem: WaybillItem,
+		documentData: any,
+	) {
+		const waybillInput: KazakhWaybillInput = {
+			sellerLegalEntityId: params.legalEntityId,
+			clientLegalEntityId: params.clientLegalEntity?.id || params.legalEntityId,
+			waybillNumber: documentNumber,
+			waybillDate: currentDate,
+			contractNumber: `Договор-${params.dealId.slice(0, 8)}`,
+			contractDate: currentDate,
+			items: [defaultItem],
+			senderEmployeeId: documentData.primaryEmployee?.id || null,
+			receiverEmployeeId: null,
+			releaserEmployeeId: documentData.primaryEmployee?.id || null,
+			transportOrgName: undefined,
+			transportResponsiblePerson: undefined,
+		};
+
+		const result = await this.documentGenerator.generate(
+			"generateWaybill",
+			waybillInput,
+		);
+		return {
+			success: true as const,
+			filePath: result.filePath,
+			fileName: result.fileName,
+			fields: result.fields,
+			documentId: "", // Will be set later
+			documentType: "Накладная" as DocumentType,
+		};
+	}
+
+	private async generateInvoice(
+		params: any,
+		documentNumber: string,
+		currentDate: Date,
+		defaultItem: InvoiceItem,
+		documentData: any,
+	) {
+		const invoiceInput: KazakhInvoiceInput = {
+			sellerLegalEntityId: params.legalEntityId,
+			clientLegalEntityId: params.clientLegalEntity?.id || params.legalEntityId,
+			invoiceNumber: documentNumber,
+			invoiceDate: currentDate,
+			contractNumber: `Договор-${params.dealId.slice(0, 8)}`,
+			contractDate: currentDate,
+			items: [defaultItem],
+			executorEmployeeId: documentData.primaryEmployee?.id || null,
+			contactPhone: documentData.formattedData.phone,
+		};
+
+		const result = await this.documentGenerator.generate(
+			"generateInvoice",
+			invoiceInput,
+		);
+		return {
+			success: true as const,
+			filePath: result.filePath,
+			fileName: result.fileName,
+			fields: result.fields,
+			documentId: "", // Will be set later
+			documentType: "Инвойс" as DocumentType,
+		};
+	}
+
+	private documentHandlers = {
+		АВР: this.generateAct,
+		Накладная: this.generateWaybill,
+		"Счет на оплату": this.generateInvoice,
+		Инвойс: this.generateInvoice,
+	};
 
 	/**
 	 * Prepare comprehensive document data from database

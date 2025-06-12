@@ -357,7 +357,7 @@ export class DealAccountingService {
 			description: undefined,
 		}));
 
-		return {
+		const report: ReconciliationReport = {
 			dealId: deal.id,
 			dealTitle: deal.title || "",
 			totalAmount: deal.totalAmount,
@@ -367,22 +367,17 @@ export class DealAccountingService {
 			isBalanced: discrepancies.length === 0,
 			journalEntries,
 		};
-	}
 
-	async generateDocumentForDeal(dealId: string, dealType: DealType): Promise<string> {
-		// This would integrate with document generation service
-		// For now, return the document type that should be generated
-		if (dealType === "service") {
-			return "kazakh-acts"; // АВР - Акт выполненных работ
-		} else {
-			return "kazakh-waybill"; // Накладная
-		}
+		const dealBalance = await this.getDealBalance(dealId);
+		report.isBalanced = dealBalance ? dealBalance.remainingBalance === 0 : false;
+
+		return report;
 	}
 
 	private async generateEntryNumber(legalEntityId: string): Promise<string> {
-		// Simple entry number generation - in production this should be more sophisticated
+		// This is a placeholder for a more robust entry number generation logic
 		const timestamp = Date.now();
-		return `JE-${timestamp.toString().slice(-8)}`;
+		return `JE-${legalEntityId.slice(0, 4)}-${timestamp}`;
 	}
 }
 

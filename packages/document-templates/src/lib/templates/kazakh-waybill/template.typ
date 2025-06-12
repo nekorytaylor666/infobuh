@@ -1,4 +1,4 @@
-#let kazakhWaybillTemplate(data) = {
+#let main(data) = {
   // Set document properties
   set page(
     paper: "a4",
@@ -6,7 +6,7 @@
   )
   
   set text(
-    font: "Times New Roman",
+    font: "Helvetica",
     size: 8pt,
     lang: "ru"
   )
@@ -262,12 +262,12 @@ table(
   v(10pt)
   
   // Main items table
+  let totalAmount = data.totalAmount
+  let vatAmount = data.vatAmount
+  let totalInWords = data.totalInWords
   let tableData = data.items
-  let totalAmount = tableData.fold(0, (sum, item) => sum + item.quantity * item.price)
-  let vatAmount = totalAmount * 0.12
-  let totalWithVat = totalAmount + vatAmount
   
- // Main items table with 2-row header
+  // Main items table with 2-row header
 table(
   columns: (30pt, 120pt, 60pt, 40pt, 50pt, 50pt, 1fr, 1fr, 1fr),
   stroke: 0.5pt,
@@ -424,7 +424,7 @@ table(
     #text(size: 6pt)[x]
   ],
   align(right)[
-    #text(size: 6pt, weight: "bold")[#formatCurrency(totalWithVat)]
+    #text(size: 6pt, weight: "bold")[#formatCurrency(totalAmount)]
   ],
   align(right)[
     #text(size: 6pt, weight: "bold")[#formatCurrency(vatAmount)]
@@ -456,7 +456,7 @@ table(
       line(length: 100%, stroke: 0.5pt),
       v(-10pt),
       align(center)[
-        #text(size: 6pt)[двести десять тысяч тенге 00 тиын]
+        #text(size: 6pt)[#totalInWords]
       ]
     )
   )
@@ -607,48 +607,4 @@ table(
       ]
     )
   )
-}
-
-// Test data
-#let testData = (
-  // Seller information
-  sellerName: "ТОО \"COMABOOKS\"",
-  sellerBin: "250140019272",
-  sellerAddress: "г. Астана, район Алматы",
-  
-  // Receiver information
-  receiverName: "LV KAZAKHSTAN",
-  receiverAddress: "Нурсултан Байышулы",
-  
-  // Waybill details
-  waybillNumber: "00019",
-  waybillDate: "07.06.25",
-  contractNumber: "Договор-001",
-  contractDate: "01.06.25",
-  
-  // Items
-  items: (
-    (
-      description: "Именная книга",
-      nomenclatureCode: "0001",
-      quantity: 5,
-      unit: "шт",
-      price: 42000.00
-    ),
-  ),
-  
-  // Employee information
-  senderEmployeeName: "Иванов И.И.",
-  receiverEmployeeName: "Петров П.П.",
-  releaserEmployeeName: "Сидоров С.С.",
-  chiefAccountantName: "ЧЕРТВЕРТАКОВА МАРИЯ ВЯЧЕСЛАВОВНА",
-  transportOrgName: "Собственный транспорт",
-  transportResponsiblePerson: "Иванов И.И.",
-  
-  // Additional fields
-  unitDescription: "штуках",
-  totalInWords: "двести десять тысяч тенге 00 тиын"
-)
-
-// Generate the test document
-#kazakhWaybillTemplate(testData) 
+} 

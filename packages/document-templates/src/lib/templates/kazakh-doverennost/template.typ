@@ -1,4 +1,4 @@
-#let kazakhDoverennostTemplate(data) = {
+#let main(data) = {
   // Set document properties
   set page(
     paper: "a4",
@@ -6,7 +6,7 @@
   )
   
   set text(
-    font: "Inter",
+    font: "Helvetica",
     size: 9pt,
     lang: "ru"
   )
@@ -117,7 +117,7 @@
     columns: (auto, 1fr),
     column-gutter: 5pt,
     
-    text(size: 9pt)[Доверенность действительна по #data.validUntil],
+    text(size: 9pt)[Доверенность действительна по #formatDate(data.validUntil)],
     
     stack(
       v(8pt),
@@ -178,7 +178,7 @@
       v(8pt),
       line(length: 100%, stroke: (thickness: 0.5pt, paint: black)),
       v(-10pt),
-      [#data.issuedBy],
+      [#data.issuedToRole, #data.issuedToName],
       v(10pt),
       text(size: 7pt, style: "italic")[
         должность, фамилия, имя
@@ -198,7 +198,7 @@
       v(8pt),
       line(length: 100%, stroke: (thickness: 0.5pt, paint: black)),
       v(-10pt),
-      [#data.passportSeries, ИИН #data.issuerIin, выдан #formatDate(data.passportIssueDate) МВД РК],
+      [#data.passportNumber, ИИН #data.issuedToIin, выдан #formatDate(data.passportIssueDate) #data.passportIssuer],
       v(10pt),
       text(size: 7pt, style: "italic")[
         наименование поставщика
@@ -212,7 +212,7 @@
     columns: (auto, 1fr),
     column-gutter: 5pt,
     
-    text(size: 9pt)[На получение от LV KAZAKHSTAN, БИН #data.supplierBin],
+    text(size: 9pt)[На получение от #data.supplierName, БИН #data.supplierBin],
     
     stack(
       v(8pt),
@@ -385,7 +385,7 @@
           line(length: 100%, stroke: 0.5pt),
           v(-15pt),
           align(center)[
-            #text(size: 8pt)[asdf]
+            #text(size: 8pt)[]
           ],
            v(15pt),
            align(center)[
@@ -403,7 +403,7 @@
           line(length: 100%, stroke: 0.5pt),
           v(-15pt),
           align(center)[
-            #text(size: 8pt)[asdfasf]
+            #text(size: 8pt)[#data.directorName]
           ],
           v(15pt),
            align(center)[
@@ -426,7 +426,7 @@
           line(length: 100%, stroke: 0.5pt),
           v(-15pt),
           align(center)[
-            #text(size: 8pt)[asdf]
+            #text(size: 8pt)[]
           ],
            v(15pt),
            align(center)[
@@ -444,7 +444,7 @@
           line(length: 100%, stroke: 0.5pt),
           v(-15pt),
           align(center)[
-            #text(size: 8pt)[asdfasf]
+            #text(size: 8pt)[#data.bookkeeperName]
           ],
           v(15pt),
            align(center)[
@@ -454,42 +454,4 @@
     ),
     )
   )
-}
-
-// Test data
-#let testData = (
-  // Organization information
-  organizationName: "ТОО \"COMABOOKSS\"",
-  organizationBin: "250140019272",
-  organizationAddress: "ТОО \"COMABOOKSS\", Г.АСТАНА, РАЙОН АЛМАТЫ",
-  accountNumber: "KZ72828282",
-  
-  // Power of attorney details
-  validUntil: "10.06.2025",
-  issueDate: "2025-05-20",
-  issuedBy: "Директор, Нурбахыт Байшурин",
-  passportSeries: "N73828272",
-  issuerIin: "040819550831",
-  passportIssueDate: "2025-05-20",
-  
-  // Contract and supplier details
-  supplierBin: "161040002743",
-  contractReference: "Договор 5, от 2025-05-20",
-  
-  // Items
-  items: (
-    (
-      description: "Обложка твердый переплет",
-      quantity: 15,
-      unit: "шт.",
-      price: 5500.00
-    ),
-  ),
-  
-  // Signature information
-  organizationLeader: "Нурбахыт Байшурин, Директор",
-  chiefAccountant: ""
-)
-
-// Generate the test document
-#kazakhDoverennostTemplate(testData) 
+} 

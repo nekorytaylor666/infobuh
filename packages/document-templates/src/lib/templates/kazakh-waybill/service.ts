@@ -1,13 +1,14 @@
 import type { Database } from "@accounting-kz/db";
-import { banks, employees, legalEntities, eq } from "@accounting-kz/db";
-import { pdfService } from "../../pdf-service";
+import { type Bank, banks, employees, legalEntities, eq } from "@accounting-kz/db";
+import { typstService } from "../../typst-service";
 import {
 	kazakhWaybillInputSchema,
 	type WaybillItem,
 	type KazakhWaybillInput,
 } from "./schema";
 import { numToFullWords } from "@accounting-kz/utils";
-import { KazakhWaybillTemplate } from "./template";
+import path from "node:path";
+
 // Template type identifier
 const TEMPLATE_TYPE = "kazakh-waybill";
 
@@ -16,6 +17,22 @@ export interface GenerateWaybillResult {
 	filePath: string;
 	fileName: string;
 	pdfBuffer: Buffer;
+	fields: {
+		orgName: string;
+		orgAddress: string;
+		orgBin: string;
+		buyerName: string;
+		buyerBin: string;
+		orgPersonName: string;
+		orgPersonRole: string;
+		buyerPersonName: string;
+		buyerPersonRole: string;
+		phone: string | null | undefined;
+		selectedBank: Bank | null | undefined;
+		products: WaybillItem[];
+		idx: string;
+		total: number;
+	};
 }
 
 /**
@@ -26,33 +43,32 @@ async function generateWaybill(
 	input: KazakhWaybillInput,
 ): Promise<GenerateWaybillResult> {
 	// 1. Fetch all required entities in parallel
-	const [seller, sellerBank, client, sender, receiver, releaser] =
-		await Promise.all([
-			db.query.legalEntities.findFirst({
-				where: eq(legalEntities.id, input.sellerLegalEntityId),
-			}),
-			db.query.banks.findFirst({
-				where: eq(banks.legalEntityId, input.sellerLegalEntityId),
-			}),
-			db.query.legalEntities.findFirst({
-				where: eq(legalEntities.id, input.clientLegalEntityId),
-			}),
-			input.senderEmployeeId
-				? db.query.employees.findFirst({
-						where: eq(employees.id, input.senderEmployeeId),
-					})
-				: null,
-			input.receiverEmployeeId
-				? db.query.employees.findFirst({
-						where: eq(employees.id, input.receiverEmployeeId),
-					})
-				: null,
-			input.releaserEmployeeId
-				? db.query.employees.findFirst({
-						where: eq(employees.id, input.releaserEmployeeId),
-					})
-				: null,
-		]);
+	const [seller, sellerBank, client, sender, receiver, releaser] = await Promise.all([
+		db.query.legalEntities.findFirst({
+			where: eq(legalEntities.id, input.sellerLegalEntityId),
+		}),
+		db.query.banks.findFirst({
+			where: eq(banks.legalEntityId, input.sellerLegalEntityId),
+		}),
+		db.query.legalEntities.findFirst({
+			where: eq(legalEntities.id, input.clientLegalEntityId),
+		}),
+		input.senderEmployeeId
+			? db.query.employees.findFirst({
+				where: eq(employees.id, input.senderEmployeeId),
+			})
+			: null,
+		input.receiverEmployeeId
+			? db.query.employees.findFirst({
+				where: eq(employees.id, input.receiverEmployeeId),
+			})
+			: null,
+		input.releaserEmployeeId
+			? db.query.employees.findFirst({
+				where: eq(employees.id, input.releaserEmployeeId),
+			})
+			: null,
+	]);
 
 	// 2. Validate entities exist
 	if (!seller) {
@@ -74,23 +90,21 @@ async function generateWaybill(
 	const vatRate = 0.12; // 12% VAT
 	const vatAmount = totalAmount * vatRate;
 
-	// Helper function to format date to YYYY-MM-DD string
 	const formatDateToString = (date: Date | undefined): string => {
 		if (!date) return "";
-		return date.toISOString().split('T')[0];
+		return date.toLocaleDateString("ru-RU");
 	};
 
 	// 4. Prepare template data
 	const templateData = {
-		// Company info
-		companyName: seller.name,
-		bin: seller.bin,
-		kbe: seller.ugd || "",
-		account: sellerBank?.account || "",
-		bik: sellerBank?.bik || "",
-		bank: sellerBank?.name || "",
-		sellerImage: seller.image || undefined,
+		// Seller info
+		sellerName: seller.name,
+		sellerBin: seller.bin,
 		sellerAddress: seller.address || "",
+
+		// Receiver info
+		receiverName: client.name,
+		receiverAddress: client.address || "",
 
 		// Waybill details
 		waybillNumber: input.waybillNumber,
@@ -98,44 +112,55 @@ async function generateWaybill(
 		contractNumber: input.contractNumber || "",
 		contractDate: formatDateToString(input.contractDate),
 
-		// Client info
-		clientName: client.name,
-		clientBin: client.bin,
-		clientAddress: client.address || "",
-
 		// Items and totals
 		items: input.items,
 		totalAmount,
 		vatAmount,
-		totalInWords: numToFullWords(totalAmount),
+		totalInWords: numToFullWords(totalAmount + vatAmount),
 
 		// Transport info
 		transportOrgName: input.transportOrgName || "",
 		transportResponsiblePerson: input.transportResponsiblePerson || "",
+		responsiblePersonName: sender?.fullName || "",
 
-		// Additional info
-		senderName: sender?.fullName || "",
-		senderPosition: sender?.role || "Директор",
-		receiverName: receiver?.fullName || "",
-		receiverPosition: receiver?.role || "",
-		releaserName: releaser?.fullName || "",
-		releaserPosition: releaser?.role || "",
+		// Employee info
+		senderEmployeeName: sender?.fullName || "",
+		receiverEmployeeName: receiver?.fullName || "",
+		releaserEmployeeName: releaser?.fullName || "",
+		chiefAccountantName: "", // Needs to be determined
+		unitDescription: "штуках", // Needs to be determined
 	};
 
 	// 5. Generate PDF
-	const pdfBuffer = await pdfService.renderPDF(KazakhWaybillTemplate, {
-		data: templateData,
-	});
-
-	// 6. Save PDF
+	const templatePath = path.join(__dirname, "template.typ");
 	const fileName = `waybill-${input.sellerLegalEntityId}-${input.clientLegalEntityId}-${input.waybillNumber}.pdf`;
-	const filePath = await pdfService.savePDF(pdfBuffer, fileName);
+	const { filePath, pdfBuffer } = await typstService.renderPDF(
+		templatePath,
+		templateData,
+		fileName,
+	);
 
 	return {
 		success: true,
 		filePath,
 		fileName,
 		pdfBuffer,
+		fields: {
+			orgName: seller.name,
+			orgAddress: seller.address || "",
+			orgBin: seller.bin,
+			buyerName: client.name,
+			buyerBin: client.bin,
+			orgPersonName: releaser?.fullName || sender?.fullName || "",
+			orgPersonRole: releaser?.role || sender?.role || "",
+			buyerPersonName: receiver?.fullName || "",
+			buyerPersonRole: receiver?.role || "",
+			phone: input.contactPhone,
+			selectedBank: sellerBank,
+			products: input.items,
+			idx: input.waybillNumber,
+			total: totalAmount,
+		},
 	};
 }
 

@@ -1,4 +1,4 @@
-#let kazakhActTemplate(data) = {
+#let main(data) = {
   // Set document properties
   set page(
     paper: "a4",
@@ -211,12 +211,13 @@
   
  v(5pt)
   
-  // Main table
+  // Calculate totals from the passed data
+  let totalAmount = data.totalAmount
+  let vatAmount = data.vatAmount
+  let totalInWords = data.totalInWords
   let tableData = data.items
-  let totalAmount = tableData.fold(0, (sum, item) => sum + item.quantity * item.price)
-  let vatAmount = totalAmount * 0.12
-  
-  // Table with complex header structure
+
+  // Main table
   table(
     
     columns: (40pt, 140pt, 40pt, 100pt, 40pt, 1fr, 1fr, 1fr, 1fr),
@@ -524,70 +525,4 @@
   )
 
   
-}
-
-// Test data
-#let testData = (
-  // Company information
-  companyName: "ТОО Технологические Решения KZ",
-  bin: "123456789012",
-  kbe: "17",
-  account: "KZ123456789012345678",
-  bik: "KKBBKZKA",
-  bank: "АО Kaspi Bank",
-  sellerAddress: "г. Алматы, ул. Абая, д. 150, офис 25",
-  
-  // Act details
-  actNumber: "АВР-2024-001",
-  actDate: "2024-01-15",
-  contractNumber: "Договор-2024-001",
-  contractDate: "2024-01-10",
-  dateOfCompletion: "2024-01-15",
-  
-  // Client information
-  clientName: "ТОО Бизнес Партнер",
-  clientBin: "987654321098",
-  clientAddress: "г. Алматы, пр. Достык, д. 200",
-  
-  // Work items
-  items: (
-    (
-      description: "Разработка системы электронного документооборота",
-      quantity: 1,
-      unit: "услуга",
-      price: 750000.00
-    ),
-    (
-      description: "Настройка системы безопасности",
-      quantity: 1,
-      unit: "услуга", 
-      price: 250000.00
-    ),
-    (
-      description: "Обучение персонала",
-      quantity: 8,
-      unit: "час",
-      price: 15000.00
-    ),
-    (
-      description: "Техническая поддержка",
-      quantity: 3,
-      unit: "месяц",
-      price: 50000.00
-    )
-  ),
-  
-  // Personnel information
-  executorName: "Ахметов Тохтар Маратов",
-  executorPosition: "Генеральный директор",
-  customerName: "Петров Петр Петрович",
-  customerPosition: "Генеральный директор",
-  
-  // Additional fields (will be calculated automatically)
-  totalAmount: 1270000.00,
-  vatAmount: 152400.00,
-  totalInWords: "один миллион двести семьдесят тысяч тенге 00 тиын"
-)
-
-// Generate the test document
-#kazakhActTemplate(testData) 
+} 
