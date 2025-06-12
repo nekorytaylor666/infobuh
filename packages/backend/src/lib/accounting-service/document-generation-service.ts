@@ -10,15 +10,30 @@ import { documentsFlutter } from "@accounting-kz/db";
 import type { DealType } from "./deal-accounting-service";
 import type { DocumentProduct, AVRDocument, WaybillDocument } from "./document-schemas";
 
+export type DocumentType = "АВР" | "Доверенность" | "Накладная" | "Инвойс" | "КП" | "Счет на оплату";
+
 export interface DocumentGenerationParams {
 	dealId: string;
 	dealType: DealType;
+	documentType?: DocumentType; // Optional override for document type
 	legalEntityId: string;
 	receiverBin: string;
 	title: string;
 	description?: string;
 	totalAmount: number;
 	createdBy: string;
+	// Additional fields for specific document types
+	employeeName?: string;
+	employeeRole?: string;
+	employeeIin?: string;
+	employeeDocNumber?: string;
+	employeeDocNumberDate?: string;
+	employeeWhoGives?: string;
+	dateUntil?: string;
+	codeKnp?: string;
+	schetNaOplatu?: string;
+	productDeadline?: string;
+	productPriceCondition?: string;
 }
 
 export interface GeneratedDocumentResult {
@@ -52,10 +67,24 @@ export class DocumentGenerationService {
 	}
 
 	/**
+	 * Get document type based on deal type or explicit override
+	 */
+	private getDocumentType(params: DocumentGenerationParams): DocumentType {
+		if (params.documentType) {
+			return params.documentType;
+		}
+		// Default mapping based on deal type
+		return params.dealType === "service" ? "АВР" : "Накладная";
+	}
+
+	/**
 	 * Automatically generate document based on deal type
 	 */
 	async generateDocumentForDeal(params: DocumentGenerationParams): Promise<DocumentGenerationResult> {
 		try {
+			// Get document type
+			const documentType = this.getDocumentType(params);
+
 			// Get legal entities and related data
 			const [sellerLegalEntity, clientLegalEntity] = await Promise.all([
 				this.db.query.legalEntities.findFirst({
@@ -78,9 +107,9 @@ export class DocumentGenerationService {
 				};
 			}
 
-			// Create document based on deal type
+			// Create document based on document type
 			const result = await this.generateDocument(
-				params.dealType,
+				documentType,
 				{
 					...params,
 					sellerLegalEntity,
@@ -97,12 +126,12 @@ export class DocumentGenerationService {
 				.insert(documentsFlutter)
 				.values({
 					legalEntityId: params.legalEntityId,
-					type: params.dealType === "service" ? "act" : "waybill",
+					type: documentType,
 					receiverBin: params.receiverBin,
 					receiverName: clientLegalEntity?.name || "Неизвестный получатель",
 					fields: {
 						dealId: params.dealId,
-						documentType: params.dealType === "service" ? "kazakh-acts" : "kazakh-waybill",
+						documentType: documentType,
 						generatedAt: new Date().toISOString(),
 						title: params.title,
 						description: params.description,
@@ -117,7 +146,7 @@ export class DocumentGenerationService {
 				documentId: documentRecord.id,
 				filePath: result.filePath,
 				fileName: result.fileName,
-				documentType: params.dealType === "service" ? "kazakh-acts" : "kazakh-waybill",
+				documentType: documentType,
 			};
 		} catch (error) {
 			console.error("Error generating document for deal:", error);
@@ -136,27 +165,27 @@ export class DocumentGenerationService {
 	 * Generate specific document type with comprehensive data fetching
 	 */
 	private async generateDocument(
-		dealType: DealType,
+		documentType: DocumentType,
 		params: DocumentGenerationParams & {
 			sellerLegalEntity: any;
 			clientLegalEntity: any;
 		}
 	) {
 		const currentDate = new Date();
-		const documentNumber = await this.generateDocumentNumber(dealType, params.legalEntityId);
-		
+		const documentNumber = await this.generateDocumentNumber(params.dealType, params.legalEntityId);
+
 		// Fetch comprehensive data for document generation
 		const documentData = await this.prepareDocumentData(params);
-		
+
 		// Create default item from deal data
 		const defaultItem = {
 			description: params.title + (params.description ? ` - ${params.description}` : ""),
 			quantity: 1,
-			unit: dealType === "service" ? "услуга" : "шт",
+			unit: params.dealType === "service" ? "услуга" : "шт",
 			price: params.totalAmount,
 		};
 
-		if (dealType === "service") {
+		if (documentType === "АВР") {
 			// Generate АВР (Act of Completed Works)
 			const actInput: KazakhActInput = {
 				sellerLegalEntityId: params.legalEntityId,
@@ -176,8 +205,10 @@ export class DocumentGenerationService {
 				success: true as const,
 				filePath: result.filePath,
 				fileName: result.fileName,
+				documentId: "", // Will be set later
+				documentType: "АВР",
 			};
-		} else {
+		} else if (documentType === "Накладная") {
 			// Generate Накладная (Waybill)
 			const waybillInput: KazakhWaybillInput = {
 				sellerLegalEntityId: params.legalEntityId,
@@ -199,7 +230,13 @@ export class DocumentGenerationService {
 				success: true as const,
 				filePath: result.filePath,
 				fileName: result.fileName,
+				documentId: "", // Will be set later
+				documentType: "Накладная",
 			};
+		} else {
+			// For other document types (Доверенность, Инвойс, КП, Счет на оплату)
+			// Return a placeholder for now - these would need specific implementations
+			throw new Error(`Document type ${documentType} is not yet implemented`);
 		}
 	}
 
@@ -221,8 +258,8 @@ export class DocumentGenerationService {
 		});
 
 		// Find primary employee (director or first available)
-		const primaryEmployee = sellerEmployees.find(emp => 
-			emp.role.toLowerCase().includes('директор') || 
+		const primaryEmployee = sellerEmployees.find(emp =>
+			emp.role.toLowerCase().includes('директор') ||
 			emp.role.toLowerCase().includes('генеральный')
 		) || sellerEmployees[0];
 
@@ -234,8 +271,8 @@ export class DocumentGenerationService {
 			});
 		}
 
-		const clientPrimaryEmployee = clientEmployees.find(emp => 
-			emp.role.toLowerCase().includes('директор') || 
+		const clientPrimaryEmployee = clientEmployees.find(emp =>
+			emp.role.toLowerCase().includes('директор') ||
 			emp.role.toLowerCase().includes('генеральный')
 		) || clientEmployees[0];
 
@@ -249,32 +286,34 @@ export class DocumentGenerationService {
 			formattedData: {
 				// Organization info
 				orgName: params.sellerLegalEntity.name,
-				orgAddress: params.sellerLegalEntity.address,
+				orgAddress: params.sellerLegalEntity.address || "",
 				orgBin: params.sellerLegalEntity.bin,
-				
+				orgIik: sellerBank?.account || "",
+				orgBik: sellerBank?.bik || "",
+
 				// Buyer info
 				buyerName: params.clientLegalEntity?.name || "Неизвестный покупатель",
 				buyerBin: params.receiverBin,
-				
+
 				// Contract info
 				contract: `Договор-${params.dealId.slice(0, 8)}`,
-				
+
 				// Personnel info
 				orgPersonName: primaryEmployee?.fullName || "Не указано",
 				orgPersonRole: primaryEmployee?.role || "Директор",
 				buyerPersonName: clientPrimaryEmployee?.fullName || "",
 				buyerPersonRole: clientPrimaryEmployee?.role || "",
-				
+
 				// Contact info
 				phone: params.sellerLegalEntity.phone || "",
-				
+
 				// Bank info
 				selectedBank: {
 					name: sellerBank?.name || "",
 					account: sellerBank?.account || "",
 					bik: sellerBank?.bik || "",
 				},
-				
+
 				// Products from deal
 				products: [{
 					name: params.title,
@@ -285,10 +324,28 @@ export class DocumentGenerationService {
 					total: params.totalAmount,
 					vat: Math.round(params.totalAmount * 0.12), // 12% VAT
 				}] as DocumentProduct[],
-				
+
 				// Document specifics
 				idx: await this.generateDocumentNumber(params.dealType, params.legalEntityId),
 				total: params.totalAmount,
+
+				// Additional fields for specific document types
+				productDescription: params.description || "",
+				productName: params.title,
+				productDeadline: params.productDeadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+				productPrice: params.totalAmount,
+				productPriceCondition: params.productPriceCondition || "Цена указана с НДС",
+				codeKnp: params.codeKnp || "",
+				schetNaOplatu: params.schetNaOplatu || "",
+
+				// Employee/Доверенность specific fields
+				employeeName: params.employeeName || "",
+				employeeRole: params.employeeRole || "",
+				employeeIin: params.employeeIin || "",
+				employeeDocNumber: params.employeeDocNumber || "",
+				employeeDocNumberDate: params.employeeDocNumberDate || "",
+				employeeWhoGives: params.employeeWhoGives || "",
+				dateUntil: params.dateUntil || ""
 			}
 		};
 	}
@@ -339,7 +396,7 @@ export class DocumentGenerationService {
 		const year = now.getFullYear();
 		const month = String(now.getMonth() + 1).padStart(2, "0");
 		const timestamp = now.getTime().toString().slice(-6);
-		
+
 		const prefix = dealType === "service" ? "АВР" : "НАК";
 		return `${prefix}-${year}${month}-${timestamp}`;
 	}

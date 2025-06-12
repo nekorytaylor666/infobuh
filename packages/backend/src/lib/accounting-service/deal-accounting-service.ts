@@ -4,7 +4,7 @@ import {
 	type DealStatus,
 	DEAL_TYPES,
 	DEAL_STATUSES,
-    deals as dealsTable,
+	deals as dealsTable,
 	Database,
 	eq,
 	dealDocumentsFlutter,
@@ -84,7 +84,8 @@ export class DealAccountingService {
 	}) {
 		const accountingService = new AccountingService(this.db);
 
-		return await this.db.transaction(async (tx) => {
+		// First create the deal and journal entries in a transaction
+		const { deal, journalEntry } = await this.db.transaction(async (tx) => {
 			// 1. Create the deal
 			const [deal] = await tx.insert(dealsTable).values({
 				receiverBin: params.receiverBin,
@@ -95,10 +96,10 @@ export class DealAccountingService {
 				status: "active",
 				legalEntityId: params.legalEntityId,
 			}).returning();
-			
+
 			// 2. Create journal entry for the invoice
 			const entryNumber = await this.generateEntryNumber(params.legalEntityId);
-			
+
 			const journalEntryResult = await accountingService.createJournalEntry(
 				{
 					entryNumber,
@@ -137,7 +138,15 @@ export class DealAccountingService {
 				entryType: "invoice",
 			});
 
-			// 4. Generate document automatically
+			return {
+				deal,
+				journalEntry: journalEntryResult.entry,
+			};
+		});
+
+		// 4. Generate document outside the transaction
+		let generatedDocument: DocumentGenerationResult | null = null;
+		try {
 			const documentResult = await this.documentGenerationService.generateDocumentForDeal({
 				dealId: deal.id,
 				dealType: params.dealType,
@@ -149,25 +158,38 @@ export class DealAccountingService {
 				createdBy: params.createdBy,
 			});
 
-			let generatedDocument: DocumentGenerationResult | null = null;
 			if (documentResult.success) {
-				// 5. Link document with deal
-				await tx.insert(dealDocumentsFlutter).values({
+				// 5. Link document with deal in a separate transaction
+				await this.db.insert(dealDocumentsFlutter).values({
 					dealId: deal.id,
 					documentFlutterId: documentResult.documentId,
 				});
 				generatedDocument = documentResult;
 			} else {
-				// Log error but don't fail the transaction
+				// Log error but don't fail the deal creation
 				console.error("Failed to generate document for deal:", documentResult.error);
+				generatedDocument = {
+					success: false,
+					error: documentResult.error,
+				} as DocumentGenerationResult;
 			}
+		} catch (error) {
+			// Log error but don't fail the deal creation
+			console.error("Document generation error:", error);
+			generatedDocument = {
+				success: false,
+				error: {
+					code: "GENERATION_ERROR",
+					message: error instanceof Error ? error.message : "Unknown document generation error",
+				},
+			} as DocumentGenerationResult;
+		}
 
-			return { 
-				deal, 
-				journalEntry: journalEntryResult.entry,
-				document: generatedDocument,
-			};
-		});
+		return {
+			deal,
+			journalEntry,
+			document: generatedDocument,
+		};
 	}
 
 	async recordPayment(params: {
@@ -201,7 +223,7 @@ export class DealAccountingService {
 
 			// 3. Create payment journal entry
 			const entryNumber = await this.generateEntryNumber(params.legalEntityId);
-			
+
 			const journalEntryResult = await accountingService.createJournalEntry(
 				{
 					entryNumber,
