@@ -1421,16 +1421,21 @@ dealRouter.get(
 					"application/json": {
 						schema: z.object({
 							dealId: z.string(),
-							dealTitle: z.string().optional(),
+							dealTitle: z.string(),
 							totalAmount: z.number(),
 							paidAmount: z.number(),
 							transactions: z.array(z.object({
 								id: z.string(),
 								dealId: z.string(),
 								entryType: z.string(),
+								entryNumber: z.string(),
 								entryDate: z.string(),
 								description: z.string(),
+								reference: z.string(),
+								status: z.string(),
 								lines: z.array(z.object({
+									id: z.string(),
+									accountId: z.string(),
 									accountCode: z.string(),
 									accountName: z.string(),
 									debitAmount: z.number(),

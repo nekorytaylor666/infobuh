@@ -13,6 +13,7 @@ import { legalEntities } from "./legal-entities";
 import { comments } from "./comments";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
+import { journalEntries } from "./accounting";
 
 // Deal types enum
 export const DEAL_TYPES = ["service", "product"] as const;
@@ -121,6 +122,10 @@ export const dealJournalEntriesRelations = relations(
 		deal: one(deals, {
 			fields: [dealJournalEntries.dealId],
 			references: [deals.id],
+		}),
+		journalEntry: one(journalEntries, {
+			fields: [dealJournalEntries.journalEntryId],
+			references: [journalEntries.id],
 		}),
 	}),
 );

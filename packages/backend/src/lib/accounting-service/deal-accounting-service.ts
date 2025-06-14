@@ -10,6 +10,8 @@ import {
 	dealDocumentsFlutter,
 	accounts,
 	and,
+	journalEntries,
+	journalEntryLines,
 } from "@accounting-kz/db";
 import { AccountingService } from "./accounting-service.index";
 import { DocumentGenerationService, type DocumentGenerationResult } from "./document-generation-service";
@@ -424,7 +426,19 @@ export class DealAccountingService {
 		const deal = await this.db.query.deals.findFirst({
 			where: eq(dealsTable.id, dealId),
 			with: {
-				dealJournalEntries: true,
+				dealJournalEntries: {
+					with: {
+						journalEntry: {
+							with: {
+								lines: {
+									with: {
+										account: true,
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		});
 
@@ -432,88 +446,41 @@ export class DealAccountingService {
 			return null;
 		}
 
-		// Get journal entries with their line items
-		// Note: This is a simplified implementation. In a real system, you'd join with 
-		// journal_entries and journal_entry_lines tables to get full transaction details
-		const transactions = await Promise.all(
-			deal.dealJournalEntries.map(async (dealJournalEntry) => {
-				// In a real implementation, you would fetch the actual journal entry and its lines
-				// For now, we'll return a structured response based on the entry type
-				return {
-					id: dealJournalEntry.journalEntryId,
-					dealId: dealJournalEntry.dealId,
-					entryType: dealJournalEntry.entryType,
-					entryDate: dealJournalEntry.createdAt,
-					description: this.getTransactionDescription(dealJournalEntry.entryType, deal),
-					// These would come from actual journal entry lines in a real implementation
-					lines: this.getTransactionLines(dealJournalEntry.entryType, deal),
-				};
-			})
-		);
+		// Transform the data to get real transaction details
+		const transactions = deal.dealJournalEntries.map((dealJournalEntry) => {
+			const journalEntry = dealJournalEntry.journalEntry;
+
+			return {
+				id: journalEntry.id,
+				dealId: dealJournalEntry.dealId,
+				entryType: dealJournalEntry.entryType,
+				entryNumber: journalEntry.entryNumber,
+				entryDate: journalEntry.entryDate,
+				description: journalEntry.description || '',
+				reference: journalEntry.reference || '',
+				status: journalEntry.status,
+				lines: journalEntry.lines.map((line) => ({
+					id: line.id,
+					accountId: line.accountId,
+					accountCode: line.account.code,
+					accountName: line.account.name,
+					debitAmount: line.debitAmount || 0,
+					creditAmount: line.creditAmount || 0,
+					description: line.description || '',
+				})),
+			};
+		});
 
 		return {
 			dealId: deal.id,
-			dealTitle: deal.title,
+			dealTitle: deal.title || '',
 			totalAmount: deal.totalAmount,
 			paidAmount: deal.paidAmount,
 			transactions,
 		};
 	}
 
-	private getTransactionDescription(entryType: string, deal: any): string {
-		switch (entryType) {
-			case "invoice":
-				return `${deal.dealType === 'service' ? 'Услуги' : 'Товары'}: ${deal.title}`;
-			case "payment":
-				return `Оплата по сделке: ${deal.title}`;
-			default:
-				return `Операция по сделке: ${deal.title}`;
-		}
-	}
 
-	private getTransactionLines(entryType: string, deal: any) {
-		// This is a simplified representation. In a real system, these would come from 
-		// the journal_entry_lines table with actual account IDs and amounts
-		switch (entryType) {
-			case "invoice":
-				return [
-					{
-						accountCode: "1210", // Accounts Receivable
-						accountName: "Краткосрочная дебиторская задолженность покупателей и заказчиков",
-						debitAmount: deal.totalAmount,
-						creditAmount: 0,
-						description: `Дебиторская задолженность: ${deal.title}`,
-					},
-					{
-						accountCode: "6010", // Revenue
-						accountName: "Доход от реализации продукции и оказания услуг",
-						debitAmount: 0,
-						creditAmount: deal.totalAmount,
-						description: `${deal.dealType === 'service' ? 'Доходы от услуг' : 'Доходы от продажи товаров'}`,
-					},
-				];
-			case "payment":
-				// This would be dynamically determined based on the actual payment
-				return [
-					{
-						accountCode: "1030", // Bank Account
-						accountName: "Денежные средства на текущих банковских счетах",
-						debitAmount: deal.paidAmount, // This should be the payment amount, not total paid
-						creditAmount: 0,
-						description: "Поступление денежных средств",
-					},
-					{
-						accountCode: "1210", // Accounts Receivable
-						accountName: "Краткосрочная дебиторская задолженность покупателей и заказчиков",
-						debitAmount: 0,
-						creditAmount: deal.paidAmount, // This should be the payment amount, not total paid
-						description: "Погашение дебиторской задолженности",
-					},
-				];
-			default:
-				return [];
-		}
-	}
 
 	private async generateEntryNumber(legalEntityId: string): Promise<string> {
 		// This is a placeholder for a more robust entry number generation logic

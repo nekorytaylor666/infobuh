@@ -9,12 +9,12 @@ const USER_ID = "1bfd1699-c849-43bb-8e23-f528f3bd4a0c";
 const CURRENCY_CODE = "KZT"; // Kazakhstan Tenge from seed data
 
 // Account codes from seed data
-const ACCOUNTS_RECEIVABLE_CODE = "1121"; // Trade Receivables
-const REVENUE_ACCOUNT_CODE = "4110";     // Sales Revenue
-const CASH_ACCOUNT_CODE = "1112";        // Bank Account - KZT
-const INVENTORY_CODE = "1130";           // Inventory (товары)
-const COST_OF_GOODS_SOLD_CODE = "5100"; // Cost of Goods Sold (себестоимость)
-const ACCOUNTS_PAYABLE_CODE = "2111";    // Trade Payables (кредиторская задолженность)
+const ACCOUNTS_RECEIVABLE_CODE = "1210"; // Краткосрочная дебиторская задолженность покупателей и заказчиков
+const REVENUE_ACCOUNT_CODE = "6010";     // Доход от реализации продукции и оказания услуг
+const CASH_ACCOUNT_CODE = "1030";        // Денежные средства на текущих банковских счетах
+const INVENTORY_CODE = "1330";           // Товары
+const COST_OF_GOODS_SOLD_CODE = "7010";  // Себестоимость реализованной продукции и оказанных услуг
+const ACCOUNTS_PAYABLE_CODE = "3310";    // Краткосрочная задолженность поставщикам и подрядчикам
 
 // Тестовая конфигурация для демонстрации системы
 async function testDealAccountingSystem() {
@@ -65,12 +65,12 @@ async function testDealAccountingSystem() {
 		if (!accountsReceivable || !revenueAccount || !cashAccount || !inventoryAccount || !costOfGoodsSoldAccount || !accountsPayableAccount || !kztCurrency) {
 			console.error("❌ Не удалось найти необходимые счета или валюту. Убедитесь что база данных инициализирована seed данными.");
 			console.log("Требуемые коды счетов:");
-			console.log(`- ${ACCOUNTS_RECEIVABLE_CODE} (Trade Receivables): ${accountsReceivable ? '✅' : '❌'}`);
+			console.log(`- ${ACCOUNTS_RECEIVABLE_CODE} (Accounts Receivable): ${accountsReceivable ? '✅' : '❌'}`);
 			console.log(`- ${REVENUE_ACCOUNT_CODE} (Sales Revenue): ${revenueAccount ? '✅' : '❌'}`);
-			console.log(`- ${CASH_ACCOUNT_CODE} (Bank Account - KZT): ${cashAccount ? '✅' : '❌'}`);
+			console.log(`- ${CASH_ACCOUNT_CODE} (Bank Account): ${cashAccount ? '✅' : '❌'}`);
 			console.log(`- ${INVENTORY_CODE} (Inventory): ${inventoryAccount ? '✅' : '❌'}`);
 			console.log(`- ${COST_OF_GOODS_SOLD_CODE} (Cost of Goods Sold): ${costOfGoodsSoldAccount ? '✅' : '❌'}`);
-			console.log(`- ${ACCOUNTS_PAYABLE_CODE} (Trade Payables): ${accountsPayableAccount ? '✅' : '❌'}`);
+			console.log(`- ${ACCOUNTS_PAYABLE_CODE} (Accounts Payable): ${accountsPayableAccount ? '✅' : '❌'}`);
 			console.log(`- ${CURRENCY_CODE} (Kazakhstan Tenge): ${kztCurrency ? '✅' : '❌'}`);
 			return;
 		}
@@ -109,8 +109,6 @@ async function testDealAccountingSystem() {
 			legalEntityId: testData.legalEntityId,
 			currencyId: testData.currencyId,
 			createdBy: testData.userId,
-			accountsReceivableId: testData.accountsReceivableId,
-			revenueAccountId: testData.revenueAccountId,
 		});
 
 		console.log("✅ Сделка создана:", {
@@ -298,11 +296,11 @@ async function testDealAccountingSystem() {
 
 		console.log("\n📋 Протестированные сценарии проводок:");
 		console.log("1. 🔹 АВР (услуги):");
-		console.log("   Продавец: Дт 1121 - Кт 4110 (выставление), Дт 1112 - Кт 1121 (оплата)");
-		console.log("   Покупатель: Дт 5100 - Кт 2111 (получение), Дт 2111 - Кт 1112 (оплата)");
+		console.log("   Продавец: Дт 1210 - Кт 6010 (выставление), Дт 1030 - Кт 1210 (оплата)");
+		console.log("   Покупатель: Дт 7010 - Кт 3310 (получение), Дт 3310 - Кт 1030 (оплата)");
 		console.log("2. 🔹 Накладная (товары):");
-		console.log("   Продавец: Дт 1121 - Кт 4110 (продажа), Дт 5100 - Кт 1130 (себестоимость), Дт 1112 - Кт 1121 (оплата)");
-		console.log("   Покупатель: Дт 1130 - Кт 2111 (поступление), Дт 2111 - Кт 1112 (оплата)");
+		console.log("   Продавец: Дт 1210 - Кт 6010 (продажа), Дт 7010 - Кт 1330 (себестоимость), Дт 1030 - Кт 1210 (оплата)");
+		console.log("   Покупатель: Дт 1330 - Кт 3310 (поступление), Дт 3310 - Кт 1030 (оплата)");
 
 	} catch (error) {
 		console.error("❌ Ошибка при тестировании:", error);
@@ -567,8 +565,8 @@ async function testServiceTransactionsBothSides(
 		console.log("   📊 Сценарий АВР (услуги):");
 		console.log("   Этап                | Продавец                    | Покупатель");
 		console.log("   ================== | =========================== | ===========================");
-		console.log("   1. АВР             | Дт 1121 - Кт 4110          | Дт 5100 - Кт 2111");
-		console.log("   2. Оплата          | Дт 1112 - Кт 1121          | Дт 2111 - Кт 1112");
+		console.log("   1. АВР             | Дт 1210 - Кт 6010          | Дт 7010 - Кт 3310");
+		console.log("   2. Оплата          | Дт 1030 - Кт 1210          | Дт 3310 - Кт 1030");
 
 	} catch (error) {
 		console.error("   ❌ Ошибка в тестировании АВР:", error);
@@ -659,9 +657,9 @@ async function testBuyerSideTransactions(
 
 		console.log("   📊 Демонстрация зеркальных проводок:");
 		console.log("   Продавец                          |  Покупатель");
-		console.log("   Дт 1121 - Кт 4110 (продажа)     |  Дт 1130 - Кт 2111 (покупка)");
-		console.log("   Дт 5100 - Кт 1130 (себестоимость)|  —");
-		console.log("   Дт 1112 - Кт 1121 (получение)    |  Дт 2111 - Кт 1112 (оплата)");
+		console.log("   Дт 1210 - Кт 6010 (продажа)     |  Дт 1330 - Кт 3310 (покупка)");
+		console.log("   Дт 7010 - Кт 1330 (себестоимость)|  —");
+		console.log("   Дт 1030 - Кт 1210 (получение)    |  Дт 3310 - Кт 1030 (оплата)");
 
 	} catch (error) {
 		console.error("   ❌ Ошибка в тестировании проводок покупателя:", error);

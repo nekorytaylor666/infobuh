@@ -150,7 +150,14 @@ Records a payment for a specific deal.
 
 **GET** `/deals/{dealId}/transactions`
 
-Retrieves all accounting transactions (journal entries) for a specific deal.
+Retrieves all accounting transactions (journal entries) for a specific deal with complete details from the database.
+
+**Features:**
+
+- Fetches real journal entries and their line items
+- Includes actual account information (code, name, ID)
+- Shows entry numbers, references, and status
+- Provides complete audit trail for the deal
 
 #### Response
 
@@ -165,10 +172,15 @@ Retrieves all accounting transactions (journal entries) for a specific deal.
       "id": "journal-entry-uuid-1",
       "dealId": "deal-uuid",
       "entryType": "invoice",
-      "entryDate": "2024-01-15T10:30:00Z",
+      "entryNumber": "JE-2024-001",
+      "entryDate": "2024-01-15",
       "description": "Услуги: Services for Client ABC",
+      "reference": "DEAL-deal-uuid",
+      "status": "draft",
       "lines": [
         {
+          "id": "line-uuid-1",
+          "accountId": "account-uuid-1210",
           "accountCode": "1210",
           "accountName": "Краткосрочная дебиторская задолженность покупателей и заказчиков",
           "debitAmount": 100000,
@@ -176,6 +188,8 @@ Retrieves all accounting transactions (journal entries) for a specific deal.
           "description": "Дебиторская задолженность: Services for Client ABC"
         },
         {
+          "id": "line-uuid-2",
+          "accountId": "account-uuid-6010",
           "accountCode": "6010",
           "accountName": "Доход от реализации продукции и оказания услуг",
           "debitAmount": 0,
@@ -188,10 +202,15 @@ Retrieves all accounting transactions (journal entries) for a specific deal.
       "id": "journal-entry-uuid-2",
       "dealId": "deal-uuid",
       "entryType": "payment",
-      "entryDate": "2024-01-20T14:45:00Z",
+      "entryNumber": "JE-2024-002",
+      "entryDate": "2024-01-20",
       "description": "Оплата по сделке: Services for Client ABC",
+      "reference": "PAY-deal-uuid",
+      "status": "draft",
       "lines": [
         {
+          "id": "line-uuid-3",
+          "accountId": "account-uuid-1030",
           "accountCode": "1030",
           "accountName": "Денежные средства на текущих банковских счетах",
           "debitAmount": 50000,
@@ -199,6 +218,8 @@ Retrieves all accounting transactions (journal entries) for a specific deal.
           "description": "Поступление денежных средств"
         },
         {
+          "id": "line-uuid-4",
+          "accountId": "account-uuid-1210",
           "accountCode": "1210",
           "accountName": "Краткосрочная дебиторская задолженность покупателей и заказчиков",
           "debitAmount": 0,
@@ -210,6 +231,12 @@ Retrieves all accounting transactions (journal entries) for a specific deal.
   ]
 }
 ```
+
+**Response Structure:**
+
+- **Transaction Level**: Contains journal entry metadata (number, date, status, etc.)
+- **Line Level**: Contains individual account debits/credits with full account details
+- **Real Data**: All information comes directly from the accounting database tables
 
 ### 4. Get Deal Balance
 
