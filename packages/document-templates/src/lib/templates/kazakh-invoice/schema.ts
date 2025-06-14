@@ -8,22 +8,31 @@ export const invoiceItemSchema = z.object({
 	price: z.number().positive("Price must be positive"),
 });
 
-// Input schema for generating Kazakh invoice
+export const bankSchema = z.object({
+	name: z.string().optional(),
+	account: z.string().optional(),
+	bik: z.string().optional(),
+});
+
+// Input schema for generating Kazakh invoice (Счет на оплату)
 export const kazakhInvoiceInputSchema = z.object({
-	sellerLegalEntityId: z.string().uuid("Invalid seller legal entity ID"),
-	clientLegalEntityId: z.string().uuid("Invalid client legal entity ID"),
-	invoiceNumber: z.string().min(1, "Invoice number is required"),
-	invoiceDate: z.date(),
-	contractNumber: z.string().min(1, "Contract number is required"),
-	contractDate: z.date().optional(),
+	orgName: z.string(),
+	orgAddress: z.string().optional(),
+	orgBin: z.string(),
+	orgIik: z.string().optional(),
+	orgBik: z.string().optional(),
+	buyerName: z.string(),
+	buyerBin: z.string(),
+	codeKnp: z.string().optional(),
+	contract: z.string(),
+	orgPersonName: z.string().optional().nullable(),
+	phone: z.string().optional(),
+	selectedBank: bankSchema.optional(),
 	items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
-	executorEmployeeId: z
-		.string()
-		.uuid("Invalid executor employee ID")
-		.optional()
-		.nullable(),
-	contactPhone: z.string().optional(),
-	knp: z.string().optional(),
+	invoiceNumber: z.string(), // idx
+	invoiceDate: z.date(),
+	contractDate: z.date().optional(),
+	executorEmployeeId: z.string().uuid().optional().nullable(),
 });
 
 // Infer types from schemas

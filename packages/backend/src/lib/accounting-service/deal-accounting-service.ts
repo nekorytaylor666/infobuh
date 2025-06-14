@@ -14,7 +14,6 @@ import {
 	journalEntryLines,
 } from "@accounting-kz/db";
 import { AccountingService } from "./accounting-service.index";
-import { DocumentGenerationService, type DocumentGenerationResult } from "./document-generation-service";
 
 export interface CreateDealJournalEntryParams {
 	dealId: string;
@@ -68,11 +67,7 @@ export interface ReconciliationReport {
 }
 
 export class DealAccountingService {
-	private documentGenerationService: DocumentGenerationService;
-
-	constructor(private db: Database) {
-		this.documentGenerationService = new DocumentGenerationService(db);
-	}
+	constructor(private db: Database) { }
 
 	/**
 	 * Find account by code within a legal entity
@@ -184,51 +179,10 @@ export class DealAccountingService {
 			};
 		});
 
-		// 4. Generate document outside the transaction
-		let generatedDocument: DocumentGenerationResult | null = null;
-		try {
-			const documentResult = await this.documentGenerationService.generateDocumentForDeal({
-				dealId: deal.id,
-				dealType: params.dealType,
-				legalEntityId: params.legalEntityId,
-				receiverBin: params.receiverBin,
-				title: params.title,
-				description: params.description,
-				totalAmount: params.totalAmount,
-				createdBy: params.createdBy,
-			});
-
-			if (documentResult.success) {
-				// 5. Link document with deal in a separate transaction
-				await this.db.insert(dealDocumentsFlutter).values({
-					dealId: deal.id,
-					documentFlutterId: documentResult.documentId,
-				});
-				generatedDocument = documentResult;
-			} else {
-				// Log error but don't fail the deal creation
-				console.error("Failed to generate document for deal:", documentResult.error);
-				generatedDocument = {
-					success: false,
-					error: documentResult.error,
-				} as DocumentGenerationResult;
-			}
-		} catch (error) {
-			// Log error but don't fail the deal creation
-			console.error("Document generation error:", error);
-			generatedDocument = {
-				success: false,
-				error: {
-					code: "GENERATION_ERROR",
-					message: error instanceof Error ? error.message : "Unknown document generation error",
-				},
-			} as DocumentGenerationResult;
-		}
-
 		return {
 			deal,
 			journalEntry,
-			document: generatedDocument,
+			document: null, // Document generation is now a separate process
 		};
 	}
 
@@ -479,8 +433,6 @@ export class DealAccountingService {
 			transactions,
 		};
 	}
-
-
 
 	private async generateEntryNumber(legalEntityId: string): Promise<string> {
 		// This is a placeholder for a more robust entry number generation logic

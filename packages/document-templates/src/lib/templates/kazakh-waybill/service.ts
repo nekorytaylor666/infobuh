@@ -1,5 +1,5 @@
 import type { Database } from "@accounting-kz/db";
-import { type Bank, banks, employees, legalEntities, eq } from "@accounting-kz/db";
+import { type Bank } from "@accounting-kz/db";
 import { typstService } from "../../typst-service";
 import {
 	kazakhWaybillInputSchema,
@@ -39,50 +39,9 @@ export interface GenerateWaybillResult {
  * Generates a Kazakh waybill PDF from the provided input
  */
 async function generateWaybill(
-	db: Database,
 	input: KazakhWaybillInput,
 ): Promise<GenerateWaybillResult> {
-	// 1. Fetch all required entities in parallel
-	const [seller, sellerBank, client, sender, receiver, releaser] = await Promise.all([
-		db.query.legalEntities.findFirst({
-			where: eq(legalEntities.id, input.sellerLegalEntityId),
-		}),
-		db.query.banks.findFirst({
-			where: eq(banks.legalEntityId, input.sellerLegalEntityId),
-		}),
-		db.query.legalEntities.findFirst({
-			where: eq(legalEntities.id, input.clientLegalEntityId),
-		}),
-		input.senderEmployeeId
-			? db.query.employees.findFirst({
-				where: eq(employees.id, input.senderEmployeeId),
-			})
-			: null,
-		input.receiverEmployeeId
-			? db.query.employees.findFirst({
-				where: eq(employees.id, input.receiverEmployeeId),
-			})
-			: null,
-		input.releaserEmployeeId
-			? db.query.employees.findFirst({
-				where: eq(employees.id, input.releaserEmployeeId),
-			})
-			: null,
-	]);
-
-	// 2. Validate entities exist
-	if (!seller) {
-		throw new Error(
-			`Seller legal entity not found: ${input.sellerLegalEntityId}`,
-		);
-	}
-	if (!client) {
-		throw new Error(
-			`Client legal entity not found: ${input.clientLegalEntityId}`,
-		);
-	}
-
-	// 3. Calculate totals
+	// 1. Calculate totals
 	const totalAmount = input.items.reduce(
 		(sum: number, item: WaybillItem) => sum + item.quantity * item.price,
 		0,
@@ -95,16 +54,16 @@ async function generateWaybill(
 		return date.toLocaleDateString("ru-RU");
 	};
 
-	// 4. Prepare template data
+	// 2. Prepare template data
 	const templateData = {
 		// Seller info
-		sellerName: seller.name,
-		sellerBin: seller.bin,
-		sellerAddress: seller.address || "",
+		sellerName: input.orgName,
+		sellerBin: input.orgBin,
+		sellerAddress: input.orgAddress || "",
 
 		// Receiver info
-		receiverName: client.name,
-		receiverAddress: client.address || "",
+		receiverName: input.buyerName,
+		receiverAddress: "", // Not in schema, but in template
 
 		// Waybill details
 		waybillNumber: input.waybillNumber,
@@ -121,19 +80,19 @@ async function generateWaybill(
 		// Transport info
 		transportOrgName: input.transportOrgName || "",
 		transportResponsiblePerson: input.transportResponsiblePerson || "",
-		responsiblePersonName: sender?.fullName || "",
+		responsiblePersonName: input.orgPersonName || "",
 
 		// Employee info
-		senderEmployeeName: sender?.fullName || "",
-		receiverEmployeeName: receiver?.fullName || "",
-		releaserEmployeeName: releaser?.fullName || "",
+		senderEmployeeName: input.orgPersonName || "",
+		receiverEmployeeName: input.buyerPersonName || "",
+		releaserEmployeeName: input.orgPersonName || "",
 		chiefAccountantName: "", // Needs to be determined
 		unitDescription: "штуках", // Needs to be determined
 	};
 
-	// 5. Generate PDF
+	// 3. Generate PDF
 	const templatePath = path.join(__dirname, "template.typ");
-	const fileName = `waybill-${input.sellerLegalEntityId}-${input.clientLegalEntityId}-${input.waybillNumber}.pdf`;
+	const fileName = `waybill-${input.orgBin}-${input.buyerBin}-${input.waybillNumber}.pdf`;
 	const { filePath, pdfBuffer } = await typstService.renderPDF(
 		templatePath,
 		templateData,
@@ -146,17 +105,17 @@ async function generateWaybill(
 		fileName,
 		pdfBuffer,
 		fields: {
-			orgName: seller.name,
-			orgAddress: seller.address || "",
-			orgBin: seller.bin,
-			buyerName: client.name,
-			buyerBin: client.bin,
-			orgPersonName: releaser?.fullName || sender?.fullName || "",
-			orgPersonRole: releaser?.role || sender?.role || "",
-			buyerPersonName: receiver?.fullName || "",
-			buyerPersonRole: receiver?.role || "",
-			phone: input.contactPhone,
-			selectedBank: sellerBank,
+			orgName: input.orgName,
+			orgAddress: input.orgAddress || "",
+			orgBin: input.orgBin,
+			buyerName: input.buyerName,
+			buyerBin: input.buyerBin,
+			orgPersonName: input.orgPersonName || "",
+			orgPersonRole: input.orgPersonRole || "",
+			buyerPersonName: input.buyerPersonName || "",
+			buyerPersonRole: input.buyerPersonRole || "",
+			phone: input.phone,
+			selectedBank: input.selectedBank,
 			products: input.items,
 			idx: input.waybillNumber,
 			total: totalAmount,
@@ -165,7 +124,7 @@ async function generateWaybill(
 }
 
 // Export factory function that returns service functions
-export function createKazakhWaybillService(db: Database): {
+export function createKazakhWaybillService(): {
 	generateDocument: (
 		input: KazakhWaybillInput,
 	) => Promise<GenerateWaybillResult>;
@@ -174,7 +133,7 @@ export function createKazakhWaybillService(db: Database): {
 	parseInput: (input: any) => KazakhWaybillInput;
 } {
 	return {
-		generateDocument: (input: KazakhWaybillInput) => generateWaybill(db, input),
+		generateDocument: (input: KazakhWaybillInput) => generateWaybill(input),
 		templateType: TEMPLATE_TYPE,
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		parseInput: (input: any) => kazakhWaybillInputSchema.parse(input),

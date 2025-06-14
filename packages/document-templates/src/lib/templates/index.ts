@@ -2,19 +2,18 @@ import { createKazakhActService } from "./kazakh-acts";
 import { createKazakhWaybillService } from "./kazakh-waybill";
 import { createKazakhInvoiceService } from "./kazakh-invoice";
 import { createKazakhDoverennostService } from "./kazakh-doverennost";
-import type { Database } from "@accounting-kz/db";
 
 export * from "./kazakh-invoice";
 export * from "./kazakh-acts";
 export * from "./kazakh-waybill";
 export * from "./kazakh-doverennost";
 
-export const createDocumentGenerator = (db: Database) => {
+export const createDocumentGenerator = () => {
   const documentGenerator = {
-    generateInvoice: createKazakhInvoiceService(db),
-    generateAct: createKazakhActService(db),
-    generateWaybill: createKazakhWaybillService(db),
-    generateDoverennost: createKazakhDoverennostService(db),
+    generateInvoice: createKazakhInvoiceService(),
+    generateAct: createKazakhActService(),
+    generateWaybill: createKazakhWaybillService(),
+    generateDoverennost: createKazakhDoverennostService(),
   };
   const generate = <T extends keyof typeof documentGenerator>(
     templateType: T,

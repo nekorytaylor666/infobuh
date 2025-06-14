@@ -8,27 +8,38 @@ export const actItemSchema = z.object({
 	price: z.number().positive("Price must be positive"),
 });
 
+export const bankSchema = z.object({
+	name: z.string().optional(),
+	account: z.string().optional(),
+	bik: z.string().optional(),
+});
+
 // Input schema for generating Kazakh act of completed works
 export const kazakhActInputSchema = z.object({
-	sellerLegalEntityId: z.string().uuid("Invalid seller legal entity ID"),
-	clientLegalEntityId: z.string().uuid("Invalid client legal entity ID"),
-	actNumber: z.string().min(1, "Act number is required"),
-	actDate: z.date(),
-	contractNumber: z.string().min(1, "Contract number is required"),
+	orgName: z.string(),
+	orgAddress: z.string(),
+	orgBin: z.string(),
+	buyerName: z.string(),
+	buyerBin: z.string(),
+	buyerAddress: z.string().optional(),
+	contractNumber: z.string(),
 	contractDate: z.date().optional(),
+	orgPersonName: z.string().optional().nullable(),
+	orgPersonRole: z.string(),
+	buyerPersonName: z.string().optional().nullable(),
+	buyerPersonRole: z.string(),
+	phone: z.string().optional(),
+	selectedBank: bankSchema.optional(),
 	items: z.array(actItemSchema).min(1, "At least one item is required"),
-	executorEmployeeId: z
-		.string()
-		.uuid("Invalid executor employee ID")
-		.optional()
-		.nullable(),
-	customerEmployeeId: z
-		.string()
-		.uuid("Invalid customer employee ID")
-		.optional()
-		.nullable(),
-	contactPhone: z.string().optional(),
+	actNumber: z.string(), // idx
+	actDate: z.date(),
 	dateOfCompletion: z.date(),
+	sellerImage: z.string().optional(),
+	kbe: z.string().optional(),
+	executorName: z.string().optional().nullable(),
+	executorPosition: z.string().optional(),
+	customerName: z.string().optional().nullable(),
+	customerPosition: z.string().optional(),
 });
 
 // Infer types from schemas

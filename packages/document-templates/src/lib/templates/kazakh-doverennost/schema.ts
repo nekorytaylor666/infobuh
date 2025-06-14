@@ -7,36 +7,35 @@ export const doverennostItemSchema = z.object({
     price: z.number().positive("Price must be positive"),
 });
 
+export const bankSchema = z.object({
+    name: z.string().optional(),
+    account: z.string().optional(),
+    bik: z.string().optional(),
+});
+
 export const kazakhDoverennostInputSchema = z.object({
-    // Main actors
-    organizationLegalEntityId: z
-        .string()
-        .uuid("Invalid organization legal entity ID"),
-    supplierLegalEntityId: z.string().uuid("Invalid supplier legal entity ID"),
-    employeeId: z.string().uuid("Invalid employee ID for PoA holder"),
-
-    // Signatories
-    directorEmployeeId: z.string().uuid("Invalid director ID").optional(),
-    bookkeeperEmployeeId: z.string().uuid("Invalid bookkeeper ID").optional(),
-
-    // Document details
-    doverennostNumber: z.string().min(1, "Document number is required"),
+    // from user prompt and service
+    orgName: z.string(),
+    orgAddress: z.string().optional(),
+    orgBin: z.string(),
+    buyerName: z.string(), // supplierName
+    buyerBin: z.string(), // supplierBin
+    schetNaOplatu: z.string(), // contractReference
+    orgPersonName: z.string().optional().nullable(), // directorName
+    orgPersonRole: z.string().optional(), // directorRole
+    bookkeeperName: z.string().optional().nullable(),
+    phone: z.string().optional(),
+    selectedBank: bankSchema.optional(),
+    employeeName: z.string(),
+    employeeRole: z.string(),
+    employeeIin: z.string().optional().nullable(),
+    employeeDocNumber: z.string(),
+    employeeDocNumberDate: z.date(),
+    employeeWhoGives: z.string(), // passportIssuer
+    dateUntil: z.date(), // validUntil
+    items: z.array(doverennostItemSchema).min(1, "At least one item is required"),
+    idx: z.string(), // doverennostNumber
     issueDate: z.date(),
-    validUntil: z.date(),
-
-    // Context
-    contractReference: z.string().min(1, "Contract reference is required"),
-    items: z
-        .array(doverennostItemSchema)
-        .min(1, "At least one item is required"),
-
-    // Employee's document details
-    passportNumber: z.string().min(1, "Passport number is required"),
-    passportIssueDate: z.date(),
-    passportIssuer: z.string().default("МВД РК"),
-
-    // Optional fields
-    contactPhone: z.string().optional(),
 });
 
 export type KazakhDoverennostInput = z.infer<

@@ -27,12 +27,14 @@ export interface JournalEntry {
 export interface DealResponse {
     deal: Deal;
     journalEntry: JournalEntry;
-    document?: {
+    documents?: {
+        id: string;
         success: boolean;
         documentType?: string;
         fileName?: string;
+        filePath?: string;
         error?: string;
-    };
+    }[];
 }
 
 export interface PaymentResponse {
@@ -68,6 +70,10 @@ export interface CreateDealRequest {
     currencyId: string;
     accountsReceivableId: string;
     revenueAccountId: string;
+    documentsPayload?: {
+        documentType: string;
+        data: any;
+    }[];
 }
 
 export interface RecordPaymentRequest {

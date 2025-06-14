@@ -1,5 +1,4 @@
 import type { Bank, Database } from "@accounting-kz/db";
-import { banks, employees, legalEntities, eq } from "@accounting-kz/db";
 import { typstService } from "../../typst-service";
 import {
 	type InvoiceItem,
@@ -39,55 +38,24 @@ export interface GenerateInvoiceResult {
  * Generates a Kazakh invoice PDF from the provided input
  */
 async function generateInvoice(
-	db: Database,
 	input: KazakhInvoiceInput,
 ): Promise<GenerateInvoiceResult> {
-	// 1. Fetch all required entities in parallel
-	const [seller, sellerBank, client, executor] = await Promise.all([
-		db.query.legalEntities.findFirst({
-			where: eq(legalEntities.id, input.sellerLegalEntityId),
-		}),
-		db.query.banks.findFirst({
-			where: eq(banks.legalEntityId, input.sellerLegalEntityId),
-		}),
-		db.query.legalEntities.findFirst({
-			where: eq(legalEntities.id, input.clientLegalEntityId),
-		}),
-		input.executorEmployeeId
-			? db.query.employees.findFirst({
-				where: eq(employees.id, input.executorEmployeeId),
-			})
-			: null,
-	]);
-
-	// 2. Validate entities exist
-	if (!seller) {
-		throw new Error(
-			`Seller legal entity not found: ${input.sellerLegalEntityId}`,
-		);
-	}
-	if (!client) {
-		throw new Error(
-			`Client legal entity not found: ${input.clientLegalEntityId}`,
-		);
-	}
-
-	// 3. Calculate totals
+	// 1. Calculate totals
 	const totalAmount = input.items.reduce(
 		(sum: number, item: InvoiceItem) => sum + item.quantity * item.price,
 		0,
 	);
 	const vatAmount = totalAmount * 0.12; // 12% VAT
 
-	// 4. Prepare template data
+	// 2. Prepare template data
 	const templateData = {
 		// Company info
-		sellerName: seller.name,
-		sellerBin: seller.bin,
-		sellerAccount: sellerBank?.account || "",
-		sellerBik: sellerBank?.bik || "",
-		sellerBank: sellerBank?.name || "",
-		knp: input.knp || "710",
+		sellerName: input.orgName,
+		sellerBin: input.orgBin,
+		sellerAccount: input.orgIik || "",
+		sellerBik: input.orgBik || "",
+		sellerBank: input.selectedBank?.name || "",
+		knp: input.codeKnp || "710",
 
 		// Invoice details
 		invoiceNumber: input.invoiceNumber,
@@ -95,11 +63,11 @@ async function generateInvoice(
 		invoiceTime: input.invoiceDate.toLocaleTimeString("ru-RU"),
 
 		// Buyer info
-		buyerName: client.name,
-		buyerBin: client.bin,
+		buyerName: input.buyerName,
+		buyerBin: input.buyerBin,
 
 		// Contract reference
-		contractReference: `Договор ${input.contractNumber}, от ${input.contractDate?.toLocaleDateString("ru-RU")}`,
+		contractReference: input.contract,
 
 		// Items and totals
 		items: input.items,
@@ -108,14 +76,14 @@ async function generateInvoice(
 		totalInWords: numToFullWords(totalAmount),
 
 		// Additional info
-		executorName: executor?.fullName,
-		executorPosition: executor?.role || "Директор",
-		contactPhone: input.contactPhone,
+		executorName: input.orgPersonName,
+		executorPosition: "Директор",
+		contactPhone: input.phone,
 	};
 
-	// 5. Generate PDF
+	// 3. Generate PDF
 	const templatePath = path.join(__dirname, "template.typ");
-	const fileName = `invoice-${input.sellerLegalEntityId}-${input.clientLegalEntityId}-${input.invoiceNumber}.pdf`;
+	const fileName = `invoice-${input.orgBin}-${input.buyerBin}-${input.invoiceNumber}.pdf`;
 	const { filePath, pdfBuffer } = await typstService.renderPDF(
 		templatePath,
 		templateData,
@@ -133,20 +101,18 @@ async function generateInvoice(
 		fileName,
 		pdfBuffer,
 		fields: {
-			orgName: seller.name,
-			orgAddress: seller.address || "",
-			orgBin: seller.bin,
-			orgIik: sellerBank?.account || "",
-			orgBik: sellerBank?.bik || "",
-			buyerName: client.name,
-			buyerBin: client.bin,
-			codeKnp: input.knp || "710",
-			contract: `Договор №${input.contractNumber} от ${formatDate(
-				input.contractDate,
-			)}`,
-			orgPersonName: executor?.fullName,
-			phone: input.contactPhone,
-			selectedBank: sellerBank,
+			orgName: input.orgName,
+			orgAddress: input.orgAddress || "",
+			orgBin: input.orgBin,
+			orgIik: input.orgIik || "",
+			orgBik: input.orgBik || "",
+			buyerName: input.buyerName,
+			buyerBin: input.buyerBin,
+			codeKnp: input.codeKnp || "710",
+			contract: input.contract,
+			orgPersonName: input.orgPersonName,
+			phone: input.phone,
+			selectedBank: input.selectedBank,
 			products: input.items,
 			idx: input.invoiceNumber,
 		},
@@ -154,7 +120,7 @@ async function generateInvoice(
 }
 
 // Export factory function that returns service functions
-export function createKazakhInvoiceService(db: Database): {
+export function createKazakhInvoiceService(): {
 	generateDocument: (
 		input: KazakhInvoiceInput,
 	) => Promise<GenerateInvoiceResult>;
@@ -163,7 +129,7 @@ export function createKazakhInvoiceService(db: Database): {
 	parseInput: (input: any) => KazakhInvoiceInput;
 } {
 	return {
-		generateDocument: (input: KazakhInvoiceInput) => generateInvoice(db, input),
+		generateDocument: (input: KazakhInvoiceInput) => generateInvoice(input),
 		templateType: TEMPLATE_TYPE,
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		parseInput: (input: any) => kazakhInvoiceInputSchema.parse(input),

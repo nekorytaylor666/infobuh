@@ -1,12 +1,6 @@
 import type { Database } from "@accounting-kz/db";
 import {
     type Bank,
-    banks,
-    employees,
-    legalEntities,
-    eq,
-    type LegalEntity,
-    type Employee,
 } from "@accounting-kz/db";
 import { typstService } from "../../typst-service";
 import {
@@ -48,96 +42,46 @@ export interface GenerateDoverennostResult {
 }
 
 async function generateDoverennost(
-    db: Database,
     input: KazakhDoverennostInput,
 ): Promise<GenerateDoverennostResult> {
-    const [
-        organization,
-        orgBank,
-        supplier,
-        employee,
-        director,
-        bookkeeper,
-    ] = await Promise.all([
-        db.query.legalEntities.findFirst({
-            where: eq(legalEntities.id, input.organizationLegalEntityId),
-        }),
-        db.query.banks.findFirst({
-            where: eq(banks.legalEntityId, input.organizationLegalEntityId),
-        }),
-        db.query.legalEntities.findFirst({
-            where: eq(legalEntities.id, input.supplierLegalEntityId),
-        }),
-        db.query.employees.findFirst({
-            where: eq(employees.id, input.employeeId),
-        }),
-        input.directorEmployeeId
-            ? db.query.employees.findFirst({
-                where: eq(employees.id, input.directorEmployeeId),
-            })
-            : null,
-        input.bookkeeperEmployeeId
-            ? db.query.employees.findFirst({
-                where: eq(employees.id, input.bookkeeperEmployeeId),
-            })
-            : null,
-    ]);
-
-    if (!organization) {
-        throw new Error(
-            `Organization legal entity not found: ${input.organizationLegalEntityId}`,
-        );
-    }
-    if (!supplier) {
-        throw new Error(
-            `Supplier legal entity not found: ${input.supplierLegalEntityId}`,
-        );
-    }
-    if (!employee) {
-        throw new Error(`Employee not found: ${input.employeeId}`);
-    }
-
     const totalAmount = input.items.reduce(
         (sum, item) => sum + item.quantity * item.price,
         0,
     );
 
-    const directorName = director?.fullName || "";
-    const bookkeeperName = bookkeeper?.fullName || "";
-
     const templateData = {
-        organizationName: organization.name,
-        organizationBin: organization.bin,
-        organizationAddress: organization.address,
-        accountNumber: orgBank?.account || "",
-        bankName: orgBank?.name || "",
-        bankBik: orgBank?.bik || "",
+        organizationName: input.orgName,
+        organizationBin: input.orgBin,
+        organizationAddress: input.orgAddress,
+        accountNumber: input.selectedBank?.account || "",
+        bankName: input.selectedBank?.name || "",
+        bankBik: input.selectedBank?.bik || "",
 
-        doverennostNumber: input.doverennostNumber,
+        doverennostNumber: input.idx,
         issueDate: input.issueDate,
-        validUntil: input.validUntil,
+        validUntil: input.dateUntil,
 
-        issuedToName: employee.fullName,
-        issuedToRole: employee.role,
-        issuedToIin: employee.iin,
-        passportNumber: input.passportNumber,
-        passportIssueDate: input.passportIssueDate,
-        passportIssuer: input.passportIssuer,
+        issuedToName: input.employeeName,
+        issuedToRole: input.employeeRole,
+        issuedToIin: input.employeeIin,
+        passportNumber: input.employeeDocNumber,
+        passportIssueDate: input.employeeDocNumberDate,
+        passportIssuer: input.employeeWhoGives,
 
-        supplierName: supplier.name,
-        supplierBin: supplier.bin,
+        supplierName: input.buyerName,
+        supplierBin: input.buyerBin,
 
-        contractReference: input.contractReference,
+        contractReference: input.schetNaOplatu,
         items: input.items,
         totalAmount,
         totalInWords: numToFullWords(totalAmount),
 
-        directorName,
-        bookkeeperName,
+        directorName: input.orgPersonName,
+        bookkeeperName: input.bookkeeperName,
     };
 
     const templatePath = path.join(__dirname, "template.typ");
-    const fileName = `doverennost-${input.organizationLegalEntityId}-${input.doverennostNumber}.pdf`;
+    const fileName = `doverennost-${input.orgBin}-${input.idx}.pdf`;
     const { filePath, pdfBuffer } = await typstService.renderPDF(
         templatePath,
         templateData,
@@ -150,33 +94,33 @@ async function generateDoverennost(
         fileName,
         pdfBuffer,
         fields: {
-            orgName: organization.name,
-            orgAddress: organization.address || "",
-            orgBin: organization.bin,
-            buyerName: supplier.name,
-            buyerBin: supplier.bin,
-            schetNaOplatu: input.contractReference,
-            orgPersonName: director?.fullName,
-            orgPersonRole: director?.role || "Директор",
-            phone: input.contactPhone,
-            selectedBank: orgBank,
-            employeeName: employee.fullName,
-            employeeRole: employee.role || "",
-            employeeIin: employee.iin,
-            employeeDocNumber: input.passportNumber,
-            employeeDocNumberDate: input.passportIssueDate,
-            employeeWhoGives: input.passportIssuer,
-            dateUntil: input.validUntil,
+            orgName: input.orgName,
+            orgAddress: input.orgAddress || "",
+            orgBin: input.orgBin,
+            buyerName: input.buyerName,
+            buyerBin: input.buyerBin,
+            schetNaOplatu: input.schetNaOplatu,
+            orgPersonName: input.orgPersonName,
+            orgPersonRole: input.orgPersonRole || "Директор",
+            phone: input.phone,
+            selectedBank: input.selectedBank,
+            employeeName: input.employeeName,
+            employeeRole: input.employeeRole || "",
+            employeeIin: input.employeeIin,
+            employeeDocNumber: input.employeeDocNumber,
+            employeeDocNumberDate: input.employeeDocNumberDate,
+            employeeWhoGives: input.employeeWhoGives,
+            dateUntil: input.dateUntil,
             products: input.items,
-            idx: input.doverennostNumber,
+            idx: input.idx,
         },
     };
 }
 
-export function createKazakhDoverennostService(db: Database) {
+export function createKazakhDoverennostService() {
     return {
         generateDocument: (input: KazakhDoverennostInput) =>
-            generateDoverennost(db, input),
+            generateDoverennost(input),
         templateType: TEMPLATE_TYPE,
         parseInput: (input: any) => kazakhDoverennostInputSchema.parse(input),
     };

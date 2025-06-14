@@ -23,8 +23,25 @@ import "zod-openapi/extend";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { HTTPException } from "hono/http-exception";
 import { DealAccountingService } from "../lib/accounting-service/deal-accounting-service";
+import { DocumentGenerationService, type DocumentType } from "../lib/accounting-service/document-generation-service";
+import {
+	kazakhActInputSchema,
+	kazakhDoverennostInputSchema,
+	kazakhInvoiceInputSchema,
+	kazakhWaybillInputSchema,
+} from "@accounting-kz/document-templates";
 
 const dealRouter = new Hono<HonoEnv>();
+const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
+
+const documentPayloadSchema = z.discriminatedUnion("documentType", [
+	z.object({ documentType: z.literal("АВР"), data: kazakhActInputSchema.omit({ actDate: true, dateOfCompletion: true, contractDate: true, }) }),
+	z.object({ documentType: z.literal("Накладная"), data: kazakhWaybillInputSchema.omit({ waybillDate: true, contractDate: true }) }),
+	z.object({ documentType: z.literal("Счет на оплату"), data: kazakhInvoiceInputSchema.omit({ invoiceDate: true, contractDate: true }) }),
+	z.object({ documentType: z.literal("Инвойс"), data: kazakhInvoiceInputSchema.omit({ invoiceDate: true, contractDate: true }) }),
+	z.object({ documentType: z.literal("Доверенность"), data: kazakhDoverennostInputSchema.omit({ issueDate: true, employeeDocNumberDate: true, dateUntil: true }) }),
+	z.object({ documentType: z.literal("КП"), data: z.any() }),
+]);
 
 // Schema for creating a deal with accounting
 const createDealWithAccountingSchema = z.object({
@@ -34,6 +51,7 @@ const createDealWithAccountingSchema = z.object({
 	dealType: z.enum(DEAL_TYPES),
 	totalAmount: z.number().min(0, "Total amount must be positive"),
 	currencyId: z.string().uuid(),
+	documentsPayload: z.array(documentPayloadSchema).optional(),
 });
 
 // Schema for recording payment
@@ -62,7 +80,7 @@ dealRouter.post(
 		},
 		responses: {
 			201: {
-				description: "Deal created successfully with accounting entries and document",
+				description: "Deal created successfully with accounting entries",
 				content: {
 					"application/json": {
 						schema: z.object({
@@ -73,17 +91,12 @@ dealRouter.post(
 								description: z.string().optional(),
 								status: z.string(),
 							}),
-							document: z.object({
-								success: z.boolean(),
-								documentId: z.string().optional(),
-								filePath: z.string().optional(),
-								fileName: z.string().optional(),
-								documentType: z.string().optional(),
-								error: z.object({
-									code: z.string(),
-									message: z.string(),
-								}).optional(),
-							}).nullable(),
+							documents: z.array(z.object({
+								id: z.string(),
+								filePath: z.string(),
+								fileName: z.string(),
+								documentType: z.string(),
+							})).nullable(),
 						}),
 					},
 				},
@@ -106,7 +119,7 @@ dealRouter.post(
 				return c.json({ error: "Legal entity ID is required" }, 400);
 			}
 
-			const dealData = c.req.valid("json");
+			const { documentsPayload, ...dealData } = c.req.valid("json");
 			const dealAccountingService = new DealAccountingService(c.env.db);
 
 			const result = await dealAccountingService.createDealWithAccounting({
@@ -115,7 +128,62 @@ dealRouter.post(
 				createdBy: userId,
 			});
 
-			return c.json(result, 201);
+			const documentResults = [];
+			if (documentsPayload && documentsPayload.length > 0) {
+				const documentGenerationService = new DocumentGenerationService();
+				const generatedDocs = [];
+
+				for (const docPayload of documentsPayload) {
+					const generationResult = await documentGenerationService.generateDocument(
+						docPayload.documentType,
+						docPayload.data
+					);
+					if (generationResult.success) {
+						generatedDocs.push({ ...generationResult, payload: docPayload });
+					} else {
+						console.error("Failed to generate document:", generationResult.error);
+					}
+				}
+
+				if (generatedDocs.length > 0) {
+					const documentRecordsToInsert = generatedDocs.map(doc => ({
+						legalEntityId,
+						type: doc.documentType,
+						receiverBin: dealData.receiverBin,
+						receiverName: doc.payload.data.buyerName || "",
+						fields: doc.payload.data,
+						filePath: doc.filePath,
+						fileName: doc.fileName,
+					}));
+
+					const insertedDocumentRecords = await c.env.db.insert(documentsFlutter)
+						.values(documentRecordsToInsert)
+						.returning();
+
+					const dealDocumentLinksToInsert = insertedDocumentRecords.map(docRecord => ({
+						dealId: result.deal.id,
+						documentFlutterId: docRecord.id,
+					}));
+
+					await c.env.db.insert(dealDocumentsFlutter).values(dealDocumentLinksToInsert);
+
+					for (let i = 0; i < insertedDocumentRecords.length; i++) {
+						const record = insertedDocumentRecords[i];
+						const doc = generatedDocs[i];
+						documentResults.push({
+							id: record.id,
+							filePath: doc.filePath,
+							fileName: doc.fileName,
+							documentType: doc.documentType,
+						});
+					}
+				}
+			}
+
+			return c.json({
+				...result,
+				documents: documentResults,
+			}, 201);
 		} catch (error) {
 			console.error("Error creating deal with accounting:", error);
 			if (error instanceof z.ZodError) {
@@ -1283,122 +1351,6 @@ dealRouter.put(
 	},
 );
 
-// Get document data for deal (automatically populated from database)
-dealRouter.get(
-	"/:dealId/document-data",
-	describeRoute({
-		description: "Get pre-populated document data for deal from database",
-		tags: ["Deals", "Documents"],
-		parameters: [
-			{
-				name: "dealId",
-				in: "path",
-				required: true,
-				schema: { type: "string", format: "uuid" },
-				description: "UUID of the deal",
-			},
-		],
-		responses: {
-			200: {
-				description: "Document data retrieved successfully",
-				content: {
-					"application/json": {
-						schema: z.object({
-							documentType: z.string(),
-							formattedData: z.object({
-								orgName: z.string(),
-								orgAddress: z.string(),
-								orgBin: z.string(),
-								buyerName: z.string(),
-								buyerBin: z.string(),
-								contract: z.string(),
-								orgPersonName: z.string(),
-								orgPersonRole: z.string(),
-								buyerPersonName: z.string(),
-								buyerPersonRole: z.string(),
-								phone: z.string(),
-								selectedBank: z.object({
-									name: z.string(),
-									account: z.string(),
-									bik: z.string(),
-								}),
-								products: z.array(z.object({
-									name: z.string(),
-									description: z.string(),
-									quantity: z.number(),
-									unit: z.string(),
-									price: z.number(),
-									total: z.number(),
-									vat: z.number(),
-								})),
-								idx: z.string(),
-								total: z.number(),
-							}),
-						}),
-					},
-				},
-			},
-			401: { description: "Unauthorized" },
-			404: { description: "Deal not found" },
-			500: { description: "Internal server error" },
-		},
-	}),
-	async (c) => {
-		try {
-			const userId = c.get("userId");
-			if (!userId) {
-				return c.json({ error: "Unauthorized" }, 401);
-			}
-
-			const legalEntityId = c.req.query("legalEntityId");
-			if (!legalEntityId) {
-				return c.json({ error: "Legal entity ID is required" }, 400);
-			}
-
-			const dealId = c.req.param("dealId");
-
-			// Get deal with all related data
-			const deal = await c.env.db.query.deals.findFirst({
-				where: eq(deals.id, dealId),
-			});
-
-			if (!deal) {
-				return c.json({ error: "Deal not found" }, 404);
-			}
-
-			// Import and use DocumentGenerationService
-			const { DocumentGenerationService } = await import("../lib/accounting-service/document-generation-service");
-			const documentGenerationService = new DocumentGenerationService(c.env.db);
-
-			// Get formatted document data
-			const documentData = await (documentGenerationService as any).prepareDocumentData({
-				dealId: deal.id,
-				dealType: deal.dealType,
-				legalEntityId,
-				receiverBin: deal.receiverBin,
-				title: deal.title || "",
-				description: deal.description,
-				totalAmount: deal.totalAmount,
-				createdBy: userId,
-				sellerLegalEntity: await c.env.db.query.legalEntities.findFirst({
-					where: eq(legalEntities.id, legalEntityId),
-				}),
-				clientLegalEntity: await c.env.db.query.legalEntities.findFirst({
-					where: eq(legalEntities.bin, deal.receiverBin),
-				}),
-			});
-
-			return c.json({
-				documentType: deal.dealType === 'service' ? 'kazakh-acts' : 'kazakh-waybill',
-				formattedData: documentData.formattedData,
-			});
-		} catch (error) {
-			console.error("Error getting document data:", error);
-			return c.json({ error: "Failed to get document data" }, 500);
-		}
-	},
-);
-
 // Get all transactions for a deal
 dealRouter.get(
 	"/:dealId/transactions",
@@ -1471,71 +1423,6 @@ dealRouter.get(
 		} catch (error) {
 			console.error("Error getting deal transactions:", error);
 			return c.json({ error: "Failed to get deal transactions" }, 500);
-		}
-	},
-);
-
-// Generate document for deal (АВР for services, накладная for products) - DEPRECATED
-dealRouter.post(
-	"/:dealId/generate-document",
-	describeRoute({
-		description: "Generate appropriate document for deal (АВР for services, накладная for products) - DEPRECATED: Documents are now auto-generated on deal creation",
-		tags: ["Deals", "Documents"],
-		parameters: [
-			{
-				name: "dealId",
-				in: "path",
-				required: true,
-				schema: { type: "string", format: "uuid" },
-				description: "UUID of the deal",
-			},
-		],
-		responses: {
-			200: {
-				description: "Document information",
-				content: {
-					"application/json": {
-						schema: z.object({
-							documentType: z.string(),
-							message: z.string(),
-							deprecated: z.boolean(),
-						}),
-					},
-				},
-			},
-			401: { description: "Unauthorized" },
-			404: { description: "Deal not found" },
-			500: { description: "Internal server error" },
-		},
-	}),
-	async (c) => {
-		try {
-			const userId = c.get("userId");
-			if (!userId) {
-				return c.json({ error: "Unauthorized" }, 401);
-			}
-
-			const dealId = c.req.param("dealId");
-
-			// Get deal to determine type
-			const deal = await c.env.db.query.deals.findFirst({
-				where: eq(deals.id, dealId),
-			});
-
-			if (!deal) {
-				return c.json({ error: "Deal not found" }, 404);
-			}
-
-			const documentType = deal.dealType === 'service' ? 'АВР' : 'Накладная';
-
-			return c.json({
-				documentType,
-				message: `${deal.dealType === 'service' ? 'АВР (Акт выполненных работ)' : 'Накладная'} автоматически создается при создании сделки`,
-				deprecated: true,
-			});
-		} catch (error) {
-			console.error("Error getting document info:", error);
-			return c.json({ error: "Failed to get document info" }, 500);
 		}
 	},
 );
