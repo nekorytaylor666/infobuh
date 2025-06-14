@@ -315,7 +315,7 @@
         
         // Column 2: Description
         align(left)[
-          #text(size: 6pt)[#item.description]
+          #text(size: 6pt)[#item.name]
         ],
         
         // Column 3: Date

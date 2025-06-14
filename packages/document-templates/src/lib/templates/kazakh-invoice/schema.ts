@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Input schema for invoice items
 export const invoiceItemSchema = z.object({
-	description: z.string().min(1, "Description is required"),
+	name: z.string().min(1, "Name is required"),
 	quantity: z.number().positive("Quantity must be positive"),
 	unit: z.string().min(1, "Unit is required"),
 	price: z.number().positive("Price must be positive"),

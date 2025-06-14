@@ -5,7 +5,7 @@ export const documentProductSchema = z.object({
 	name: z.string().min(1, "Product name is required"),
 	description: z.string().optional(),
 	quantity: z.number().positive("Quantity must be positive"),
-	unit: z.string().min(1, "Unit is required"),
+	measurement: z.string().min(1, "Measurement is required"),
 	price: z.number().positive("Price must be positive"),
 	total: z.number().positive("Total must be positive"),
 	vat: z.number().optional(),
@@ -18,33 +18,33 @@ export const avrDocumentSchema = z.object({
 	orgName: z.string().min(1, "Organization name is required"),
 	orgAddress: z.string().min(1, "Organization address is required"),
 	orgBin: z.string().length(12, "BIN must be 12 characters"),
-	
+
 	// Buyer info
 	buyerName: z.string().min(1, "Buyer name is required"),
 	buyerBin: z.string().length(12, "Buyer BIN must be 12 characters"),
-	
+
 	// Contract info
 	contract: z.string().min(1, "Contract number is required"),
-	
+
 	// Personnel info
 	orgPersonName: z.string().min(1, "Organization person name is required"),
 	orgPersonRole: z.string().min(1, "Organization person role is required"),
 	buyerPersonName: z.string().optional(),
 	buyerPersonRole: z.string().optional(),
-	
+
 	// Contact info
 	phone: z.string().min(1, "Phone is required"),
-	
+
 	// Bank info
 	selectedBank: z.object({
 		name: z.string(),
 		account: z.string(),
 		bik: z.string(),
 	}),
-	
+
 	// Services/products
 	products: z.array(documentProductSchema).min(1, "At least one product is required"),
-	
+
 	// Document specifics
 	idx: z.string().min(1, "Document index is required"),
 	total: z.number().positive("Total amount must be positive"),
@@ -180,12 +180,12 @@ export type PaymentInvoiceDocument = z.infer<typeof paymentInvoiceSchema>;
 export type DocumentProduct = z.infer<typeof documentProductSchema>;
 
 // Union type for all documents
-export type AllDocumentTypes = 
-	| AVRDocument 
-	| PowerOfAttorneyDocument 
-	| WaybillDocument 
-	| InvoiceDocument 
-	| CommercialProposalDocument 
+export type AllDocumentTypes =
+	| AVRDocument
+	| PowerOfAttorneyDocument
+	| WaybillDocument
+	| InvoiceDocument
+	| CommercialProposalDocument
 	| PaymentInvoiceDocument;
 
 // Document schema mapping

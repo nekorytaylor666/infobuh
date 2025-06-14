@@ -167,7 +167,7 @@
         
         // Column 3: Description
         align(left)[
-          #text(size: 8pt)[#item.description]
+          #text(size: 8pt)[#item.name]
         ],
         
         // Column 4: Quantity
