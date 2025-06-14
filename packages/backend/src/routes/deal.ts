@@ -34,8 +34,6 @@ const createDealWithAccountingSchema = z.object({
 	dealType: z.enum(DEAL_TYPES),
 	totalAmount: z.number().min(0, "Total amount must be positive"),
 	currencyId: z.string().uuid(),
-	accountsReceivableId: z.string().uuid(),
-	revenueAccountId: z.string().uuid(),
 });
 
 // Schema for recording payment
@@ -44,8 +42,7 @@ const recordPaymentSchema = z.object({
 	description: z.string().optional(),
 	reference: z.string().optional(),
 	currencyId: z.string().uuid(),
-	cashAccountId: z.string().uuid(),
-	accountsReceivableId: z.string().uuid(),
+	paymentMethod: z.enum(["bank", "cash"]).default("bank").optional(),
 });
 
 // Create a new deal with accounting integration
@@ -124,9 +121,9 @@ dealRouter.post(
 			if (error instanceof z.ZodError) {
 				return c.json({ error: error.errors }, 400);
 			}
-			return c.json({ 
-				error: "Failed to create deal", 
-				message: error instanceof Error ? error.message : "Unknown error" 
+			return c.json({
+				error: "Failed to create deal",
+				message: error instanceof Error ? error.message : "Unknown error"
 			}, 500);
 		}
 	},
@@ -210,8 +207,8 @@ dealRouter.post(
 				return c.json({ error: error.errors }, 400);
 			}
 			const message = error instanceof Error ? error.message : "Unknown error";
-			const status = message.includes("not found") ? 404 : 
-						   message.includes("exceeds") ? 400 : 500;
+			const status = message.includes("not found") ? 404 :
+				message.includes("exceeds") ? 400 : 500;
 			return c.json({ error: "Failed to record payment", message }, status);
 		}
 	},
@@ -1359,7 +1356,7 @@ dealRouter.get(
 			}
 
 			const dealId = c.req.param("dealId");
-			
+
 			// Get deal with all related data
 			const deal = await c.env.db.query.deals.findFirst({
 				where: eq(deals.id, dealId),
@@ -1398,6 +1395,77 @@ dealRouter.get(
 		} catch (error) {
 			console.error("Error getting document data:", error);
 			return c.json({ error: "Failed to get document data" }, 500);
+		}
+	},
+);
+
+// Get all transactions for a deal
+dealRouter.get(
+	"/:dealId/transactions",
+	describeRoute({
+		description: "Get all accounting transactions (journal entries) for a specific deal",
+		tags: ["Deals", "Accounting", "Transactions"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		responses: {
+			200: {
+				description: "Deal transactions retrieved successfully",
+				content: {
+					"application/json": {
+						schema: z.object({
+							dealId: z.string(),
+							dealTitle: z.string().optional(),
+							totalAmount: z.number(),
+							paidAmount: z.number(),
+							transactions: z.array(z.object({
+								id: z.string(),
+								dealId: z.string(),
+								entryType: z.string(),
+								entryDate: z.string(),
+								description: z.string(),
+								lines: z.array(z.object({
+									accountCode: z.string(),
+									accountName: z.string(),
+									debitAmount: z.number(),
+									creditAmount: z.number(),
+									description: z.string(),
+								})),
+							})),
+						}),
+					},
+				},
+			},
+			401: { description: "Unauthorized" },
+			404: { description: "Deal not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const dealId = c.req.param("dealId");
+			const dealAccountingService = new DealAccountingService(c.env.db);
+
+			const transactions = await dealAccountingService.getDealTransactions(dealId);
+			if (!transactions) {
+				return c.json({ error: "Deal not found" }, 404);
+			}
+
+			return c.json(transactions);
+		} catch (error) {
+			console.error("Error getting deal transactions:", error);
+			return c.json({ error: "Failed to get deal transactions" }, 500);
 		}
 	},
 );
@@ -1443,7 +1511,7 @@ dealRouter.post(
 			}
 
 			const dealId = c.req.param("dealId");
-			
+
 			// Get deal to determine type
 			const deal = await c.env.db.query.deals.findFirst({
 				where: eq(deals.id, dealId),
@@ -1453,8 +1521,7 @@ dealRouter.post(
 				return c.json({ error: "Deal not found" }, 404);
 			}
 
-			const dealAccountingService = new DealAccountingService(c.env.db);
-			const documentType = await dealAccountingService.generateDocumentForDeal(dealId, deal.dealType);
+			const documentType = deal.dealType === 'service' ? 'АВР' : 'Накладная';
 
 			return c.json({
 				documentType,
