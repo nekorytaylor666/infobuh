@@ -4,6 +4,7 @@ import {
     partners,
     eq,
     and,
+    BinRegistryEntry,
 } from "@accounting-kz/db";
 
 export interface PartnerSearchResult {
@@ -45,14 +46,26 @@ export class PartnerService {
                 isExisting: true,
             };
         }
+        let binRegistryEntry;
 
         // If not exists, lookup in BIN registry
-        const binRegistryEntry = await this.db.query.binRegistry.findFirst({
+        binRegistryEntry = await this.db.query.binRegistry.findFirst({
             where: eq(binRegistry.bin, bin),
         });
 
         if (!binRegistryEntry) {
-            throw new Error(`BIN ${bin} not found in registry`);
+            binRegistryEntry = {
+                bin: bin,
+                fullNameRu: "Неизвестная компания",
+                fullNameKz: "Біздің компаниямыз",
+                legalAddress: "Адрес не указан",
+                directorName: "Директор не указан",
+                id: "1",
+                oked: "1",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                krp: "1",
+            }
         }
 
         // Create new partner from BIN registry data
