@@ -42,7 +42,7 @@ export type CreateJournalEntryResult =
 	| { success: false; error: { type: "ACCOUNT_NOT_FOUND" | "TRANSACTION_ERROR"; message: string } };
 
 export class AccountingService {
-	constructor(private db: Database) {}
+	constructor(private db: Database) { }
 
 	// ===== CURRENCY OPERATIONS =====
 
@@ -299,11 +299,19 @@ export class AccountingService {
 	}
 
 	async getJournalEntries(legalEntityId: string): Promise<JournalEntry[]> {
-		return await this.db
-			.select()
-			.from(journalEntries)
-			.where(eq(journalEntries.legalEntityId, legalEntityId))
-			.orderBy(desc(journalEntries.entryDate), desc(journalEntries.createdAt));
+		return await this.db.query.journalEntries.findMany({
+			where: eq(journalEntries.legalEntityId, legalEntityId),
+			with: {
+				lines: {
+					with: {
+						account: true,
+					},
+
+				},
+
+			},
+			orderBy: [desc(journalEntries.entryDate), desc(journalEntries.createdAt)],
+		});
 	}
 
 	async getJournalEntryById(id: string, legalEntityId: string): Promise<JournalEntry | null> {
@@ -344,7 +352,7 @@ export class AccountingService {
 				totalCredits: sql<number>`COALESCE(SUM(${generalLedger.creditAmount}), 0)`.mapWith(Number),
 			})
 			.from(generalLedger)
-			.innerJoin(accounts, 
+			.innerJoin(accounts,
 				and(
 					eq(generalLedger.accountId, accounts.id),
 					eq(accounts.legalEntityId, legalEntityId)
@@ -358,12 +366,12 @@ export class AccountingService {
 				accounts.id
 			)
 			.orderBy(asc(accounts.code));
-		
+
 		return result.map((row) => {
 			const rawDebit = Number(row.totalDebits) || 0;
 			const rawCredit = Number(row.totalCredits) || 0;
 			const netBalance = rawDebit - rawCredit;
-		
+
 			const isDebitType = ["asset", "expense"].includes(row.accountType as string);
 			let debitBalance = 0;
 			let creditBalance = 0;
@@ -375,7 +383,7 @@ export class AccountingService {
 				if (netBalance <= 0) creditBalance = Math.abs(netBalance);
 				else debitBalance = netBalance;
 			}
-			
+
 			return {
 				accountCode: row.accountCode,
 				accountName: row.accountName,
@@ -428,7 +436,7 @@ export class AccountingService {
 
 		return result.map(row => ({
 			...row,
-			debitAmount: Number(row.debitAmount), 
+			debitAmount: Number(row.debitAmount),
 			creditAmount: Number(row.creditAmount),
 			runningBalance: Number(row.runningBalance)
 		}));
@@ -466,19 +474,19 @@ export class AccountingService {
 				totalEquity -= balance;
 			}
 		});
-		
+
 		const currentAssetsAccounts = assetsList.filter(acc => acc.accountCode.startsWith("10") || acc.accountCode.startsWith("11") || acc.accountCode.startsWith("12") || acc.accountCode.startsWith("13"));
 		const nonCurrentAssetsAccounts = assetsList.filter(acc => acc.accountCode.startsWith("2"));
-		
+
 		const currentLiabilitiesAccounts = liabilitiesList.filter(acc => acc.accountCode.startsWith("30") || acc.accountCode.startsWith("31") || acc.accountCode.startsWith("33"));
 		const nonCurrentLiabilitiesAccounts = liabilitiesList.filter(acc => acc.accountCode.startsWith("40") || acc.accountCode.startsWith("41"));
-		
+
 		const currentAssetsTotal = currentAssetsAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
 		const nonCurrentAssetsTotal = nonCurrentAssetsAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
 
 		const currentLiabilitiesTotal = currentLiabilitiesAccounts.reduce((sum, acc) => sum - (acc.balance || 0), 0);
 		const nonCurrentLiabilitiesTotal = nonCurrentLiabilitiesAccounts.reduce((sum, acc) => sum - (acc.balance || 0), 0);
-		
+
 		const incomeStatement = await this.getIncomeStatement(legalEntityId);
 		const retainedEarningsOrCurrentYearNetIncome = incomeStatement.netIncome;
 
