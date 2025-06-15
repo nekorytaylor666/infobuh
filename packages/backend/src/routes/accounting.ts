@@ -509,7 +509,7 @@ accountingRouter.get("/test", async (c) => {
 	try {
 		const service = new AccountingService(c.env.db);
 		const legalEntityId = c.req.query("legalEntityId") || "test-legal-entity-id";
-		
+
 		const currencies = await service.getCurrencies();
 		const accounts = await service.getAccounts(legalEntityId);
 		const entries = await service.getJournalEntries(legalEntityId);
