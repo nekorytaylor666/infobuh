@@ -136,7 +136,8 @@ dealRouter.post(
 				for (const docPayload of documentsPayload) {
 					const generationResult = await documentGenerationService.generateDocument(
 						docPayload.documentType,
-						docPayload.data
+						docPayload.data,
+						legalEntityId
 					);
 					if (generationResult.success) {
 						generatedDocs.push({ ...generationResult, payload: docPayload });
