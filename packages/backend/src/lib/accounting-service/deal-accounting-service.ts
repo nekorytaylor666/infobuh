@@ -120,8 +120,14 @@ export class DealAccountingService {
 		const standardAccounts = await this.getStandardAccounts(params.legalEntityId);
 
 		// Create the deal and journal entries in a transaction
-		const { deal, journalEntry } = await this.db.transaction(async (tx) => {
-			// 1. Create the deal
+		const { deal, journalEntry, partner } = await this.db.transaction(async (tx) => {
+			// 1. Find or create partner from BIN
+			const partner = await accountingService.findOrCreatePartnerByBin(
+				params.receiverBin,
+				params.legalEntityId
+			);
+
+			// 2. Create the deal
 			const [deal] = await tx.insert(dealsTable).values({
 				receiverBin: params.receiverBin,
 				title: params.title,
@@ -132,14 +138,14 @@ export class DealAccountingService {
 				legalEntityId: params.legalEntityId,
 			}).returning();
 
-			// 2. Create journal entry for the invoice
+			// 3. Create journal entry for the invoice with partner reference
 			const entryNumber = await this.generateEntryNumber(params.legalEntityId);
 
 			const journalEntryResult = await accountingService.createJournalEntry(
 				{
 					entryNumber,
 					entryDate: new Date().toISOString().split('T')[0],
-					description: `${params.dealType === 'service' ? 'Услуги' : 'Товары'}: ${params.title}`,
+					description: `${params.dealType === 'service' ? 'Услуги' : 'Товары'}: ${params.title} (${partner.name})`,
 					reference: `DEAL-${deal.id}`,
 					status: "draft",
 					currencyId: params.currencyId,
@@ -151,22 +157,23 @@ export class DealAccountingService {
 						accountId: standardAccounts.accountsReceivable.id, // Account code 1210
 						debitAmount: params.totalAmount,
 						creditAmount: 0,
-						description: `Дебиторская задолженность: ${params.title}`,
+						description: `Дебиторская задолженность: ${partner.name}`,
 					},
 					{
 						accountId: standardAccounts.revenue.id, // Account code 6010
 						debitAmount: 0,
 						creditAmount: params.totalAmount,
-						description: `${params.dealType === 'service' ? 'Доходы от услуг' : 'Доходы от продажи товаров'}`,
+						description: `${params.dealType === 'service' ? 'Доходы от услуг' : 'Доходы от продажи товаров'}: ${partner.name}`,
 					},
-				]
+				],
+				params.receiverBin // Pass the BIN for partner linkage
 			);
 
 			if (!journalEntryResult.success) {
 				throw new Error(`Failed to create journal entry: ${journalEntryResult.error.message}`);
 			}
 
-			// 3. Link deal with journal entry
+			// 4. Link deal with journal entry
 			await tx.insert(dealJournalEntries).values({
 				dealId: deal.id,
 				journalEntryId: journalEntryResult.entry.id,
@@ -176,12 +183,14 @@ export class DealAccountingService {
 			return {
 				deal,
 				journalEntry: journalEntryResult.entry,
+				partner,
 			};
 		});
 
 		return {
 			deal,
 			journalEntry,
+			partner,
 			document: null, // Document generation is now a separate process
 		};
 	}
@@ -216,20 +225,26 @@ export class DealAccountingService {
 				throw new Error("Deal not found");
 			}
 
-			// 2. Validate payment amount
+			// 2. Get partner information for better descriptions
+			const partner = await accountingService.findOrCreatePartnerByBin(
+				deal.receiverBin,
+				params.legalEntityId
+			);
+
+			// 3. Validate payment amount
 			const newPaidAmount = deal.paidAmount + params.amount;
 			if (newPaidAmount > deal.totalAmount) {
 				throw new Error("Payment amount exceeds remaining balance");
 			}
 
-			// 3. Create payment journal entry
+			// 4. Create payment journal entry
 			const entryNumber = await this.generateEntryNumber(params.legalEntityId);
 
 			const journalEntryResult = await accountingService.createJournalEntry(
 				{
 					entryNumber,
 					entryDate: new Date().toISOString().split('T')[0],
-					description: params.description || `Оплата по сделке: ${deal.title}`,
+					description: params.description || `Оплата по сделке: ${deal.title} (${partner.name})`,
 					reference: params.reference || `PAY-${params.dealId}`,
 					status: "draft",
 					currencyId: params.currencyId,
@@ -241,15 +256,16 @@ export class DealAccountingService {
 						accountId: cashAccount.id, // Account code 1030 (bank) or 1010 (cash)
 						debitAmount: params.amount,
 						creditAmount: 0,
-						description: "Поступление денежных средств",
+						description: `Поступление денежных средств от ${partner.name}`,
 					},
 					{
 						accountId: standardAccounts.accountsReceivable.id, // Account code 1210
 						debitAmount: 0,
 						creditAmount: params.amount,
-						description: "Погашение дебиторской задолженности",
+						description: `Погашение дебиторской задолженности: ${partner.name}`,
 					},
-				]
+				],
+				deal.receiverBin // Pass the BIN for partner linkage
 			);
 
 			if (!journalEntryResult.success) {

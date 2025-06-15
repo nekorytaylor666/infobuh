@@ -222,6 +222,7 @@ const createJournalEntrySchema = z
 		description: z.string().optional(),
 		reference: z.string().optional(),
 		currencyId: z.string().uuid(),
+		partnerBin: z.string().regex(/^\d{12}$/, "BIN must be 12 digits").optional(),
 		lines: z
 			.array(
 				z.object({
@@ -268,7 +269,7 @@ accountingRouter.post(
 			const data = c.req.valid("json");
 			const service = new AccountingService(c.env.db);
 
-			const { lines, ...entryData } = data;
+			const { lines, partnerBin, ...entryData } = data;
 
 			const result: CreateJournalEntryResult = await service.createJournalEntry(
 				{
@@ -278,6 +279,7 @@ accountingRouter.post(
 					legalEntityId: legalEntityId,
 				},
 				lines,
+				partnerBin,
 			);
 
 			if (!result.success) {
@@ -496,6 +498,60 @@ accountingRouter.get("/reports/income-statement", async (c) => {
 			{
 				success: false,
 				error: "Failed to generate income statement",
+				message: error instanceof Error ? error.message : "Unknown error",
+			},
+			500,
+		);
+	}
+});
+
+accountingRouter.get("/partners/:id/subledger", async (c) => {
+	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
+
+		const id = c.req.param("id");
+		const service = new AccountingService(c.env.db);
+		const subledger = await service.getPartnerSubledger(id, legalEntityId);
+
+		return c.json({
+			success: true,
+			data: subledger,
+		});
+	} catch (error) {
+		return c.json(
+			{
+				success: false,
+				error: "Failed to fetch partner subledger",
+				message: error instanceof Error ? error.message : "Unknown error",
+			},
+			500,
+		);
+	}
+});
+
+accountingRouter.get("/partners/:id/balance", async (c) => {
+	try {
+		const legalEntityId = c.req.query("legalEntityId") as string | undefined;
+		if (!legalEntityId) {
+			return c.json({ success: false, error: "Unauthorized: Legal entity ID is missing from query parameters." }, 400);
+		}
+
+		const id = c.req.param("id");
+		const service = new AccountingService(c.env.db);
+		const balance = await service.getPartnerBalance(id, legalEntityId);
+
+		return c.json({
+			success: true,
+			data: { partnerId: id, balance },
+		});
+	} catch (error) {
+		return c.json(
+			{
+				success: false,
+				error: "Failed to fetch partner balance",
 				message: error instanceof Error ? error.message : "Unknown error",
 			},
 			500,

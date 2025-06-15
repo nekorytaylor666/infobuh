@@ -49,6 +49,8 @@ export const binRegistry = pgTable(
 	}),
 );
 
+
+
 // Schema definitions for validation and type safety
 export const binRegistrySelectSchema = createSelectSchema(binRegistry); // For retrieving data
 export const binRegistryInsertSchema = createInsertSchema(binRegistry); // For inserting new records

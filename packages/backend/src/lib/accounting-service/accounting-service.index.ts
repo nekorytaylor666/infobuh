@@ -26,6 +26,7 @@ import {
 	sql,
 	isNull,
 } from "@accounting-kz/db";
+import { PartnerService } from "./partner-service";
 
 // Define a type for the structure returned by getTrialBalance and used in reporting
 interface TrialBalanceAccountItem {
@@ -42,7 +43,11 @@ export type CreateJournalEntryResult =
 	| { success: false; error: { type: "ACCOUNT_NOT_FOUND" | "TRANSACTION_ERROR"; message: string } };
 
 export class AccountingService {
-	constructor(private db: Database) { }
+	private partnerService: PartnerService;
+
+	constructor(private db: Database) {
+		this.partnerService = new PartnerService(db);
+	}
 
 	// ===== CURRENCY OPERATIONS =====
 
@@ -157,11 +162,27 @@ export class AccountingService {
 	async createJournalEntry(
 		entryData: Omit<NewJournalEntry, "id" | "totalDebit" | "totalCredit" | "createdAt" | "updatedAt">,
 		lines: Omit<NewJournalEntryLine, "id" | "journalEntryId" | "lineNumber" | "createdAt" | "updatedAt">[],
+		partnerBin?: string,
 	): Promise<CreateJournalEntryResult> {
 		try {
 			// Zod validation for debit/credit balance, min lines, etc., is handled by the route middleware.
 
 			const entry = await this.db.transaction(async (trx) => {
+				// Handle partner lookup/creation if BIN provided
+				let partnerId: string | undefined;
+				if (partnerBin) {
+					try {
+						const partner = await this.partnerService.findOrCreatePartnerByBin(
+							partnerBin,
+							entryData.legalEntityId
+						);
+						partnerId = partner.id;
+					} catch (partnerError: any) {
+						console.warn(`Partner lookup/creation failed for BIN ${partnerBin}:`, partnerError.message);
+						// Continue without partner - this is not a critical error
+					}
+				}
+
 				// Check if all accounts exist concurrently
 				try {
 					const accountExistenceChecks = lines.map(async (line) => {
@@ -201,6 +222,7 @@ export class AccountingService {
 					.insert(journalEntries)
 					.values({
 						...entryData,
+						partnerId,
 						totalDebit: totalDebit,
 						totalCredit: totalCredit,
 					})
@@ -306,9 +328,8 @@ export class AccountingService {
 					with: {
 						account: true,
 					},
-
 				},
-
+				partner: true,
 			},
 			orderBy: [desc(journalEntries.entryDate), desc(journalEntries.createdAt)],
 		});
@@ -330,6 +351,86 @@ export class AccountingService {
 			.from(journalEntryLines)
 			.where(eq(journalEntryLines.journalEntryId, entryId))
 			.orderBy(asc(journalEntryLines.lineNumber));
+	}
+
+	// ===== PARTNER OPERATIONS =====
+
+	async findOrCreatePartnerByBin(bin: string, legalEntityId: string) {
+		return await this.partnerService.findOrCreatePartnerByBin(bin, legalEntityId);
+	}
+
+	async getPartnersByLegalEntity(legalEntityId: string) {
+		return await this.partnerService.getPartnersByLegalEntity(legalEntityId);
+	}
+
+	async getPartnerById(partnerId: string, legalEntityId: string) {
+		return await this.partnerService.getPartnerById(partnerId, legalEntityId);
+	}
+
+	async getPartnerSubledger(partnerId: string, legalEntityId: string): Promise<{
+		partner: any;
+		journalEntries: JournalEntry[];
+		totalDebit: number;
+		totalCredit: number;
+		balance: number;
+	}> {
+		const partner = await this.partnerService.getPartnerById(partnerId, legalEntityId);
+		if (!partner) {
+			throw new Error("Partner not found");
+		}
+
+		const entries = await this.db.query.journalEntries.findMany({
+			where: and(
+				eq(journalEntries.partnerId, partnerId),
+				eq(journalEntries.legalEntityId, legalEntityId)
+			),
+			with: {
+				lines: {
+					with: {
+						account: true,
+					},
+				},
+			},
+			orderBy: [desc(journalEntries.entryDate), desc(journalEntries.createdAt)],
+		});
+
+		let totalDebit = 0;
+		let totalCredit = 0;
+
+		entries.forEach(entry => {
+			totalDebit += entry.totalDebit;
+			totalCredit += entry.totalCredit;
+		});
+
+		return {
+			partner,
+			journalEntries: entries,
+			totalDebit,
+			totalCredit,
+			balance: totalDebit - totalCredit,
+		};
+	}
+
+	async getPartnerBalance(partnerId: string, legalEntityId: string): Promise<number> {
+		const result = await this.db
+			.select({
+				totalDebit: sql<number>`COALESCE(SUM(${journalEntries.totalDebit}), 0)`.mapWith(Number),
+				totalCredit: sql<number>`COALESCE(SUM(${journalEntries.totalCredit}), 0)`.mapWith(Number),
+			})
+			.from(journalEntries)
+			.where(
+				and(
+					eq(journalEntries.partnerId, partnerId),
+					eq(journalEntries.legalEntityId, legalEntityId),
+					eq(journalEntries.status, "posted")
+				)
+			);
+
+		if (!result[0]) {
+			return 0;
+		}
+
+		return Number(result[0].totalDebit) - Number(result[0].totalCredit);
 	}
 
 	// ===== REPORTING OPERATIONS =====
