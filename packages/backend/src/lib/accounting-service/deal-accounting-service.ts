@@ -405,7 +405,9 @@ export class DealAccountingService {
 										account: true,
 									},
 								},
+								partner: true,
 							},
+
 						},
 					},
 				},
