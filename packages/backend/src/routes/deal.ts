@@ -35,12 +35,11 @@ const dealRouter = new Hono<HonoEnv>();
 const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
 
 const documentPayloadSchema = z.discriminatedUnion("documentType", [
-	z.object({ documentType: z.literal("АВР"), data: kazakhActInputSchema.omit({ actDate: true, dateOfCompletion: true, contractDate: true, }) }),
-	z.object({ documentType: z.literal("Накладная"), data: kazakhWaybillInputSchema.omit({ waybillDate: true, contractDate: true }) }),
-	z.object({ documentType: z.literal("Счет на оплату"), data: kazakhInvoiceInputSchema.omit({ invoiceDate: true, contractDate: true }) }),
-	z.object({ documentType: z.literal("Инвойс"), data: kazakhInvoiceInputSchema.omit({ invoiceDate: true, contractDate: true }) }),
-	z.object({ documentType: z.literal("Доверенность"), data: kazakhDoverennostInputSchema.omit({ issueDate: true, employeeDocNumberDate: true, dateUntil: true }) }),
-	z.object({ documentType: z.literal("КП"), data: z.any() }),
+	z.object({ documentType: z.literal("АВР"), data: kazakhActInputSchema }),
+	z.object({ documentType: z.literal("Накладная"), data: kazakhWaybillInputSchema }),
+	z.object({ documentType: z.literal("Счет на оплату"), data: kazakhInvoiceInputSchema }),
+	z.object({ documentType: z.literal("Инвойс"), data: kazakhInvoiceInputSchema }),
+	z.object({ documentType: z.literal("Доверенность"), data: kazakhDoverennostInputSchema }),
 ]);
 
 // Schema for creating a deal with accounting
