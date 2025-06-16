@@ -111,7 +111,7 @@
     table.cell()[
       #set align(center + horizon)
       #set text(size: 8pt, weight: "bold")
-      #
+      №
     ],
     
     table.cell()[

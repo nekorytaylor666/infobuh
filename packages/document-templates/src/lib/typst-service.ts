@@ -40,7 +40,9 @@ export class TypstService {
         const tempInputPath = path.join(tempDir, `input-${uniqueId}.typ`);
         const outputPdfPath = path.join(this.outputDir, fileName);
 
-        const dataAsTypstString = this.convertToTypstData(data);
+        // Validate and sanitize data
+        const sanitizedData = this.sanitizeData(data);
+        const dataAsTypstString = this.convertToTypstData(sanitizedData);
         const templateContent = await fs.readFile(templatePath, "utf-8");
 
         const typstContent = `
@@ -51,9 +53,20 @@ ${templateContent}
         try {
             await fs.writeFile(tempInputPath, typstContent);
 
+            // Debug: Log the generated Typst content if compilation fails
             const command = `typst compile "${tempInputPath}" "${outputPdfPath}"`;
             const startTime = performance.now();
-            await execAsync(command);
+
+            try {
+                await execAsync(command);
+            } catch (compilationError) {
+                console.error("Typst compilation failed. Generated content:");
+                console.error("=".repeat(50));
+                console.error(typstContent);
+                console.error("=".repeat(50));
+                throw compilationError;
+            }
+
             const endTime = performance.now();
             console.log(`Typst compilation took ${endTime - startTime}ms`);
 
@@ -78,11 +91,35 @@ ${templateContent}
         return filePath;
     }
 
+    /**
+     * Sanitize data to prevent Typst compilation issues
+     */
+    private sanitizeData(data: any): any {
+        if (typeof data === 'string') {
+            // Remove or escape problematic characters
+            return data.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // Remove control characters
+        }
+
+        if (Array.isArray(data)) {
+            return data.map(item => this.sanitizeData(item));
+        }
+
+        if (typeof data === 'object' && data !== null) {
+            const sanitized: any = {};
+            for (const [key, value] of Object.entries(data)) {
+                sanitized[key] = this.sanitizeData(value);
+            }
+            return sanitized;
+        }
+
+        return data;
+    }
+
     private convertToTypstData(data: any): string {
         const convertValue = (value: any): string => {
             if (typeof value === "string") {
-                // Escape quotes and backslashes for Typst strings
-                return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+                // Escape quotes, backslashes, and hash symbols for Typst strings
+                return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/#/g, "\\#")}"`;
             }
             if (typeof value === "number" || typeof value === "boolean") {
                 return String(value);
@@ -95,13 +132,17 @@ ${templateContent}
             }
             if (Array.isArray(value)) {
                 const items = value.map(convertValue);
+                if (items.length === 0) {
+                    return "()";
+                }
                 if (items.length === 1) {
                     return `(${items[0]},)`;
                 }
                 return `(${items.join(", ")})`;
             }
-            if (typeof value === "object") {
+            if (typeof value === "object" && value !== null) {
                 const fields = Object.entries(value)
+                    .filter(([key, val]) => val !== undefined) // Filter out undefined values
                     .map(([key, val]) => `${key}: ${convertValue(val)}`)
                     .join(", ");
                 return `(${fields})`;

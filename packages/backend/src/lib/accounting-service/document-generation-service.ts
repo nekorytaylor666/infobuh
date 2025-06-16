@@ -41,6 +41,22 @@ export class DocumentGenerationService {
 	}
 
 	/**
+	 * Sanitize document type for use in storage paths
+	 */
+	private sanitizeDocumentType(documentType: DocumentType): string {
+		const translitMap: Record<string, string> = {
+			"АВР": "avr",
+			"Доверенность": "doverennost",
+			"Накладная": "waybill",
+			"Инвойс": "invoice",
+			"КП": "kp",
+			"Счет на оплату": "invoice"
+		};
+
+		return translitMap[documentType] || documentType.toLowerCase().replace(/[^a-z0-9]/g, '_');
+	}
+
+	/**
 	 * Upload file to Supabase Storage with legal entity organization
 	 */
 	private async uploadToSupabase(
@@ -50,8 +66,11 @@ export class DocumentGenerationService {
 		legalEntityId: string
 	): Promise<{ publicUrl: string; storagePath: string }> {
 		try {
-			// Create folder structure: documents/{legalEntityId}/{documentType}/{fileName}
-			const storagePath = `${legalEntityId}/${documentType}/${fileName}`;
+			// Sanitize document type for storage path
+			const sanitizedDocumentType = this.sanitizeDocumentType(documentType);
+
+			// Create folder structure: documents/{legalEntityId}/{sanitizedDocumentType}/{fileName}
+			const storagePath = `${legalEntityId}/${sanitizedDocumentType}/${fileName}`;
 
 			// Read the file buffer
 			const fileBuffer = await fs.readFile(localFilePath);
@@ -204,7 +223,7 @@ export class DocumentGenerationService {
 	): Promise<any[]> {
 		try {
 			const folderPath = documentType
-				? `${legalEntityId}/${documentType}`
+				? `${legalEntityId}/${this.sanitizeDocumentType(documentType)}`
 				: legalEntityId;
 
 			const { data, error } = await supabaseStorage
