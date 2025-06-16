@@ -49,9 +49,9 @@ async function generateAct(
 	const vatAmount = totalAmount * 0.12; // 12% VAT
 
 	// Helper function to format date to YYYY-MM-DD string
-	const formatDateToString = (date: Date | undefined): string => {
+	const formatDateToString = (date: string | undefined): string => {
 		if (!date) return "";
-		return date.toISOString().split("T")[0];
+		return date;
 	};
 
 	// 2. Prepare template data
@@ -68,10 +68,10 @@ async function generateAct(
 
 		// Act details
 		actNumber: input.actNumber,
-		actDate: formatDateToString(input.actDate),
+		actDate: input.actDate,
 		contractNumber: input.contractNumber,
-		contractDate: formatDateToString(input.contractDate),
-		dateOfCompletion: formatDateToString(input.dateOfCompletion),
+		contractDate: input.contractDate,
+		dateOfCompletion: input.dateOfCompletion,
 
 		// Client info
 		clientName: input.buyerName,

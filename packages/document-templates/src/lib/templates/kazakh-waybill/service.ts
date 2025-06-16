@@ -67,9 +67,9 @@ async function generateWaybill(
 
 		// Waybill details
 		waybillNumber: input.waybillNumber,
-		waybillDate: formatDateToString(input.waybillDate),
+		waybillDate: input.waybillDate,
 		contractNumber: input.contractNumber || "",
-		contractDate: formatDateToString(input.contractDate),
+		contractDate: input.contractDate,
 
 		// Items and totals
 		items: input.items,

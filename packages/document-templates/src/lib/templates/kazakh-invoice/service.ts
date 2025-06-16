@@ -59,8 +59,8 @@ async function generateInvoice(
 
 		// Invoice details
 		invoiceNumber: input.invoiceNumber,
-		invoiceDate: input.invoiceDate.toLocaleDateString("ru-RU"),
-		invoiceTime: input.invoiceDate.toLocaleTimeString("ru-RU"),
+		invoiceDate: input.invoiceDate,
+		invoiceTime: input.invoiceDate,
 
 		// Buyer info
 		buyerName: input.buyerName,
@@ -89,11 +89,6 @@ async function generateInvoice(
 		templateData,
 		fileName,
 	);
-
-	const formatDate = (date: Date | undefined): string => {
-		if (!date) return "";
-		return date.toLocaleDateString("ru-RU");
-	};
 
 	return {
 		success: true,
