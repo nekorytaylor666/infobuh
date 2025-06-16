@@ -71,7 +71,6 @@ async function generateAct(
 		actDate: input.actDate,
 		contractNumber: input.contractNumber,
 		contractDate: input.contractDate,
-		dateOfCompletion: input.dateOfCompletion,
 
 		// Client info
 		clientName: input.buyerName,

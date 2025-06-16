@@ -46,6 +46,5 @@ export const createDocumentGenerator = () => {
 //   contractDate: "",
 //   items: [],
 //   actNumber: "",
-//   actDate: "",
-//   dateOfCompletion: ""
+//   actDate: ""
 // });

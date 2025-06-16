@@ -320,7 +320,7 @@
         
         // Column 3: Date
         align(center)[
-          #text(size: 6pt)[#formatDate(data.dateOfCompletion)]
+          #text(size: 6pt)[#formatDate(data.actDate)]
         ],
         
         // Column 4: Report info (empty)

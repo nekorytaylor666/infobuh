@@ -107,7 +107,6 @@ export class TypstActService {
             actDate: formatDateToString(input.actDate),
             contractNumber: input.contractNumber,
             contractDate: formatDateToString(input.contractDate),
-            dateOfCompletion: formatDateToString(input.dateOfCompletion),
 
             // Client info
             clientName: client.name,

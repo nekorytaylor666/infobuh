@@ -33,7 +33,6 @@ export const kazakhActInputSchema = z.object({
 	items: z.array(actItemSchema).min(1, "At least one item is required"),
 	actNumber: z.string(), // idx
 	actDate: z.string(),
-	dateOfCompletion: z.string(),
 	sellerImage: z.string().optional(),
 	kbe: z.string().optional(),
 	executorName: z.string().optional().nullable(),
