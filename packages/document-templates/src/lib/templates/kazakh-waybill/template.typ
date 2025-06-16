@@ -6,7 +6,7 @@
   )
   
   set text(
-    font: "Helvetica",
+    font: ("Liberation Sans", "Arial", "sans-serif"),
     size: 8pt,
     lang: "ru"
   )

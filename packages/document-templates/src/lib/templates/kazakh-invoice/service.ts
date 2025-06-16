@@ -76,7 +76,7 @@ async function generateInvoice(
 		totalInWords: numToFullWords(totalAmount),
 
 		// Additional info
-		executorName: input.orgPersonName,
+		executorName: input.orgPersonName || "",
 		executorPosition: "Директор",
 		contactPhone: input.phone,
 	};

@@ -109,6 +109,23 @@ ${templateContent}
             for (const [key, value] of Object.entries(data)) {
                 sanitized[key] = this.sanitizeData(value);
             }
+
+            // Add default values for commonly missing keys in templates
+            const defaultValues = {
+                executorName: sanitized.executorName || "",
+                contractReference: sanitized.contractReference || "",
+                sellerAccount: sanitized.sellerAccount || "",
+                sellerBik: sanitized.sellerBik || "",
+                sellerBank: sanitized.sellerBank || "",
+                contactPhone: sanitized.contactPhone || "",
+                knp: sanitized.knp || "002"
+            };
+
+            // Only add defaults if they're not already present and this looks like a document data object
+            if (sanitized.items || sanitized.invoiceNumber || sanitized.actNumber || sanitized.waybillNumber) {
+                Object.assign(sanitized, defaultValues);
+            }
+
             return sanitized;
         }
 

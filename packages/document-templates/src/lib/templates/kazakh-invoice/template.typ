@@ -6,7 +6,7 @@
   )
   
   set text(
-    font: "Helvetica",
+    font: ("Liberation Sans", "Arial", "sans-serif"),
     size: 9pt,
     lang: "ru"
   )
@@ -62,19 +62,19 @@
   
   v(5pt)
   
-  text(size: 9pt)[Счет: #data.sellerAccount]
+  text(size: 9pt)[Счет: #data.at("sellerAccount", default: "")]
   
   v(5pt)
   
-  text(size: 9pt)[БИК: #data.sellerBik]
+  text(size: 9pt)[БИК: #data.at("sellerBik", default: "")]
   
   v(5pt)
   
-  text(size: 9pt)[Банк: #data.sellerBank]
+  text(size: 9pt)[Банк: #data.at("sellerBank", default: "")]
   
   v(5pt)
   
-  text(size: 9pt)[КНП: #data.knp]
+  text(size: 9pt)[КНП: #data.at("knp", default: "002")]
   
   v(25pt)
   
@@ -92,7 +92,7 @@
   
   v(10pt)
   
-  text(size: 9pt)[#data.contractReference]
+  text(size: 9pt)[#data.at("contractReference", default: "")]
   
   v(20pt)
   
@@ -253,6 +253,6 @@
       ]
     ),
     
-    text(size: 9pt)[#data.executorName, #data.executorPosition]
+    text(size: 9pt)[#data.at("executorName", default: ""), #data.executorPosition]
   )
 } 
