@@ -30,9 +30,9 @@ export const kazakhWaybillInputSchema = z.object({
 	selectedBank: bankSchema.optional(),
 	items: z.array(waybillItemSchema).min(1, "At least one item is required"),
 	waybillNumber: z.string(), // idx
-	waybillDate: z.date(),
+	waybillDate: z.string(),
 	contractNumber: z.string().min(1, "Contract number is required").optional(),
-	contractDate: z.date().optional(),
+	contractDate: z.string().optional(),
 	senderEmployeeId: z.string().uuid().optional().nullable(),
 	receiverEmployeeId: z.string().uuid().optional().nullable(),
 	releaserEmployeeId: z.string().uuid().optional().nullable(),

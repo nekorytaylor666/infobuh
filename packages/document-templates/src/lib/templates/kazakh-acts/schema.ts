@@ -32,8 +32,8 @@ export const kazakhActInputSchema = z.object({
 	selectedBank: bankSchema.optional(),
 	items: z.array(actItemSchema).min(1, "At least one item is required"),
 	actNumber: z.string(), // idx
-	actDate: z.date(),
-	dateOfCompletion: z.date(),
+	actDate: z.string(),
+	dateOfCompletion: z.string(),
 	sellerImage: z.string().optional(),
 	kbe: z.string().optional(),
 	executorName: z.string().optional().nullable(),

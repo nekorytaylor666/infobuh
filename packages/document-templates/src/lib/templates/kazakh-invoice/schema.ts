@@ -30,8 +30,8 @@ export const kazakhInvoiceInputSchema = z.object({
 	selectedBank: bankSchema.optional(),
 	items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
 	invoiceNumber: z.string(), // idx
-	invoiceDate: z.date(),
-	contractDate: z.date().optional(),
+	invoiceDate: z.string(),
+	contractDate: z.string().optional(),
 	executorEmployeeId: z.string().uuid().optional().nullable(),
 });
 

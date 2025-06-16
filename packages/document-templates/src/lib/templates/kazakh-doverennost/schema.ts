@@ -30,12 +30,12 @@ export const kazakhDoverennostInputSchema = z.object({
     employeeRole: z.string(),
     employeeIin: z.string().optional().nullable(),
     employeeDocNumber: z.string(),
-    employeeDocNumberDate: z.date(),
+    employeeDocNumberDate: z.string(),
     employeeWhoGives: z.string(), // passportIssuer
-    dateUntil: z.date(), // validUntil
+    dateUntil: z.string(), // validUntil
     items: z.array(doverennostItemSchema).min(1, "At least one item is required"),
     idx: z.string(), // doverennostNumber
-    issueDate: z.date(),
+    issueDate: z.string(),
 });
 
 export type KazakhDoverennostInput = z.infer<
