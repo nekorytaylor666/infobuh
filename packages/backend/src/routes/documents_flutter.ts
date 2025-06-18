@@ -17,6 +17,8 @@ import {
 import { HTTPException } from "hono/http-exception";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
+import { z } from "zod";
+import "zod-openapi/extend";
 import { sendNotificationToLegalEntityByBin } from "../services/notification";
 
 export const documentsFlutterRouter = new Hono<HonoEnv>();
@@ -308,11 +310,75 @@ documentsFlutterRouter.get(
 	},
 );
 
+// Zod schema for document creation
+const documentFieldsSchema = z.object({
+	orgName: z.string().min(1, "Organization name is required"),
+	orgBin: z.string().length(12, "Organization BIN must be 12 characters"),
+	buyerName: z.string().min(1, "Buyer name is required"),
+	buyerBin: z.string().length(12, "Buyer BIN must be 12 characters"),
+	currency: z.string().min(1, "Currency is required"),
+	date: z.string().min(1, "Date is required"),
+	number: z.string().min(1, "Document number is required"),
+}).openapi({
+	description: "Document fields containing organization and buyer information",
+	example: {
+		orgName: "ТОО Example Company",
+		orgBin: "123456789012",
+		buyerName: "ТОО Buyer Company",
+		buyerBin: "987654321098",
+		currency: "KZT",
+		date: "2024-01-15",
+		number: "INV-001"
+	}
+});
+
+const fileSchema = z.object({
+	name: z.string().min(1, "File name is required"),
+	data: z.string().min(1, "File data (base64) is required"),
+	contentType: z.string().optional().default("application/octet-stream"),
+}).openapi({
+	description: "File information for upload",
+	example: {
+		name: "invoice.pdf",
+		data: "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PA==",
+		contentType: "application/pdf"
+	}
+});
+
+const createDocumentSchema = z.object({
+	type: z.string().min(1, "Document type is required"),
+	receiverBin: z.string().length(12, "Receiver BIN must be 12 characters"),
+	receiverName: z.string().min(1, "Receiver name is required"),
+	fields: documentFieldsSchema,
+	file: fileSchema,
+}).openapi({
+	description: "Schema for creating a new document",
+	example: {
+		type: "invoice",
+		receiverBin: "987654321098",
+		receiverName: "ТОО Buyer Company",
+		fields: {
+			orgName: "ТОО Example Company",
+			orgBin: "123456789012",
+			buyerName: "ТОО Buyer Company",
+			buyerBin: "987654321098",
+			currency: "KZT",
+			date: "2024-01-15",
+			number: "INV-001"
+		},
+		file: {
+			name: "invoice.pdf",
+			data: "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PA==",
+			contentType: "application/pdf"
+		}
+	}
+});
+
 // POST: Create a new document for a legal entity
 documentsFlutterRouter.post(
 	"/create",
 	describeRoute({
-		description: "Create a new document for a legal entity",
+		description: "Create a new document for a legal entity with file upload and validation",
 		tags: ["Documents Flutter"],
 		parameters: [
 			{
@@ -320,117 +386,199 @@ documentsFlutterRouter.post(
 				in: "query",
 				required: true,
 				schema: { type: "string", format: "uuid" },
-				description: "UUID of the legal entity",
+				description: "UUID of the legal entity that owns the document",
 			},
 		],
+		request: {
+			body: {
+				content: {
+					"application/json": {
+						schema: createDocumentSchema,
+					},
+				},
+			},
+		},
 		responses: {
-			200: {
+			201: {
 				description: "Document created successfully",
 				content: {
-					"application/json": {},
+					"application/json": {
+						schema: z.object({
+							id: z.string().uuid(),
+							legalEntityId: z.string().uuid(),
+							type: z.string(),
+							receiverBin: z.string(),
+							receiverName: z.string(),
+							fields: documentFieldsSchema,
+							filePath: z.string(),
+							createdAt: z.string(),
+							updatedAt: z.string(),
+						}).openapi({
+							description: "Created document response",
+							example: {
+								id: "550e8400-e29b-41d4-a716-446655440000",
+								legalEntityId: "550e8400-e29b-41d4-a716-446655440001",
+								type: "invoice",
+								receiverBin: "987654321098",
+								receiverName: "ТОО Buyer Company",
+								fields: {
+									orgName: "ТОО Example Company",
+									orgBin: "123456789012",
+									buyerName: "ТОО Buyer Company",
+									buyerBin: "987654321098",
+									currency: "KZT",
+									date: "2024-01-15",
+									number: "INV-001"
+								},
+								filePath: "550e8400-e29b-41d4-a716-446655440001/1642234567890-invoice.pdf",
+								createdAt: "2024-01-15T10:30:00Z",
+								updatedAt: "2024-01-15T10:30:00Z"
+							}
+						}),
+					},
 				},
 			},
 			400: {
-				description:
-					"Missing required fields or missing/invalid legalEntityId query parameter",
+				description: "Validation error or missing required parameters",
+				content: {
+					"application/json": {
+						schema: z.object({
+							message: z.string(),
+							errors: z.array(z.object({
+								path: z.array(z.string()),
+								message: z.string(),
+							})).optional(),
+						}).openapi({
+							example: {
+								message: "Validation failed",
+								errors: [
+									{
+										path: ["fields", "orgBin"],
+										message: "Organization BIN must be 12 characters"
+									}
+								]
+							}
+						}),
+					},
+				},
+			},
+			404: {
+				description: "Legal entity not found",
 			},
 			500: {
-				description: "Internal server error",
+				description: "Internal server error - file upload or database error",
 			},
 		},
 	}),
+	zValidator("json", createDocumentSchema),
 	async (c) => {
-		const legalEntityId = c.req.query("legalEntityId");
-		const body = await c.req.json();
-		const { type, receiverBin, receiverName, fields, file } = body;
-
-		if (!legalEntityId) {
-			throw new HTTPException(400, {
-				message: "Missing legalEntityId query parameter",
-			});
-		}
-		const legalEntity = await c.env.db.query.legalEntities.findFirst({
-			where: eq(legalEntities.id, legalEntityId),
-			columns: {
-				name: true,
-				id: true,
-			},
-		});
-		if (!legalEntity) {
-			throw new HTTPException(404, {
-				message: "Legal entity not found",
-			});
-		}
-		// Basic validation for required fields
-		if (
-			!type ||
-			!receiverBin ||
-			!receiverName ||
-			!fields ||
-			!file ||
-			!file.data ||
-			!file.name
-		) {
-			throw new HTTPException(400, {
-				message: "Missing required fields or file data in request body",
-			});
-		}
-
-		// Create a unique file path (e.g., legalEntityId/timestamp-filename)
-		const fileName = file.name;
-		const newFilePath = `${legalEntityId}/${Date.now()}-${fileName}`;
-
-		// Convert the base64 encoded file data to a buffer
-		const fileBuffer = Buffer.from(file.data, "base64");
-
-		// Upload file to Supabase Storage (bucket "documents")
-		const { error: uploadError } = await c.env.supabase.storage
-			.from("documents")
-			.upload(newFilePath, fileBuffer, {
-				contentType: file.contentType || "application/octet-stream",
-			});
-		if (uploadError) {
-			console.error("Supabase upload error:", uploadError);
-			throw new HTTPException(500, {
-				message: "Failed to upload file to storage",
-			});
-		}
-
-		// Insert the document record with the uploaded file path
 		try {
-			const [newDoc] = await c.env.db
-				.insert(documentsFlutter)
-				.values({
-					legalEntityId,
-					type,
-					receiverBin,
-					receiverName,
-					fields,
-					filePath: newFilePath,
-				})
-				.returning();
+			const legalEntityId = c.req.query("legalEntityId");
+			const { type, receiverBin, receiverName, fields, file } = c.req.valid("json");
 
-			// Send notification to the receiver BIN
-			sendNotificationToLegalEntityByBin(c, {
-				receiverBin: newDoc.receiverBin,
-				message: {
-					notification: {
-						title: "Получен новый документ",
-						body: `${newDoc.type} от ${legalEntity.name}`,
-					},
-					data: { documentId: newDoc.id, type: "new_document" },
+			if (!legalEntityId) {
+				throw new HTTPException(400, {
+					message: "Missing legalEntityId query parameter",
+				});
+			}
+			const legalEntity = await c.env.db.query.legalEntities.findFirst({
+				where: eq(legalEntities.id, legalEntityId),
+				columns: {
+					name: true,
+					id: true,
 				},
-			}).catch((err) =>
-				console.error("Failed to send creation notification:", err),
-			);
+			});
+			if (!legalEntity) {
+				throw new HTTPException(404, {
+					message: "Legal entity not found",
+				});
+			}
+			// Validation is now handled by zValidator middleware
 
-			return c.json(newDoc, 201);
-		} catch (dbError) {
-			console.error("Database insert error:", dbError);
-			// Attempt to delete the uploaded file if db insert fails
-			await c.env.supabase.storage.from("documents").remove([newFilePath]);
+			// Create a unique file path (e.g., legalEntityId/timestamp-filename)
+			const fileName = file.name;
+			const newFilePath = `${legalEntityId}/${Date.now()}-${fileName}`;
+
+			// Convert the base64 encoded file data to a buffer
+			const fileBuffer = Buffer.from(file.data, "base64");
+
+			// Upload file to Supabase Storage (bucket "documents")
+			const { error: uploadError } = await c.env.supabase.storage
+				.from("documents")
+				.upload(newFilePath, fileBuffer, {
+					contentType: file.contentType || "application/octet-stream",
+				});
+			if (uploadError) {
+				console.error("Supabase upload error:", uploadError);
+				throw new HTTPException(500, {
+					message: "Failed to upload file to storage",
+				});
+			}
+
+			// Insert the document record with the uploaded file path
+			try {
+				const [newDoc] = await c.env.db
+					.insert(documentsFlutter)
+					.values({
+						legalEntityId,
+						type,
+						receiverBin,
+						receiverName,
+						fields,
+						filePath: newFilePath,
+					})
+					.returning();
+
+				// Send notification to the receiver BIN
+				sendNotificationToLegalEntityByBin(c, {
+					receiverBin: newDoc.receiverBin,
+					message: {
+						notification: {
+							title: "Получен новый документ",
+							body: `${newDoc.type} от ${legalEntity.name}`,
+						},
+						data: { documentId: newDoc.id, type: "new_document" },
+					},
+				}).catch((err) =>
+					console.error("Failed to send creation notification:", err),
+				);
+
+				return c.json(newDoc, 201);
+			} catch (dbError) {
+				console.error("Database insert error:", dbError);
+				// Attempt to delete the uploaded file if db insert fails
+				await c.env.supabase.storage.from("documents").remove([newFilePath]);
+
+				if (dbError instanceof z.ZodError) {
+					throw new HTTPException(400, {
+						message: "Validation failed",
+						errors: dbError.errors,
+					});
+				}
+
+				throw new HTTPException(500, {
+					message: "Failed to save document record after file upload",
+				});
+			}
+		} catch (error) {
+			console.error("Error creating document:", error);
+
+			if (error instanceof z.ZodError) {
+				return c.json(
+					{
+						message: "Validation failed",
+						errors: error.errors
+					},
+					400
+				);
+			}
+
+			if (error instanceof HTTPException) {
+				throw error;
+			}
+
 			throw new HTTPException(500, {
-				message: "Failed to save document record after file upload",
+				message: "Failed to create document",
 			});
 		}
 	},
@@ -820,7 +968,7 @@ documentsFlutterRouter.post(
 				console.error("NCALayer signing error:", response.status, errorData);
 				throw new Error(
 					errorData?.message ||
-						`NCALayer responded with status: ${response.status}`,
+					`NCALayer responded with status: ${response.status}`,
 				);
 			}
 
@@ -853,7 +1001,7 @@ documentsFlutterRouter.post(
 				);
 				throw new Error(
 					verifierErrorData?.message ||
-						`Verifier service responded with status: ${verifierResponse.status}`,
+					`Verifier service responded with status: ${verifierResponse.status}`,
 				);
 			}
 
@@ -908,9 +1056,8 @@ documentsFlutterRouter.post(
 				message: {
 					notification: {
 						title: "Документ подписан",
-						body: `Документ ${docInfo.type || ""} подписан ${
-							docInfo.legalEntity.name
-						}`,
+						body: `Документ ${docInfo.type || ""} подписан ${docInfo.legalEntity.name
+							}`,
 					},
 					data: { documentId: id, type: "document_signed" },
 				},
