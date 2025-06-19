@@ -26,6 +26,7 @@ import type { HonoEnv } from "./env";
 import { firebaseAdminApp } from "./services/notification"; // Import initialized app
 import { dealRouter } from "./routes/deal";
 import { appVersionsRouter } from "./routes/app-versions";
+import { logToAxiom, type LogEvent } from "./lib/axiom-logger";
 // Load environment variables
 config({ path: ".env" });
 
@@ -36,102 +37,111 @@ if (!process.env.DATABASE_URL) {
 // Create database client
 const dbClient = createDbClient(process.env.DATABASE_URL);
 
-// Custom logger middleware
+// Custom logger middleware with Axiom integration
 const customRequestLogger = createMiddleware(async (c, next) => {
 	const start = Date.now();
 	const { method } = c.req;
 	const path = c.req.path;
 	const queryParams = c.req.query();
 
-	let reqLog = `--> ${method} ${path}`;
-
-	// Add query parameters if they exist
-	if (Object.keys(queryParams).length > 0) {
-		reqLog += `
-Query Parameters:
-${JSON.stringify(queryParams, null, 2)}`;
-	}
+	// Capture request details before processing
+	let requestBody: any = undefined;
+	let requestBodyString: string | undefined = undefined;
 
 	if (c.req.raw.body && c.req.header("content-length") && Number(c.req.header("content-length")) > 0) {
 		const reqClone = c.req.raw.clone();
 		try {
 			const contentType = c.req.header("content-type");
 			if (contentType?.includes("application/json")) {
-				const requestBody = await reqClone.json();
-				reqLog += `
-Request Body (JSON):
-${JSON.stringify(requestBody, null, 2)}`;
-			} else if (contentType?.includes("text")) {
-				const requestBody = await reqClone.text();
-				reqLog += `
-Request Body (Text):
-${requestBody}`;
+				requestBody = await reqClone.json();
+				const sanitizedBody = sanitizeLogData(requestBody);
+				requestBodyString = JSON.stringify(sanitizedBody);
 			} else if (contentType?.includes("form")) {
-				reqLog += `
-Request Body: Form data (type: ${contentType})`;
+				requestBodyString = "form-data";
 			} else {
-				reqLog += `
-Request Body: Opaque data (type: ${contentType})`;
+				requestBodyString = contentType?.split('/')[1] || 'binary';
 			}
 		} catch (e: any) {
-			reqLog += `
-Error reading request body for logging: ${e.message}`;
+			requestBodyString = `error-${e.message}`;
 		}
 	}
-	console.log(reqLog);
 
 	await next();
 
+	// Capture response details after processing
+	const userId = c.get("userId");
 	const ms = Date.now() - start;
-	let resLog = `<-- ${method} ${path} ${c.res.status} ${ms}ms`;
+	const status = c.res.status;
 
-	if (c.res && c.res.body) {
+	let responseBody: any = undefined;
+
+	// Only capture response for errors or important endpoints
+	if (c.res && c.res.body && (status >= 400 || shouldLogResponse(path))) {
 		const resClone = c.res.clone();
 		try {
 			const responseContentType = resClone.headers.get("content-type");
 			if (responseContentType?.includes("application/json")) {
-				const responseBody = await resClone.json();
-				resLog += `
-Response Body (JSON):
-${JSON.stringify(responseBody, null, 2)}`;
-			} else if (responseContentType?.includes("text")) {
-				const responseBody = await resClone.text();
-				const MAX_TEXT_LENGTH = 1000;
-				if (responseBody.length > MAX_TEXT_LENGTH) {
-					resLog += `
-Response Body (Text):
-${responseBody.substring(0, MAX_TEXT_LENGTH)}... (truncated)`;
-				} else {
-					resLog += `
-Response Body (Text):
-${responseBody}`;
-				}
-			} else if (resClone.body) {
-				resLog += `
-Response Body: Opaque data (type: ${responseContentType}, size: ${resClone.headers.get('content-length') || 'unknown'})`;
+				responseBody = await resClone.json();
+				responseBody = sanitizeLogData(responseBody);
 			}
 		} catch (e: any) {
-			try {
-				const resClone2 = c.res.clone();
-				const textBody = await resClone2.text();
-				const MAX_TEXT_LENGTH = 1000;
-				if (textBody.length > MAX_TEXT_LENGTH) {
-					resLog += `
-Response Body (Fallback to Text):
-${textBody.substring(0, MAX_TEXT_LENGTH)}... (truncated)`;
-				} else {
-					resLog += `
-Response Body (Fallback to Text):
-${textBody}`;
-				}
-			} catch (e2: any) {
-				resLog += `
-Error reading response body for logging: ${e.message} (Primary) / ${e2.message} (Fallback)`;
+			responseBody = { error: "parse-error" };
+		}
+	}
+
+	// Create structured log event for Axiom
+	const logEvent: LogEvent = {
+		timestamp: new Date().toISOString(),
+		method,
+		path,
+		status,
+		duration_ms: ms,
+		user_id: userId,
+		query_params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+		request_body: requestBody ? sanitizeLogData(requestBody) : requestBodyString,
+		response_body: responseBody,
+		ip_address: c.req.header("x-forwarded-for") || c.req.header("x-real-ip"),
+		user_agent: c.req.header("user-agent"),
+		log_level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+	};
+
+	// Log to both console and Axiom
+	await logToAxiom(logEvent);
+});
+
+// Helper function to sanitize sensitive data from logs
+function sanitizeLogData(data: any): any {
+	if (!data || typeof data !== 'object') return data;
+
+	const sensitiveFields = ['password', 'token', 'key', 'secret', 'cms', 'data'];
+	const sanitized = Array.isArray(data) ? [...data] : { ...data };
+
+	for (const field of sensitiveFields) {
+		if (field in sanitized) {
+			if (typeof sanitized[field] === 'string' && sanitized[field].length > 10) {
+				sanitized[field] = `${sanitized[field].substring(0, 10)}...`;
+			} else {
+				sanitized[field] = '[REDACTED]';
 			}
 		}
 	}
-	console.log(resLog);
-});
+
+	// Recursively sanitize nested objects
+	for (const key in sanitized) {
+		if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+			sanitized[key] = sanitizeLogData(sanitized[key]);
+		}
+	}
+
+	return sanitized;
+}
+
+// Helper function to determine if response should be logged
+function shouldLogResponse(path: string): boolean {
+	// Log responses for specific endpoints that are important for debugging
+	const alwaysLogPaths = ['/auth', '/onboarding', '/journal-entries'];
+	return alwaysLogPaths.some(p => path.includes(p));
+}
 
 const app = new Hono<HonoEnv>();
 
