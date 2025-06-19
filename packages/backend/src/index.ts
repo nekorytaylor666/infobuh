@@ -41,8 +41,16 @@ const customRequestLogger = createMiddleware(async (c, next) => {
 	const start = Date.now();
 	const { method } = c.req;
 	const path = c.req.path;
+	const queryParams = c.req.query();
 
 	let reqLog = `--> ${method} ${path}`;
+
+	// Add query parameters if they exist
+	if (Object.keys(queryParams).length > 0) {
+		reqLog += `
+Query Parameters:
+${JSON.stringify(queryParams, null, 2)}`;
+	}
 
 	if (c.req.raw.body && c.req.header("content-length") && Number(c.req.header("content-length")) > 0) {
 		const reqClone = c.req.raw.clone();
