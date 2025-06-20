@@ -49,9 +49,9 @@ async function generateWaybill(
 	const vatRate = 0.12; // 12% VAT
 	const vatAmount = totalAmount * vatRate;
 
-	const formatDateToString = (date: Date | undefined): string => {
+	const formatDateToString = (date: string | undefined): string => {
 		if (!date) return "";
-		return date.toLocaleDateString("ru-RU");
+		return date;
 	};
 
 	// 2. Prepare template data

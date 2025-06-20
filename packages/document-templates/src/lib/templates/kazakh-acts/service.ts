@@ -102,9 +102,9 @@ async function generateAct(
 		fileName,
 	);
 
-	const formatDate = (date: Date | undefined): string => {
+	const formatDate = (date: string | undefined): string => {
 		if (!date) return "";
-		return date.toLocaleDateString("ru-RU");
+		return date;
 	};
 
 	return {

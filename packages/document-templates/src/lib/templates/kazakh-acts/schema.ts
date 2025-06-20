@@ -23,7 +23,7 @@ export const kazakhActInputSchema = z.object({
 	buyerBin: z.string(),
 	buyerAddress: z.string().optional(),
 	contractNumber: z.string(),
-	contractDate: z.date().optional(),
+	contractDate: z.string().optional(),
 	orgPersonName: z.string().optional().nullable(),
 	orgPersonRole: z.string(),
 	buyerPersonName: z.string().optional().nullable(),

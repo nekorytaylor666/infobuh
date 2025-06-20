@@ -105,8 +105,8 @@ const customRequestLogger = createMiddleware(async (c, next) => {
 		log_level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
 	};
 
-	// Log to both console and Axiom
-	await logToAxiom(logEvent);
+	// Log to Axiom
+	logToAxiom(logEvent);
 });
 
 // Helper function to sanitize sensitive data from logs
