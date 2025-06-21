@@ -6,7 +6,7 @@
   )
   
   set text(
-    font: ("Times New Roman", "Arial" ),
+    font: ("Liberation Serif", "DejaVu Serif", "serif"),
     size: 8pt,
     lang: "ru"
   )
@@ -144,7 +144,7 @@
       v(8pt),
       line(length: 100%, stroke: (thickness: 0.5pt, paint: black)),
       v(-10pt),
-      [#data.contractNumber#if data.contractDate != "" [«#formatDate(data.contractDate)»] 20__ г.]
+      [#data.contractNumber#if data.at("contractDate", default: "") != "" [«#formatDate(data.at("contractDate", default: ""))»] 20__ г.]
     ),
   ),
      // Main title
