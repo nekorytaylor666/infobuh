@@ -144,7 +144,7 @@
       v(8pt),
       line(length: 100%, stroke: (thickness: 0.5pt, paint: black)),
       v(-10pt),
-      [#data.contractNumber «#formatDate(data.contractDate)» 20__ г.]
+      [#data.contractNumber#if data.contractDate != "" [«#formatDate(data.contractDate)»] 20__ г.]
     ),
   ),
      // Main title
