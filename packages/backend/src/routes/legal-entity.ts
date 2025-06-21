@@ -15,6 +15,7 @@ import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { findEntity } from "@accounting-kz/bin-verifier";
 import { findUgdByAddressComponents } from "../services/ugdService";
+import { AccountingSeedService } from "../lib/accounting-service/seed-service";
 const router = new Hono<HonoEnv>();
 
 router.get(
@@ -132,11 +133,21 @@ router.post(
 				.values({
 					...validatedData,
 					profileId: userId,
-					registrationDate: validatedData.registrationDate
-						? new Date(validatedData.registrationDate)
-						: null,
+					registrationDate: new Date(validatedData.registrationDate),
 				})
 				.returning();
+
+			// Automatically seed accounting accounts for the new legal entity
+			try {
+				console.log(`🌱 Seeding accounting accounts for new legal entity: ${newLegalEntity.id}`);
+				const seedService = new AccountingSeedService(c.env.db);
+				await seedService.seedDatabase(newLegalEntity.id, userId);
+				console.log(`✅ Successfully seeded accounts for legal entity: ${newLegalEntity.id}`);
+			} catch (seedError) {
+				console.error(`❌ Error seeding accounts for legal entity ${newLegalEntity.id}:`, seedError);
+				// Note: We don't fail the legal entity creation if seeding fails
+				// This allows the user to continue and seed manually later if needed
+			}
 
 			return c.json(newLegalEntity, 201);
 		} catch (error) {

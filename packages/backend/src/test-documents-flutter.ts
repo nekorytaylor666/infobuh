@@ -12,6 +12,13 @@ const USER_ID = "1bfd1699-c849-43bb-8e23-f528f3bd4a0c";
 const RECEIVER_BIN = "001123550090";
 const RECEIVER_NAME = "ТОО Test Company";
 
+// Utility function to generate random document numbers
+function generateRandomDocNumber(prefix: string): string {
+    const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `${prefix}-${timestamp}-${random}`;
+}
+
 interface ApiResponse<T = any> {
     success?: boolean;
     data?: T;
@@ -107,171 +114,174 @@ async function makeRequest<T>(
 }
 
 // Sample document data for different document types (matching actual schemas)
-const sampleDocumentData = {
-    АВР: {
-        orgName: "ТОО Example Company",
-        orgAddress: "г. Алматы, ул. Абая 150",
-        orgBin: "987654321098",
-        buyerName: RECEIVER_NAME,
-        buyerBin: RECEIVER_BIN,
-        buyerAddress: "г. Алматы, ул. Байтурсынова 123",
-        contractNumber: "CNT-001",
-        contractDate: new Date("2024-01-10"),
-        orgPersonName: "Иванов Иван Иванович",
-        orgPersonRole: "Директор",
-        buyerPersonName: "Петров Петр Петрович",
-        buyerPersonRole: "Генеральный директор",
-        phone: "+7 701 123 4567",
-        selectedBank: {
-            name: "АО Ситибанк Казахстан",
-            account: "KZ123456789012345678",
-            bik: "CITIKZKA"
-        },
-        items: [
-            {
-                name: "Консультационные услуги",
-                quantity: 1,
-                unit: "шт",
-                price: 150000,
+// Note: Document numbers are generated randomly for each test run
+function getSampleDocumentData() {
+    return {
+        АВР: {
+            orgName: "ТОО Example Company",
+            orgAddress: "г. Алматы, ул. Абая 150",
+            orgBin: "987654321098",
+            buyerName: RECEIVER_NAME,
+            buyerBin: RECEIVER_BIN,
+            buyerAddress: "г. Алматы, ул. Байтурсынова 123",
+            contractNumber: generateRandomDocNumber("CNT"),
+            contractDate: new Date("2024-01-10"),
+            orgPersonName: "Иванов Иван Иванович",
+            orgPersonRole: "Директор",
+            buyerPersonName: "Петров Петр Петрович",
+            buyerPersonRole: "Генеральный директор",
+            phone: "+7 701 123 4567",
+            selectedBank: {
+                name: "АО Ситибанк Казахстан",
+                account: "KZ123456789012345678",
+                bik: "CITIKZKA"
             },
-        ],
-        actNumber: "ACT-001",
-        actDate: "2024-01-15",
-        kbe: "17",
-        executorName: "Иванов Иван Иванович",
-        executorPosition: "Директор",
-        customerName: "Петров Петр Петрович",
-        customerPosition: "Генеральный директор",
-    },
-    Накладная: {
-        orgName: "ТОО Example Company",
-        orgBin: "987654321098",
-        orgAddress: "г. Алматы, ул. Абая 150",
-        buyerName: RECEIVER_NAME,
-        buyerBin: RECEIVER_BIN,
-        buyerAddress: "г. Алматы, ул. Байтурсынова 123",
-        orgPersonName: "Иванов Иван Иванович",
-        orgPersonRole: "Директор",
-        buyerPersonName: "Петров Петр Петрович",
-        buyerPersonRole: "Генеральный директор",
-        phone: "+7 701 123 4567",
-        selectedBank: {
-            name: "АО Ситибанк Казахстан",
-            account: "KZ123456789012345678",
-            bik: "CITIKZKA"
+            items: [
+                {
+                    name: "Консультационные услуги",
+                    quantity: 1,
+                    unit: "шт",
+                    price: 150000,
+                },
+            ],
+            actNumber: generateRandomDocNumber("ACT"),
+            actDate: "2024-01-15",
+            kbe: "17",
+            executorName: "Иванов Иван Иванович",
+            executorPosition: "Директор",
+            customerName: "Петров Петр Петрович",
+            customerPosition: "Генеральный директор",
         },
-        items: [
-            {
-                name: "Канцелярские товары",
-                quantity: 10,
-                unit: "шт",
-                price: 25000,
-                nomenclatureCode: "12345"
+        Накладная: {
+            orgName: "ТОО Example Company",
+            orgBin: "987654321098",
+            orgAddress: "г. Алматы, ул. Абая 150",
+            buyerName: RECEIVER_NAME,
+            buyerBin: RECEIVER_BIN,
+            buyerAddress: "г. Алматы, ул. Байтурсынова 123",
+            orgPersonName: "Иванов Иван Иванович",
+            orgPersonRole: "Директор",
+            buyerPersonName: "Петров Петр Петрович",
+            buyerPersonRole: "Генеральный директор",
+            phone: "+7 701 123 4567",
+            selectedBank: {
+                name: "АО Ситибанк Казахстан",
+                account: "KZ123456789012345678",
+                bik: "CITIKZKA"
             },
-        ],
-        waybillNumber: "WB-001",
-        waybillDate: "2024-01-15",
-        releaserEmployeeName: "Сидоров Сидор Сидорович",
-        receiverEmployeeName: "Петров Петр Петрович",
-        chiefAccountantName: "Бухгалтерова Анна Ивановна",
-        transportOrgName: "ТОО Транспорт",
-        transportWaybillInfo: "ТТН-001 от 15.01.2024",
-    },
-    "Счет на оплату": {
-        orgName: "ТОО Example Company",
-        orgAddress: "г. Алматы, ул. Абая 150",
-        orgBin: "987654321098",
-        orgIik: "KZ123456789012345678",
-        orgBik: "CITIKZKA",
-        buyerName: RECEIVER_NAME,
-        buyerBin: RECEIVER_BIN,
-        codeKnp: "002",
-        contract: "Договор CNT-001 от 10.01.2024",
-        orgPersonName: "Иванов Иван Иванович",
-        phone: "+7 701 123 4567",
-        selectedBank: {
-            name: "АО Ситибанк Казахстан",
-            account: "KZ123456789012345678",
-            bik: "CITIKZKA"
+            items: [
+                {
+                    name: "Канцелярские товары",
+                    quantity: 10,
+                    unit: "шт",
+                    price: 25000,
+                    nomenclatureCode: "12345"
+                },
+            ],
+            waybillNumber: generateRandomDocNumber("WB"),
+            waybillDate: "2024-01-15",
+            releaserEmployeeName: "Сидоров Сидор Сидорович",
+            receiverEmployeeName: "Петров Петр Петрович",
+            chiefAccountantName: "Бухгалтерова Анна Ивановна",
+            transportOrgName: "ТОО Транспорт",
+            transportWaybillInfo: `ТТН-${generateRandomDocNumber("TTN").split('-').pop()} от 15.01.2024`,
         },
-        items: [
-            {
-                name: "Товары",
-                quantity: 1,
-                unit: "шт",
-                price: 300000,
+        "Счет на оплату": {
+            orgName: "ТОО Example Company",
+            orgAddress: "г. Алматы, ул. Абая 150",
+            orgBin: "987654321098",
+            orgIik: "KZ123456789012345678",
+            orgBik: "CITIKZKA",
+            buyerName: RECEIVER_NAME,
+            buyerBin: RECEIVER_BIN,
+            codeKnp: "002",
+            contract: `Договор ${generateRandomDocNumber("CNT")} от 10.01.2024`,
+            orgPersonName: "Иванов Иван Иванович",
+            phone: "+7 701 123 4567",
+            selectedBank: {
+                name: "АО Ситибанк Казахстан",
+                account: "KZ123456789012345678",
+                bik: "CITIKZKA"
             },
-        ],
-        invoiceNumber: "INV-001",
-        invoiceDate: "2024-01-15",
-        contractDate: "2024-01-10",
-        executorEmployeeId: null,
-    },
-    Инвойс: {
-        orgName: "ТОО Example Company",
-        orgAddress: "г. Алматы, ул. Абая 150",
-        orgBin: "987654321098",
-        orgIik: "KZ123456789012345678",
-        orgBik: "CITIKZKA",
-        buyerName: RECEIVER_NAME,
-        buyerBin: RECEIVER_BIN,
-        codeKnp: "002",
-        contract: "Договор CNT-002 от 10.01.2024",
-        orgPersonName: "Иванов Иван Иванович",
-        phone: "+7 701 123 4567",
-        selectedBank: {
-            name: "АО Ситибанк Казахстан",
-            account: "KZ123456789012345678",
-            bik: "CITIKZKA"
+            items: [
+                {
+                    name: "Товары",
+                    quantity: 1,
+                    unit: "шт",
+                    price: 300000,
+                },
+            ],
+            invoiceNumber: generateRandomDocNumber("INV"),
+            invoiceDate: "2024-01-15",
+            contractDate: "2024-01-10",
+            executorEmployeeId: null,
         },
-        items: [
-            {
-                name: "Услуги",
-                quantity: 1,
-                unit: "шт",
-                price: 400000,
+        Инвойс: {
+            orgName: "ТОО Example Company",
+            orgAddress: "г. Алматы, ул. Абая 150",
+            orgBin: "987654321098",
+            orgIik: "KZ123456789012345678",
+            orgBik: "CITIKZKA",
+            buyerName: RECEIVER_NAME,
+            buyerBin: RECEIVER_BIN,
+            codeKnp: "002",
+            contract: `Договор ${generateRandomDocNumber("CNT")} от 10.01.2024`,
+            orgPersonName: "Иванов Иван Иванович",
+            phone: "+7 701 123 4567",
+            selectedBank: {
+                name: "АО Ситибанк Казахстан",
+                account: "KZ123456789012345678",
+                bik: "CITIKZKA"
             },
-        ],
-        invoiceNumber: "INV-002",
-        invoiceDate: "2024-01-15",
-        contractDate: "2024-01-10",
-        executorEmployeeId: null,
-    },
-    Доверенность: {
-        orgName: "ТОО Example Company",
-        orgAddress: "г. Алматы, ул. Абая 150",
-        orgBin: "987654321098",
-        buyerName: RECEIVER_NAME,
-        buyerBin: RECEIVER_BIN,
-        schetNaOplatu: "Счет № INV-001 от 15.01.2024",
-        orgPersonName: "Иванов Иван Иванович",
-        orgPersonRole: "Директор",
-        bookkeeperName: "Бухгалтерова Анна Ивановна",
-        phone: "+7 701 123 4567",
-        selectedBank: {
-            name: "АО Ситибанк Казахстан",
-            account: "KZ123456789012345678",
-            bik: "CITIKZKA"
+            items: [
+                {
+                    name: "Услуги",
+                    quantity: 1,
+                    unit: "шт",
+                    price: 400000,
+                },
+            ],
+            invoiceNumber: generateRandomDocNumber("INV"),
+            invoiceDate: "2024-01-15",
+            contractDate: "2024-01-10",
+            executorEmployeeId: null,
         },
-        employeeName: "Иванов Иван Иванович",
-        employeeRole: "Менеджер",
-        employeeIin: "123456789012",
-        employeeDocNumber: "123456789",
-        employeeDocNumberDate: "2024-01-01",
-        employeeWhoGives: "МВД РК",
-        dateUntil: "2024-12-31",
-        items: [
-            {
-                name: "Товары по доверенности",
-                quantity: 1,
-                unit: "шт",
-                price: 100000,
+        Доверенность: {
+            orgName: "ТОО Example Company",
+            orgAddress: "г. Алматы, ул. Абая 150",
+            orgBin: "987654321098",
+            buyerName: RECEIVER_NAME,
+            buyerBin: RECEIVER_BIN,
+            schetNaOplatu: `Счет № ${generateRandomDocNumber("INV")} от 15.01.2024`,
+            orgPersonName: "Иванов Иван Иванович",
+            orgPersonRole: "Директор",
+            bookkeeperName: "Бухгалтерова Анна Ивановна",
+            phone: "+7 701 123 4567",
+            selectedBank: {
+                name: "АО Ситибанк Казахстан",
+                account: "KZ123456789012345678",
+                bik: "CITIKZKA"
             },
-        ],
-        idx: "DOV-001",
-        issueDate: "2024-01-15",
-    },
-};
+            employeeName: "Иванов Иван Иванович",
+            employeeRole: "Менеджер",
+            employeeIin: "123456789012",
+            employeeDocNumber: "123456789",
+            employeeDocNumberDate: "2024-01-01",
+            employeeWhoGives: "МВД РК",
+            dateUntil: "2024-12-31",
+            items: [
+                {
+                    name: "Товары по доверенности",
+                    quantity: 1,
+                    unit: "шт",
+                    price: 100000,
+                },
+            ],
+            idx: generateRandomDocNumber("DOV"),
+            issueDate: "2024-01-15",
+        },
+    };
+}
 
 // Sample base64 PDF data (minimal PDF)
 const samplePdfBase64 = "JVBERi0xLjQKJcWzyr3GCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KPj4KZW5kb2JqCnhyZWYKMCA0CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDc0IDAwMDAwIG4gCjAwMDAwMDAxMzEgMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSA0Ci9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgoyMTAKJSVFT0Y=";
@@ -288,6 +298,7 @@ async function testDocumentsFlutterSystem() {
 
         // 1. Test document creation with auto-generation for each document type
         console.log("\n📋 1. Testing document auto-generation");
+        const sampleDocumentData = getSampleDocumentData();
         for (const [documentType, data] of Object.entries(sampleDocumentData)) {
             console.log(`\n   Testing ${documentType} auto-generation...`);
 
@@ -639,7 +650,7 @@ async function testDocumentsFlutterSystem() {
 
         console.log("\n🎉 Documents Flutter testing completed!");
         console.log("\n📋 Test Summary:");
-        console.log(`- ✅ Document auto-generation: ${Object.keys(sampleDocumentData).length} types tested`);
+        console.log(`- ✅ Document auto-generation: ${Object.keys(getSampleDocumentData()).length} types tested`);
         console.log("- ✅ Legacy file upload: Tested");
         console.log("- ✅ Validation errors: Tested");
         console.log("- ✅ Document retrieval: Multiple methods tested");
@@ -650,7 +661,7 @@ async function testDocumentsFlutterSystem() {
         console.log("- ✅ Error handling: Tested");
 
         console.log("\n📊 Document Types Tested:");
-        Object.keys(sampleDocumentData).forEach(type => {
+        Object.keys(getSampleDocumentData()).forEach(type => {
             console.log(`- ${type}: Auto-generation with typed data`);
         });
 
@@ -673,10 +684,11 @@ async function testDocumentsFlutterSystem() {
 }
 
 // Test individual document type creation
-async function testSpecificDocumentType(documentType: keyof typeof sampleDocumentData) {
+async function testSpecificDocumentType(documentType: keyof ReturnType<typeof getSampleDocumentData>) {
     console.log(`\n🧪 Testing specific document type: ${documentType}`);
 
     try {
+        const sampleDocumentData = getSampleDocumentData();
         const data = sampleDocumentData[documentType];
         const createData = {
             receiverBin: RECEIVER_BIN,
@@ -714,12 +726,13 @@ async function testSpecificDocumentType(documentType: keyof typeof sampleDocumen
 async function testDocumentGenerationPerformance() {
     console.log("\n⚡ Testing document generation performance");
     const results: { type: string; time: number; success: boolean }[] = [];
+    const sampleDocumentData = getSampleDocumentData();
 
     for (const [documentType, data] of Object.entries(sampleDocumentData)) {
         const startTime = Date.now();
 
         try {
-            await testSpecificDocumentType(documentType as keyof typeof sampleDocumentData);
+            await testSpecificDocumentType(documentType as keyof ReturnType<typeof getSampleDocumentData>);
             const endTime = Date.now();
             results.push({
                 type: documentType,

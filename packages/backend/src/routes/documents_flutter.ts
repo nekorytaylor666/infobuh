@@ -32,6 +32,29 @@ export const documentsFlutterRouter = new Hono<HonoEnv>();
 
 const NCALAYER_URL = "https://signer.infobuh.com";
 
+// Utility function to extract storage path from public URL or return as-is if it's already a path
+function extractStoragePath(filePathOrUrl: string): string {
+	if (!filePathOrUrl) return filePathOrUrl;
+
+	// If it's a full URL, extract the storage path
+	if (filePathOrUrl.startsWith('http')) {
+		try {
+			const url = new URL(filePathOrUrl);
+			// Extract path after '/storage/v1/object/public/documents/'
+			const pathSegments = url.pathname.split('/');
+			const documentsIndex = pathSegments.indexOf('documents');
+			if (documentsIndex !== -1 && documentsIndex < pathSegments.length - 1) {
+				return pathSegments.slice(documentsIndex + 1).join('/');
+			}
+		} catch (error) {
+			console.warn('Failed to parse URL for storage path extraction:', error);
+		}
+	}
+
+	// If it's already a storage path, return as-is
+	return filePathOrUrl;
+}
+
 // Document types supported by the system
 const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
 
@@ -499,12 +522,23 @@ const createDocumentSchema = z.object({
 			documentType: "АВР",
 			data: {
 				orgName: "ТОО Example Company",
+				orgAddress: "г. Алматы, ул. Абая 150",
 				orgBin: "123456789012",
 				buyerName: "ТОО Buyer Company",
 				buyerBin: "987654321098",
-				currency: "KZT",
-				date: "2024-01-15",
-				number: "ACT-001"
+				contractNumber: "CNT-001",
+				orgPersonRole: "Директор",
+				buyerPersonRole: "Генеральный директор",
+				items: [
+					{
+						name: "Консультационные услуги",
+						quantity: 1,
+						unit: "шт",
+						price: 150000,
+					},
+				],
+				actNumber: "ACT-001",
+				actDate: "2024-01-15"
 			}
 		}
 	}
@@ -535,14 +569,25 @@ const createdDocumentResponseSchema = z.object({
 		receiverName: "ТОО Buyer Company",
 		fields: {
 			orgName: "ТОО Example Company",
+			orgAddress: "г. Алматы, ул. Абая 150",
 			orgBin: "123456789012",
 			buyerName: "ТОО Buyer Company",
 			buyerBin: "987654321098",
-			currency: "KZT",
-			date: "2024-01-15",
-			number: "ACT-001"
+			contractNumber: "CNT-001",
+			orgPersonRole: "Директор",
+			buyerPersonRole: "Генеральный директор",
+			items: [
+				{
+					name: "Консультационные услуги",
+					quantity: 1,
+					unit: "шт",
+					price: 150000,
+				},
+			],
+			actNumber: "ACT-001",
+			actDate: "2024-01-15"
 		},
-		filePath: "550e8400-e29b-41d4-a716-446655440001/avr/1642234567890-act.pdf",
+		filePath: "https://supabase.co/storage/documents/550e8400-e29b-41d4-a716-446655440001/avr/1642234567890-act.pdf",
 		fileName: "1642234567890-act.pdf",
 		createdAt: "2024-01-15T10:30:00Z",
 		updatedAt: "2024-01-15T10:30:00Z",
@@ -668,7 +713,7 @@ documentsFlutterRouter.post(
 					});
 				}
 
-				filePath = generationResult.storagePath; // Use storage path for database
+				filePath = generationResult.publicUrl; // Use public URL for database
 				fileName = generationResult.fileName;
 				documentType = documentPayload.documentType;
 				fields = documentPayload.data;
@@ -696,17 +741,17 @@ documentsFlutterRouter.post(
 					});
 				}
 
-				filePath = newFilePath;
-				documentType = "manual"; // Generic type for manual uploads
-				fields = { fileName: legacyFile.name }; // Basic fields for manual upload
-				documentGenerated = false;
-
 				// Get public URL for legacy file
 				const { data: publicUrlData } = c.env.supabase.storage
 					.from("documents")
 					.getPublicUrl(newFilePath);
 				publicUrl = publicUrlData?.publicUrl;
 				storagePath = newFilePath;
+
+				filePath = publicUrl || newFilePath; // Use public URL for database, fallback to storage path
+				documentType = "manual"; // Generic type for manual uploads
+				fields = { fileName: legacyFile.name }; // Basic fields for manual upload
+				documentGenerated = false;
 			} else {
 				throw new HTTPException(400, {
 					message: "Either documentPayload or legacyFile must be provided",
@@ -881,7 +926,12 @@ documentsFlutterRouter.put(
 					message: "Failed to upload new file to storage",
 				});
 			}
-			updatedFilePath = newFilePath;
+
+			// Get public URL for the new file
+			const { data: publicUrlData } = c.env.supabase.storage
+				.from("documents")
+				.getPublicUrl(newFilePath);
+			updatedFilePath = publicUrlData?.publicUrl || newFilePath; // Use public URL, fallback to storage path
 		}
 
 		// Update the document record
@@ -911,9 +961,10 @@ documentsFlutterRouter.put(
 
 			// If update and file upload were successful, delete the old file
 			if (oldFilePathToDelete) {
+				const oldStoragePath = extractStoragePath(oldFilePathToDelete);
 				const { error: removeError } = await c.env.supabase.storage
 					.from("documents")
-					.remove([oldFilePathToDelete]);
+					.remove([oldStoragePath]);
 				if (removeError) {
 					console.error("Failed to delete old file from storage:", removeError);
 				}
@@ -1019,9 +1070,10 @@ documentsFlutterRouter.delete(
 
 		// 4. Delete the file from storage *after* successful DB deletion
 		if (doc.filePath) {
+			const storagePath = extractStoragePath(doc.filePath);
 			const { error: storageError } = await c.env.supabase.storage
 				.from("documents")
-				.remove([doc.filePath]);
+				.remove([storagePath]);
 			if (storageError) {
 				console.error(
 					"Failed to delete file from storage after DB delete:",

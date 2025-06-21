@@ -89,6 +89,16 @@ export class AccountingService {
 		return account;
 	}
 
+	async createAccountsBulk(accountsData: NewAccount[]): Promise<Account[]> {
+		return await this.db.transaction(async (trx) => {
+			const createdAccounts = await trx
+				.insert(accounts)
+				.values(accountsData)
+				.returning();
+			return createdAccounts;
+		});
+	}
+
 	async getAccountById(id: string, legalEntityId: string): Promise<Account | null> {
 		const [account] = await this.db
 			.select()

@@ -42,64 +42,16 @@ export class AccountingSeedService {
 
 			const existingAccounts = await this.accountingService.getAccounts(legalEntityId);
 			if (existingAccounts.length === 0) {
-				const accountMap = new Map<string, Account>();
+				// Create all accounts in optimized batches
+				const createdAccounts = await this.createAccountsInBatches(kazakhstanChartOfAccounts, legalEntityId);
 
-				for (const accountData of kazakhstanChartOfAccounts) {
-					if (!accountData.parentCode) {
-						const { parentCode, ...accountTemplate } = accountData;
-						const accountToCreate: NewAccount = {
-							...(accountTemplate as Omit<NewAccount, "legalEntityId" | "parentId">),
-							legalEntityId: legalEntityId,
-						};
-						const account = await this.accountingService.createAccount(accountToCreate);
-						accountMap.set(account.code, account);
-						console.log(
-							`✅ Created root account for LE ${legalEntityId}: ${account.code} - ${account.name}`,
-						);
-					}
-				}
-
-				let remainingAccounts = kazakhstanChartOfAccounts.filter(
-					(acc) => acc.parentCode,
-				);
-				let previousCount = remainingAccounts.length;
-
-				while (remainingAccounts.length > 0) {
-					const currentPass: typeof remainingAccounts = [];
-					for (const accountData of remainingAccounts) {
-						const parentAccount = accountMap.get(accountData.parentCode!);
-						if (parentAccount) {
-							const { parentCode, ...accountTemplate } = accountData;
-							const accountToCreate: NewAccount = {
-								...(accountTemplate as Omit<NewAccount, "legalEntityId" | "parentId">),
-								legalEntityId: legalEntityId,
-								parentId: parentAccount.id,
-							};
-							const account = await this.accountingService.createAccount(accountToCreate);
-							accountMap.set(account.code, account);
-							console.log(
-								`✅ Created account for LE ${legalEntityId}: ${account.code} - ${account.name} (parent: ${parentAccount.code})`,
-							);
-						} else {
-							currentPass.push(accountData);
-						}
-					}
-					remainingAccounts = currentPass;
-					if (remainingAccounts.length === previousCount) {
-						console.error(
-							"❌ Unable to resolve all parent-child relationships for LE", legalEntityId
-						);
-						break;
-					}
-					previousCount = remainingAccounts.length;
-				}
-				console.log(`✅ Created ${accountMap.size} accounts for LE ${legalEntityId}`);
+				console.log(`✅ Created ${createdAccounts.length} accounts for LE ${legalEntityId} using optimized batch creation`);
 			} else {
 				console.log(`💡 Accounts for LE ${legalEntityId} already exist, skipping...`);
 			}
 
 			const transactionsResult = await this.createSampleTransactions(legalEntityId, effectiveUserId);
-			
+
 			const currencies = await this.accountingService.getCurrencies(); // Global
 			const accountsForLE = await this.accountingService.getAccounts(legalEntityId);
 
@@ -114,7 +66,7 @@ export class AccountingSeedService {
 			console.log(`📱 Currencies: ${result.currencies}`);
 			console.log(`📊 Accounts for LE ${legalEntityId}: ${result.accounts}`);
 			console.log(`💸 Transactions seeded for LE ${legalEntityId}: ${transactionsResult.transactions}`);
-			
+
 			return result;
 		} catch (error) {
 			console.error(`❌ Error seeding database for LE ${legalEntityId}:`, error);
@@ -139,14 +91,14 @@ export class AccountingSeedService {
 				};
 			}
 
-			const bankAccount = await this.accountingService.getAccountByCode("1112", legalEntityId);
-			const salesRevenue = await this.accountingService.getAccountByCode("4110", legalEntityId);
-			const salariesExpense = await this.accountingService.getAccountByCode("6110", legalEntityId);
-			const officeSupplies = await this.accountingService.getAccountByCode("6120", legalEntityId);
-			const tradePayables = await this.accountingService.getAccountByCode("2111", legalEntityId);
-			const shareCapital = await this.accountingService.getAccountByCode("3100", legalEntityId);
+			const bankAccount = await this.accountingService.getAccountByCode("1030", legalEntityId);
+			const salesRevenue = await this.accountingService.getAccountByCode("6010", legalEntityId);
+			const adminExpenses = await this.accountingService.getAccountByCode("7210", legalEntityId);
+			const rawMaterials = await this.accountingService.getAccountByCode("1310", legalEntityId);
+			const tradePayables = await this.accountingService.getAccountByCode("3310", legalEntityId);
+			const shareCapital = await this.accountingService.getAccountByCode("5010", legalEntityId);
 
-			if (!bankAccount || !salesRevenue || !salariesExpense || !officeSupplies || !tradePayables || !shareCapital) {
+			if (!bankAccount || !salesRevenue || !adminExpenses || !rawMaterials || !tradePayables || !shareCapital) {
 				throw new Error(
 					`Required accounts not found for LE ${legalEntityId}. Please seed accounts first.`,
 				);
@@ -168,16 +120,16 @@ export class AccountingSeedService {
 					],
 				},
 				{
-					description: "Monthly salary payments",
+					description: "Administrative expenses",
 					entries: [
-						{ account: salariesExpense, debit: 20000000, credit: 0 },
+						{ account: adminExpenses, debit: 20000000, credit: 0 },
 						{ account: bankAccount, debit: 0, credit: 20000000 },
 					],
 				},
 				{
-					description: "Purchase of office supplies on credit",
+					description: "Purchase of raw materials on credit",
 					entries: [
-						{ account: officeSupplies, debit: 5000000, credit: 0 },
+						{ account: rawMaterials, debit: 5000000, credit: 0 },
 						{ account: tradePayables, debit: 0, credit: 5000000 },
 					],
 				},
@@ -193,7 +145,7 @@ export class AccountingSeedService {
 			let transactionCount = 0;
 
 			for (const [index, transaction] of transactions.entries()) {
-				const entryNumber = `JE-${legalEntityId.substring(0,4)}-${String(index + 1).padStart(4, "0")}`;
+				const entryNumber = `JE-${legalEntityId.substring(0, 4)}-${String(index + 1).padStart(4, "0")}`;
 				const entryDate = new Date(2024, 0, 1 + index * 7)
 					.toISOString()
 					.split("T")[0];
@@ -205,7 +157,7 @@ export class AccountingSeedService {
 						description: transaction.description,
 						currencyId: baseCurrency.id,
 						status: "draft",
-						createdBy: userId, 
+						createdBy: userId,
 						legalEntityId: legalEntityId, // Pass legalEntityId here
 					},
 					transaction.entries.map((line, lineIndex) => ({
@@ -217,12 +169,12 @@ export class AccountingSeedService {
 					})),
 				);
 
-				if (!entry) {
-					console.error(`❌ Failed to create journal entry for LE ${legalEntityId}: ${entryNumber}`);
+				if (!entry.success) {
+					console.error(`❌ Failed to create journal entry for LE ${legalEntityId}: ${entryNumber}`, entry.error);
 					continue;
 				}
 
-				await this.accountingService.postJournalEntry(entry.id, legalEntityId, userId);
+				await this.accountingService.postJournalEntry(entry.entry.id, legalEntityId, userId);
 				transactionCount++;
 
 				console.log(
@@ -241,13 +193,85 @@ export class AccountingSeedService {
 			throw error;
 		}
 	}
+
+	private async createAccountsInBatches(accounts: typeof kazakhstanChartOfAccounts, legalEntityId: string): Promise<Account[]> {
+		const allCreatedAccounts: Account[] = [];
+		const accountMap = new Map<string, Account>();
+
+		// First batch: Create root accounts
+		const rootAccountsData = accounts
+			.filter(acc => !acc.parentCode)
+			.map(accountData => {
+				const { parentCode, ...accountTemplate } = accountData;
+				return {
+					...(accountTemplate as Omit<NewAccount, "legalEntityId" | "parentId">),
+					legalEntityId: legalEntityId,
+				} as NewAccount;
+			});
+
+		if (rootAccountsData.length > 0) {
+			const rootAccounts = await this.accountingService.createAccountsBulk(rootAccountsData);
+			allCreatedAccounts.push(...rootAccounts);
+
+			// Build map for parent lookups
+			rootAccounts.forEach(account => {
+				accountMap.set(account.code, account);
+			});
+
+			console.log(`✅ Created ${rootAccounts.length} root accounts in bulk`);
+		}
+
+		// Process child accounts in levels
+		let remainingAccounts = accounts.filter(acc => acc.parentCode);
+		let level = 1;
+
+		while (remainingAccounts.length > 0) {
+			const currentLevelAccounts: NewAccount[] = [];
+			const nextLevelAccounts: typeof remainingAccounts = [];
+
+			for (const accountData of remainingAccounts) {
+				const parentAccount = accountMap.get(accountData.parentCode!);
+				if (parentAccount) {
+					const { parentCode, ...accountTemplate } = accountData;
+					const accountToCreate: NewAccount = {
+						...(accountTemplate as Omit<NewAccount, "legalEntityId" | "parentId">),
+						legalEntityId: legalEntityId,
+						parentId: parentAccount.id,
+					};
+					currentLevelAccounts.push(accountToCreate);
+				} else {
+					nextLevelAccounts.push(accountData);
+				}
+			}
+
+			if (currentLevelAccounts.length === 0 && nextLevelAccounts.length > 0) {
+				console.error(`❌ Unable to resolve parent relationships for ${nextLevelAccounts.length} accounts at level ${level}`);
+				break;
+			}
+
+			if (currentLevelAccounts.length > 0) {
+				const levelAccounts = await this.accountingService.createAccountsBulk(currentLevelAccounts);
+				allCreatedAccounts.push(...levelAccounts);
+
+				// Add to map for next level
+				levelAccounts.forEach(account => {
+					accountMap.set(account.code, account);
+				});
+
+				console.log(`✅ Created ${levelAccounts.length} accounts at level ${level} in bulk`);
+			}
+
+			remainingAccounts = nextLevelAccounts;
+			level++;
+		}
+
+		return allCreatedAccounts;
+	}
 }
 
 
 // Run seeding if this file is run directly
-if (require.main === module) {
-	// !!! IMPORTANT: Replace with actual IDs for testing standalone seeding !!!
-	const defaultTestLegalEntityId = ["2cc7dc33-f82a-4248-b969-f1d7902250ce", "05c5f8ca-d4e6-4a68-9e70-8482829702e2","ea881ca4-7049-4330-a1ee-aeb81c3a49b3"]; 
+async function runSeeding() {
 	const defaultTestUserId = "1bfd1699-c849-43bb-8e23-f528f3bd4a0c";
 
 	const dbUrl = process.env.DATABASE_URL;
@@ -258,8 +282,35 @@ if (require.main === module) {
 	const dbClient = createDbClient(dbUrl);
 	const seedService = new AccountingSeedService(dbClient);
 
-	seedService.seedDatabase(defaultTestLegalEntityId[0], defaultTestUserId);
-	seedService.seedDatabase(defaultTestLegalEntityId[1], defaultTestUserId);
-	seedService.seedDatabase(defaultTestLegalEntityId[2], defaultTestUserId);
+	// Get all legal entities from the database
+	const legalEntities = await dbClient.query.legalEntities.findMany({
+		columns: {
+			id: true,
+			name: true,
+		},
+	});
+
+	if (legalEntities.length === 0) {
+		console.log("❌ No legal entities found in the database.");
+		process.exit(1);
+	}
+
+	console.log(`🌱 Found ${legalEntities.length} legal entities. Starting seeding process...`);
+
+	// Seed all legal entities
+	for (const legalEntity of legalEntities) {
+		console.log(`\n📋 Seeding legal entity: ${legalEntity.name} (${legalEntity.id})`);
+		try {
+			await seedService.seedDatabase(legalEntity.id, defaultTestUserId);
+			console.log(`✅ Successfully seeded: ${legalEntity.name}`);
+		} catch (error) {
+			console.error(`❌ Failed to seed ${legalEntity.name}:`, error);
+		}
+	}
+
+	console.log(`\n🎉 Seeding process completed for ${legalEntities.length} legal entities!`);
 }
 
+if (require.main === module) {
+	runSeeding().catch(console.error);
+}
