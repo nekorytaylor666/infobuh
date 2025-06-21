@@ -1180,9 +1180,11 @@ documentsFlutterRouter.post(
 		}
 
 		// 2) Download from the correct bucket & file path
+		// Extract storage path from full URL if needed
+		const storagePath = extractStoragePath(docInfo.filePath);
 		const { data: fileData, error: storageError } = await c.env.supabase.storage
 			.from("documents")
-			.download(docInfo.filePath);
+			.download(storagePath);
 
 		if (storageError || !fileData) {
 			console.error("Supabase download error:", storageError);
