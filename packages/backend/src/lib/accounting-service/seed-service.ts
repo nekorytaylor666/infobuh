@@ -41,16 +41,25 @@ export class AccountingSeedService {
 			console.log(`📊 Creating chart of accounts for LE: ${legalEntityId}...`);
 
 			const existingAccounts = await this.accountingService.getAccounts(legalEntityId);
-			if (existingAccounts.length === 0) {
-				// Create all accounts in optimized batches
-				const createdAccounts = await this.createAccountsInBatches(kazakhstanChartOfAccounts, legalEntityId);
+			const existingAccountCodes = new Set(existingAccounts.map(acc => acc.code));
 
-				console.log(`✅ Created ${createdAccounts.length} accounts for LE ${legalEntityId} using optimized batch creation`);
+			const missingAccounts = kazakhstanChartOfAccounts.filter(
+				acc => !existingAccountCodes.has(acc.code),
+			);
+
+			if (missingAccounts.length > 0) {
+				console.log(`💡 Found ${missingAccounts.length} missing accounts for LE ${legalEntityId}. Seeding...`);
+				const createdAccounts = await this.createAccountsInBatches(
+					missingAccounts,
+					legalEntityId,
+					existingAccounts,
+				);
+
+				console.log(`✅ Created ${createdAccounts.length} new accounts for LE ${legalEntityId}`);
 			} else {
-				console.log(`💡 Accounts for LE ${legalEntityId} already exist, skipping...`);
+				console.log(`💡 Accounts for LE ${legalEntityId} are already up-to-date, skipping...`);
 			}
 
-			const transactionsResult = await this.createSampleTransactions(legalEntityId, effectiveUserId);
 
 			const currencies = await this.accountingService.getCurrencies(); // Global
 			const accountsForLE = await this.accountingService.getAccounts(legalEntityId);
@@ -65,7 +74,6 @@ export class AccountingSeedService {
 			console.log("🎉 Seeding completed successfully!");
 			console.log(`📱 Currencies: ${result.currencies}`);
 			console.log(`📊 Accounts for LE ${legalEntityId}: ${result.accounts}`);
-			console.log(`💸 Transactions seeded for LE ${legalEntityId}: ${transactionsResult.transactions}`);
 
 			return result;
 		} catch (error) {
@@ -174,18 +182,17 @@ export class AccountingSeedService {
 					continue;
 				}
 
-				await this.accountingService.postJournalEntry(entry.entry.id, legalEntityId, userId);
 				transactionCount++;
 
 				console.log(
-					`✅ Created and posted transaction for LE ${legalEntityId}: ${entryNumber} - ${transaction.description}`,
+					`✅ Created transaction for LE ${legalEntityId}: ${entryNumber} - ${transaction.description}`,
 				);
 			}
 
 			console.log(`🎉 Sample transactions for LE ${legalEntityId} created successfully!`);
 
 			return {
-				message: `Sample transactions for LE ${legalEntityId} created and posted successfully`,
+				message: `Sample transactions for LE ${legalEntityId} created successfully`,
 				transactions: transactionCount,
 			};
 		} catch (error) {
@@ -194,9 +201,16 @@ export class AccountingSeedService {
 		}
 	}
 
-	private async createAccountsInBatches(accounts: typeof kazakhstanChartOfAccounts, legalEntityId: string): Promise<Account[]> {
+	private async createAccountsInBatches(
+		accounts: typeof kazakhstanChartOfAccounts,
+		legalEntityId: string,
+		existingAccounts: Account[] = [],
+	): Promise<Account[]> {
 		const allCreatedAccounts: Account[] = [];
 		const accountMap = new Map<string, Account>();
+		existingAccounts.forEach(account => {
+			accountMap.set(account.code, account);
+		});
 
 		// First batch: Create root accounts
 		const rootAccountsData = accounts

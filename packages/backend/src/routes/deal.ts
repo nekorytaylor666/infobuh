@@ -23,24 +23,26 @@ import "zod-openapi/extend";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { HTTPException } from "hono/http-exception";
 import { DealAccountingService } from "../lib/accounting-service/deal-accounting-service";
-import { DocumentGenerationService, type DocumentType } from "../lib/accounting-service/document-generation-service";
-import {
-	kazakhActInputSchema,
-	kazakhDoverennostInputSchema,
-	kazakhInvoiceInputSchema,
-	kazakhWaybillInputSchema,
-} from "@accounting-kz/document-templates";
+// COMMENTED OUT - Backend document generation removed
+// import { DocumentGenerationService, type DocumentType } from "../lib/accounting-service/document-generation-service";
+// import {
+// 	kazakhActInputSchema,
+// 	kazakhDoverennostInputSchema,
+// 	kazakhInvoiceInputSchema,
+// 	kazakhWaybillInputSchema,
+// } from "@accounting-kz/document-templates";
 
 const dealRouter = new Hono<HonoEnv>();
-const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
+// COMMENTED OUT - Backend document generation removed
+// const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
 
-const documentPayloadSchema = z.discriminatedUnion("documentType", [
-	z.object({ documentType: z.literal("АВР"), data: kazakhActInputSchema }),
-	z.object({ documentType: z.literal("Накладная"), data: kazakhWaybillInputSchema }),
-	z.object({ documentType: z.literal("Счет на оплату"), data: kazakhInvoiceInputSchema }),
-	z.object({ documentType: z.literal("Инвойс"), data: kazakhInvoiceInputSchema }),
-	z.object({ documentType: z.literal("Доверенность"), data: kazakhDoverennostInputSchema }),
-]);
+// const documentPayloadSchema = z.discriminatedUnion("documentType", [
+// 	z.object({ documentType: z.literal("АВР"), data: kazakhActInputSchema }),
+// 	z.object({ documentType: z.literal("Накладная"), data: kazakhWaybillInputSchema }),
+// 	z.object({ documentType: z.literal("Счет на оплату"), data: kazakhInvoiceInputSchema }),
+// 	z.object({ documentType: z.literal("Инвойс"), data: kazakhInvoiceInputSchema }),
+// 	z.object({ documentType: z.literal("Доверенность"), data: kazakhDoverennostInputSchema }),
+// ]);
 
 // Schema for creating a deal with accounting
 const createDealWithAccountingSchema = z.object({
@@ -50,7 +52,10 @@ const createDealWithAccountingSchema = z.object({
 	dealType: z.enum(DEAL_TYPES),
 	totalAmount: z.number().min(0, "Total amount must be positive"),
 	currencyId: z.string().uuid(),
-	documentsPayload: z.array(documentPayloadSchema).optional(),
+	// Documents must be uploaded separately and linked by ID
+	documentFlutterIds: z.array(z.string().uuid()).optional(),
+	// COMMENTED OUT - Backend document generation removed
+	// documentsPayload: z.array(documentPayloadSchema).optional(),
 });
 
 // Schema for recording payment
@@ -66,13 +71,27 @@ const recordPaymentSchema = z.object({
 dealRouter.post(
 	"/with-accounting",
 	describeRoute({
-		description: "Create a new deal with automatic accounting entries",
+		description: "Create a new deal with automatic accounting entries and link pre-uploaded documents",
 		tags: ["Deals", "Accounting"],
 		request: {
 			body: {
 				content: {
 					"application/json": {
-						schema: createDealWithAccountingSchema,
+						schema: createDealWithAccountingSchema.openapi({
+							description: "Deal creation with pre-uploaded document IDs",
+							example: {
+								receiverBin: "123456789012",
+								title: "Service Agreement",
+								description: "Monthly consulting services",
+								dealType: "service",
+								totalAmount: 500000,
+								currencyId: "550e8400-e29b-41d4-a716-446655440000",
+								documentFlutterIds: [
+									"550e8400-e29b-41d4-a716-446655440001",
+									"550e8400-e29b-41d4-a716-446655440002"
+								]
+							}
+						}),
 					},
 				},
 			},
@@ -95,7 +114,7 @@ dealRouter.post(
 								filePath: z.string(),
 								fileName: z.string(),
 								documentType: z.string(),
-							})).nullable(),
+							})).nullable().describe("Pre-uploaded documents linked to the deal"),
 						}),
 					},
 				},
@@ -118,7 +137,7 @@ dealRouter.post(
 				return c.json({ error: "Legal entity ID is required" }, 400);
 			}
 
-			const { documentsPayload, ...dealData } = c.req.valid("json");
+			const { documentFlutterIds, ...dealData } = c.req.valid("json");
 			const dealAccountingService = new DealAccountingService(c.env.db);
 
 			const result = await dealAccountingService.createDealWithAccounting({
@@ -127,7 +146,45 @@ dealRouter.post(
 				createdBy: userId,
 			});
 
+			// Link pre-uploaded documents to the deal
 			const documentResults = [];
+			if (documentFlutterIds && documentFlutterIds.length > 0) {
+				// Verify that all documents exist and belong to the legal entity
+				const existingDocuments = await c.env.db.query.documentsFlutter.findMany({
+					where: and(
+						inArray(documentsFlutter.id, documentFlutterIds),
+						eq(documentsFlutter.legalEntityId, legalEntityId)
+					),
+				});
+
+				if (existingDocuments.length !== documentFlutterIds.length) {
+					const foundIds = new Set(existingDocuments.map(doc => doc.id));
+					const notFoundIds = documentFlutterIds.filter(id => !foundIds.has(id));
+					console.warn(`Some documents not found or don't belong to legal entity: ${notFoundIds.join(', ')}`);
+				}
+
+				if (existingDocuments.length > 0) {
+					// Create links between the deal and documents
+					const dealDocumentLinksToInsert = existingDocuments.map(doc => ({
+						dealId: result.deal.id,
+						documentFlutterId: doc.id,
+					}));
+
+					await c.env.db.insert(dealDocumentsFlutter).values(dealDocumentLinksToInsert);
+
+					// Prepare document results for response
+					for (const doc of existingDocuments) {
+						documentResults.push({
+							id: doc.id,
+							filePath: doc.filePath,
+							fileName: doc.filePath.split('/').pop() || 'document',
+							documentType: doc.type,
+						});
+					}
+				}
+			}
+
+			/* COMMENTED OUT - Backend document generation removed
 			if (documentsPayload && documentsPayload.length > 0) {
 				const documentGenerationService = new DocumentGenerationService();
 				const generatedDocs = [];
@@ -179,6 +236,7 @@ dealRouter.post(
 					}
 				}
 			}
+			*/
 
 			return c.json({
 				...result,

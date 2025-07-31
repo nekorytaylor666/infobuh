@@ -20,13 +20,14 @@ import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
 import "zod-openapi/extend";
 import { sendNotificationToLegalEntityByBin } from "../services/notification";
-import { DocumentGenerationService, type DocumentType } from "../lib/accounting-service/document-generation-service";
-import {
-	kazakhActInputSchema,
-	kazakhDoverennostInputSchema,
-	kazakhInvoiceInputSchema,
-	kazakhWaybillInputSchema,
-} from "@accounting-kz/document-templates";
+// COMMENTED OUT - New document generation approach
+// import { DocumentGenerationService, type DocumentType } from "../lib/accounting-service/document-generation-service";
+// import {
+// 	kazakhActInputSchema,
+// 	kazakhDoverennostInputSchema,
+// 	kazakhInvoiceInputSchema,
+// 	kazakhWaybillInputSchema,
+// } from "@accounting-kz/document-templates";
 
 export const documentsFlutterRouter = new Hono<HonoEnv>();
 
@@ -55,150 +56,151 @@ function extractStoragePath(filePathOrUrl: string): string {
 	return filePathOrUrl;
 }
 
+// COMMENTED OUT - New document generation approach
 // Document types supported by the system
-const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
+// const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
 
 // Discriminated union schema for different document types with their specific data schemas
-const documentPayloadSchema = z.discriminatedUnion("documentType", [
-	z.object({
-		documentType: z.literal("АВР"),
-		data: kazakhActInputSchema
-	}).openapi({
-		description: "Act document (АВР) with Kazakh act-specific data",
-		example: {
-			documentType: "АВР",
-			data: {
-				orgName: "ТОО Example Company",
-				orgAddress: "г. Алматы, ул. Абая 150",
-				orgBin: "123456789012",
-				buyerName: "ТОО Buyer Company",
-				buyerBin: "987654321098",
-				contractNumber: "CNT-001",
-				orgPersonRole: "Директор",
-				buyerPersonRole: "Генеральный директор",
-				items: [
-					{
-						name: "Консультационные услуги",
-						quantity: 1,
-						unit: "шт",
-						price: 150000,
-					},
-				],
-				actNumber: "ACT-001",
-				actDate: "2024-01-15"
-			}
-		}
-	}),
-	z.object({
-		documentType: z.literal("Накладная"),
-		data: kazakhWaybillInputSchema
-	}).openapi({
-		description: "Waybill document (Накладная) with Kazakh waybill-specific data",
-		example: {
-			documentType: "Накладная",
-			data: {
-				orgName: "ТОО Example Company",
-				orgBin: "123456789012",
-				buyerName: "ТОО Buyer Company",
-				buyerBin: "987654321098",
-				items: [
-					{
-						name: "Канцелярские товары",
-						quantity: 10,
-						unit: "шт",
-						price: 25000,
-					},
-				],
-				waybillNumber: "WB-001",
-				waybillDate: "2024-01-15"
-			}
-		}
-	}),
-	z.object({
-		documentType: z.literal("Счет на оплату"),
-		data: kazakhInvoiceInputSchema
-	}).openapi({
-		description: "Invoice document (Счет на оплату) with Kazakh invoice-specific data",
-		example: {
-			documentType: "Счет на оплату",
-			data: {
-				orgName: "ТОО Example Company",
-				orgBin: "123456789012",
-				buyerName: "ТОО Buyer Company",
-				buyerBin: "987654321098",
-				contract: "Договор CNT-001 от 10.01.2024",
-				items: [
-					{
-						name: "Товары",
-						quantity: 1,
-						unit: "шт",
-						price: 300000,
-					},
-				],
-				invoiceNumber: "INV-001",
-				invoiceDate: "2024-01-15"
-			}
-		}
-	}),
-	z.object({
-		documentType: z.literal("Инвойс"),
-		data: kazakhInvoiceInputSchema
-	}).openapi({
-		description: "Invoice document (Инвойс) with Kazakh invoice-specific data",
-		example: {
-			documentType: "Инвойс",
-			data: {
-				orgName: "ТОО Example Company",
-				orgBin: "123456789012",
-				buyerName: "ТОО Buyer Company",
-				buyerBin: "987654321098",
-				contract: "Договор CNT-002 от 10.01.2024",
-				items: [
-					{
-						name: "Услуги",
-						quantity: 1,
-						unit: "шт",
-						price: 400000,
-					},
-				],
-				invoiceNumber: "INV-002",
-				invoiceDate: "2024-01-15"
-			}
-		}
-	}),
-	z.object({
-		documentType: z.literal("Доверенность"),
-		data: kazakhDoverennostInputSchema
-	}).openapi({
-		description: "Power of attorney document (Доверенность) with Kazakh doverennost-specific data",
-		example: {
-			documentType: "Доверенность",
-			data: {
-				orgName: "ТОО Example Company",
-				orgBin: "123456789012",
-				buyerName: "ТОО Buyer Company",
-				buyerBin: "987654321098",
-				schetNaOplatu: "Счет № INV-001 от 15.01.2024",
-				employeeName: "Иванов Иван Иванович",
-				employeeRole: "Менеджер",
-				employeeDocNumber: "123456789",
-				employeeDocNumberDate: "2024-01-01",
-				employeeWhoGives: "МВД РК",
-				dateUntil: "2024-12-31",
-				items: [
-					{
-						name: "Товары по доверенности",
-						quantity: 1,
-						unit: "шт",
-						price: 100000,
-					},
-				],
-				idx: "DOV-001",
-				issueDate: "2024-01-15"
-			}
-		}
-	}),
-]);
+// const documentPayloadSchema = z.discriminatedUnion("documentType", [
+// 	z.object({
+// 		documentType: z.literal("АВР"),
+// 		data: kazakhActInputSchema
+// 	}).openapi({
+// 		description: "Act document (АВР) with Kazakh act-specific data",
+// 		example: {
+// 			documentType: "АВР",
+// 			data: {
+// 				orgName: "ТОО Example Company",
+// 				orgAddress: "г. Алматы, ул. Абая 150",
+// 				orgBin: "123456789012",
+// 				buyerName: "ТОО Buyer Company",
+// 				buyerBin: "987654321098",
+// 				contractNumber: "CNT-001",
+// 				orgPersonRole: "Директор",
+// 				buyerPersonRole: "Генеральный директор",
+// 				items: [
+// 					{
+// 						name: "Консультационные услуги",
+// 						quantity: 1,
+// 						unit: "шт",
+// 						price: 150000,
+// 					},
+// 				],
+// 				actNumber: "ACT-001",
+// 				actDate: "2024-01-15"
+// 			}
+// 		}
+// 	}),
+// 	z.object({
+// 		documentType: z.literal("Накладная"),
+// 		data: kazakhWaybillInputSchema
+// 	}).openapi({
+// 		description: "Waybill document (Накладная) with Kazakh waybill-specific data",
+// 		example: {
+// 			documentType: "Накладная",
+// 			data: {
+// 				orgName: "ТОО Example Company",
+// 				orgBin: "123456789012",
+// 				buyerName: "ТОО Buyer Company",
+// 				buyerBin: "987654321098",
+// 				items: [
+// 					{
+// 						name: "Канцелярские товары",
+// 						quantity: 10,
+// 						unit: "шт",
+// 						price: 25000,
+// 					},
+// 				],
+// 				waybillNumber: "WB-001",
+// 				waybillDate: "2024-01-15"
+// 			}
+// 		}
+// 	}),
+// 	z.object({
+// 		documentType: z.literal("Счет на оплату"),
+// 		data: kazakhInvoiceInputSchema
+// 	}).openapi({
+// 		description: "Invoice document (Счет на оплату) with Kazakh invoice-specific data",
+// 		example: {
+// 			documentType: "Счет на оплату",
+// 			data: {
+// 				orgName: "ТОО Example Company",
+// 				orgBin: "123456789012",
+// 				buyerName: "ТОО Buyer Company",
+// 				buyerBin: "987654321098",
+// 				contract: "Договор CNT-001 от 10.01.2024",
+// 				items: [
+// 					{
+// 						name: "Товары",
+// 						quantity: 1,
+// 						unit: "шт",
+// 						price: 300000,
+// 					},
+// 				],
+// 				invoiceNumber: "INV-001",
+// 				invoiceDate: "2024-01-15"
+// 			}
+// 		}
+// 	}),
+// 	z.object({
+// 		documentType: z.literal("Инвойс"),
+// 		data: kazakhInvoiceInputSchema
+// 	}).openapi({
+// 		description: "Invoice document (Инвойс) with Kazakh invoice-specific data",
+// 		example: {
+// 			documentType: "Инвойс",
+// 			data: {
+// 				orgName: "ТОО Example Company",
+// 				orgBin: "123456789012",
+// 				buyerName: "ТОО Buyer Company",
+// 				buyerBin: "987654321098",
+// 				contract: "Договор CNT-002 от 10.01.2024",
+// 				items: [
+// 					{
+// 						name: "Услуги",
+// 						quantity: 1,
+// 						unit: "шт",
+// 						price: 400000,
+// 					},
+// 				],
+// 				invoiceNumber: "INV-002",
+// 				invoiceDate: "2024-01-15"
+// 			}
+// 		}
+// 	}),
+// 	z.object({
+// 		documentType: z.literal("Доверенность"),
+// 		data: kazakhDoverennostInputSchema
+// 	}).openapi({
+// 		description: "Power of attorney document (Доверенность) with Kazakh doverennost-specific data",
+// 		example: {
+// 			documentType: "Доверенность",
+// 			data: {
+// 				orgName: "ТОО Example Company",
+// 				orgBin: "123456789012",
+// 				buyerName: "ТОО Buyer Company",
+// 				buyerBin: "987654321098",
+// 				schetNaOplatu: "Счет № INV-001 от 15.01.2024",
+// 				employeeName: "Иванов Иван Иванович",
+// 				employeeRole: "Менеджер",
+// 				employeeDocNumber: "123456789",
+// 				employeeDocNumberDate: "2024-01-01",
+// 				employeeWhoGives: "МВД РК",
+// 				dateUntil: "2024-12-31",
+// 				items: [
+// 					{
+// 						name: "Товары по доверенности",
+// 						quantity: 1,
+// 						unit: "шт",
+// 						price: 100000,
+// 					},
+// 				],
+// 				idx: "DOV-001",
+// 				issueDate: "2024-01-15"
+// 			}
+// 		}
+// 	}),
+// ]);
 
 // GET documents by receiver BIN
 documentsFlutterRouter.get(
@@ -485,13 +487,13 @@ documentsFlutterRouter.get(
 	},
 );
 
-// Legacy file-based document creation schema (for backwards compatibility)
-const legacyFileSchema = z.object({
+// File-based document creation schema
+const fileSchema = z.object({
 	name: z.string().min(1, "File name is required"),
 	data: z.string().min(1, "File data (base64) is required"),
 	contentType: z.string().optional().default("application/octet-stream"),
 }).openapi({
-	description: "Legacy file information for manual upload",
+	description: "File information for upload",
 	example: {
 		name: "invoice.pdf",
 		data: "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PA==",
@@ -499,47 +501,31 @@ const legacyFileSchema = z.object({
 	}
 });
 
-// Create document schema with discriminated union for document generation or legacy file upload
+// Create document schema - using only file upload
 const createDocumentSchema = z.object({
 	receiverBin: z.string().length(12, "Receiver BIN must be 12 characters"),
 	receiverName: z.string().min(1, "Receiver name is required"),
-	// Either use document generation with typed data, or upload a file manually
-	documentPayload: documentPayloadSchema.optional(),
-	// Legacy file upload (will be deprecated in favor of document generation)
-	legacyFile: legacyFileSchema.optional(),
-}).refine(
-	(data) => data.documentPayload || data.legacyFile,
-	{
-		message: "Either documentPayload (for auto-generation) or legacyFile (for manual upload) must be provided",
-		path: ["documentPayload"]
-	}
-).openapi({
-	description: "Schema for creating a new document with automatic generation or manual file upload",
+	type: z.string().min(1, "Document type is required"),
+	// File upload is required
+	file: fileSchema,
+	// Optional fields for document metadata
+	fields: z.record(z.any()).optional().default({}),
+	// COMMENTED OUT - New document generation approach
+	// documentPayload: documentPayloadSchema.optional(),
+}).openapi({
+	description: "Schema for creating a new document with file upload from frontend",
 	example: {
 		receiverBin: "987654321098",
 		receiverName: "ТОО Buyer Company",
-		documentPayload: {
-			documentType: "АВР",
-			data: {
-				orgName: "ТОО Example Company",
-				orgAddress: "г. Алматы, ул. Абая 150",
-				orgBin: "123456789012",
-				buyerName: "ТОО Buyer Company",
-				buyerBin: "987654321098",
-				contractNumber: "CNT-001",
-				orgPersonRole: "Директор",
-				buyerPersonRole: "Генеральный директор",
-				items: [
-					{
-						name: "Консультационные услуги",
-						quantity: 1,
-						unit: "шт",
-						price: 150000,
-					},
-				],
-				actNumber: "ACT-001",
-				actDate: "2024-01-15"
-			}
+		type: "АВР",
+		file: {
+			name: "invoice.pdf",
+			data: "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PA==",
+			contentType: "application/pdf"
+		},
+		fields: {
+			orgName: "ТОО Example Company",
+			orgBin: "123456789012"
 		}
 	}
 });
@@ -568,32 +554,17 @@ const createdDocumentResponseSchema = z.object({
 		receiverBin: "987654321098",
 		receiverName: "ТОО Buyer Company",
 		fields: {
+			fileName: "invoice.pdf",
 			orgName: "ТОО Example Company",
-			orgAddress: "г. Алматы, ул. Абая 150",
-			orgBin: "123456789012",
-			buyerName: "ТОО Buyer Company",
-			buyerBin: "987654321098",
-			contractNumber: "CNT-001",
-			orgPersonRole: "Директор",
-			buyerPersonRole: "Генеральный директор",
-			items: [
-				{
-					name: "Консультационные услуги",
-					quantity: 1,
-					unit: "шт",
-					price: 150000,
-				},
-			],
-			actNumber: "ACT-001",
-			actDate: "2024-01-15"
+			orgBin: "123456789012"
 		},
-		filePath: "https://supabase.co/storage/documents/550e8400-e29b-41d4-a716-446655440001/avr/1642234567890-act.pdf",
-		fileName: "1642234567890-act.pdf",
+		filePath: "https://supabase.co/storage/documents/550e8400-e29b-41d4-a716-446655440001/1642234567890-invoice.pdf",
+		fileName: "1642234567890-invoice.pdf",
 		createdAt: "2024-01-15T10:30:00Z",
 		updatedAt: "2024-01-15T10:30:00Z",
-		documentGenerated: true,
-		publicUrl: "https://supabase.co/storage/documents/550e8400-e29b-41d4-a716-446655440001/avr/1642234567890-act.pdf",
-		storagePath: "550e8400-e29b-41d4-a716-446655440001/avr/1642234567890-act.pdf"
+		documentGenerated: false,
+		publicUrl: "https://supabase.co/storage/documents/550e8400-e29b-41d4-a716-446655440001/1642234567890-invoice.pdf",
+		storagePath: "550e8400-e29b-41d4-a716-446655440001/1642234567890-invoice.pdf"
 	}
 });
 
@@ -601,7 +572,7 @@ const createdDocumentResponseSchema = z.object({
 documentsFlutterRouter.post(
 	"/create",
 	describeRoute({
-		description: "Create a new document for a legal entity with automatic document generation or manual file upload",
+		description: "Create a new document for a legal entity with file upload",
 		tags: ["Documents Flutter"],
 		parameters: [
 			{
@@ -667,7 +638,7 @@ documentsFlutterRouter.post(
 	async (c) => {
 		try {
 			const legalEntityId = c.req.query("legalEntityId");
-			const { receiverBin, receiverName, documentPayload, legacyFile } = c.req.valid("json");
+			const { receiverBin, receiverName, type, file, fields } = c.req.valid("json");
 
 			if (!legalEntityId) {
 				throw new HTTPException(400, {
@@ -688,14 +659,36 @@ documentsFlutterRouter.post(
 				});
 			}
 
-			let filePath: string;
-			let fileName: string;
-			let documentType: string;
-			let fields: any;
-			let documentGenerated = false;
-			let publicUrl: string | undefined;
-			let storagePath: string | undefined;
+			// File upload from frontend
+			const fileName = file.name;
+			const newFilePath = `${legalEntityId}/${Date.now()}-${fileName}`;
 
+			// Convert the base64 encoded file data to a buffer
+			const fileBuffer = Buffer.from(file.data, "base64");
+
+			// Upload file to Supabase Storage (bucket "documents")
+			const { error: uploadError } = await c.env.supabase.storage
+				.from("documents")
+				.upload(newFilePath, fileBuffer, {
+					contentType: file.contentType || "application/octet-stream",
+				});
+			if (uploadError) {
+				console.error("Supabase upload error:", uploadError);
+				throw new HTTPException(500, {
+					message: "Failed to upload file to storage",
+				});
+			}
+
+			// Get public URL for the file
+			const { data: publicUrlData } = c.env.supabase.storage
+				.from("documents")
+				.getPublicUrl(newFilePath);
+			const publicUrl = publicUrlData?.publicUrl;
+			const storagePath = newFilePath;
+
+			const filePath = publicUrl || newFilePath; // Use public URL for database, fallback to storage path
+
+			/* COMMENTED OUT - New document generation approach
 			// Handle document generation or legacy file upload
 			if (documentPayload) {
 				// Auto-generate document using DocumentGenerationService
@@ -720,43 +713,8 @@ documentsFlutterRouter.post(
 				documentGenerated = true;
 				publicUrl = generationResult.publicUrl;
 				storagePath = generationResult.storagePath;
-			} else if (legacyFile) {
-				// Legacy file upload approach
-				fileName = legacyFile.name;
-				const newFilePath = `${legalEntityId}/${Date.now()}-${fileName}`;
-
-				// Convert the base64 encoded file data to a buffer
-				const fileBuffer = Buffer.from(legacyFile.data, "base64");
-
-				// Upload file to Supabase Storage (bucket "documents")
-				const { error: uploadError } = await c.env.supabase.storage
-					.from("documents")
-					.upload(newFilePath, fileBuffer, {
-						contentType: legacyFile.contentType || "application/octet-stream",
-					});
-				if (uploadError) {
-					console.error("Supabase upload error:", uploadError);
-					throw new HTTPException(500, {
-						message: "Failed to upload file to storage",
-					});
-				}
-
-				// Get public URL for legacy file
-				const { data: publicUrlData } = c.env.supabase.storage
-					.from("documents")
-					.getPublicUrl(newFilePath);
-				publicUrl = publicUrlData?.publicUrl;
-				storagePath = newFilePath;
-
-				filePath = publicUrl || newFilePath; // Use public URL for database, fallback to storage path
-				documentType = "manual"; // Generic type for manual uploads
-				fields = { fileName: legacyFile.name }; // Basic fields for manual upload
-				documentGenerated = false;
-			} else {
-				throw new HTTPException(400, {
-					message: "Either documentPayload or legacyFile must be provided",
-				});
 			}
+			*/
 
 			// Insert the document record with the uploaded file path
 			try {
@@ -764,10 +722,10 @@ documentsFlutterRouter.post(
 					.insert(documentsFlutter)
 					.values({
 						legalEntityId,
-						type: documentType,
+						type,
 						receiverBin,
 						receiverName,
-						fields,
+						fields: fields || { fileName },
 						filePath,
 					})
 					.returning();
@@ -786,11 +744,11 @@ documentsFlutterRouter.post(
 					console.error("Failed to send creation notification:", err),
 				);
 
-				// Return enhanced response with generation info
+				// Return response with file info
 				const response = {
 					...newDoc,
 					fileName, // Include fileName even though not stored in DB
-					documentGenerated,
+					documentGenerated: false, // Always false for legacy uploads
 					publicUrl,
 					storagePath,
 				};
