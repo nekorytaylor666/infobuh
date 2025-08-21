@@ -46,13 +46,27 @@ const dealRouter = new Hono<HonoEnv>();
 // 	z.object({ documentType: z.literal("Доверенность"), data: kazakhDoverennostInputSchema }),
 // ]);
 
+// Schema for file upload
+const fileUploadSchema = z.object({
+	name: z.string().min(1, "File name is required"),
+	data: z.string().min(1, "File data is required"), // Base64 encoded
+	contentType: z.string().default("application/pdf"),
+});
+
+// Schema for document with file upload
+const documentWithFileSchema = z.object({
+	type: z.string().min(1, "Document type is required"),
+	file: fileUploadSchema,
+	documentPayload: documentPayloadSchema.optional(),
+});
+
 // Schema for document upload with payload
 const documentWithPayloadSchema = z.object({
 	documentFlutterId: z.string().uuid(),
 	documentPayload: documentPayloadSchema.optional(),
 });
 
-// Schema for creating a deal with accounting
+// Schema for creating a deal with accounting (enhanced with file uploads)
 const createDealWithAccountingSchema = z.object({
 	receiverBin: z.string().length(12, "Receiver BIN must be 12 characters"),
 	title: z.string().min(1, "Title is required"),
@@ -64,6 +78,8 @@ const createDealWithAccountingSchema = z.object({
 	documentFlutterIds: z.array(z.string().uuid()).optional(),
 	// Document payloads for uploaded files
 	documentsWithPayload: z.array(documentWithPayloadSchema).optional(),
+	// Direct file uploads with the deal
+	fileUploads: z.array(documentWithFileSchema).optional(),
 });
 
 // Schema for recording payment
@@ -86,7 +102,7 @@ dealRouter.post(
 				content: {
 					"application/json": {
 						schema: createDealWithAccountingSchema.openapi({
-							description: "Deal creation with pre-uploaded document IDs and optional document payloads",
+							description: "Deal creation with file uploads, pre-uploaded document IDs, and optional document payloads",
 							example: {
 								receiverBin: "123456789012",
 								title: "Service Agreement",
@@ -121,6 +137,24 @@ dealRouter.post(
 												],
 												actNumber: "001",
 												actDate: "2024-01-01"
+											}
+										}
+									}
+								],
+								fileUploads: [
+									{
+										type: "Договор",
+										file: {
+											name: "contract.pdf",
+											data: "JVBERi0xLjQKJeLjz9...", // Base64 encoded PDF
+											contentType: "application/pdf"
+										},
+										documentPayload: {
+											documentType: "Other",
+											data: {
+												fileName: "contract.pdf",
+												fileType: "application/pdf",
+												description: "Service contract"
 											}
 										}
 									}
@@ -173,8 +207,72 @@ dealRouter.post(
 				return c.json({ error: "Legal entity ID is required" }, 400);
 			}
 
-			const { documentFlutterIds, documentsWithPayload, ...dealData } = c.req.valid("json");
+			const { documentFlutterIds, documentsWithPayload, fileUploads, ...dealData } = c.req.valid("json");
 			const dealAccountingService = new DealAccountingService(c.env.db);
+
+			// Handle file uploads first if provided
+			const uploadedDocumentIds: string[] = [];
+			if (fileUploads && fileUploads.length > 0) {
+				for (const fileUpload of fileUploads) {
+					try {
+						// Generate file path
+						const fileName = fileUpload.file.name;
+						const newFilePath = `${legalEntityId}/${Date.now()}-${fileName}`;
+						
+						// Convert base64 to buffer
+						const fileBuffer = Buffer.from(fileUpload.file.data, "base64");
+						
+						// Upload to Supabase storage
+						const { error: uploadError } = await c.env.supabase.storage
+							.from("documents")
+							.upload(newFilePath, fileBuffer, {
+								contentType: fileUpload.file.contentType || "application/pdf",
+							});
+							
+						if (uploadError) {
+							console.error("File upload error:", uploadError);
+							throw new Error(`Failed to upload file ${fileName}`);
+						}
+						
+						// Get public URL
+						const { data: publicUrlData } = c.env.supabase.storage
+							.from("documents")
+							.getPublicUrl(newFilePath);
+						const publicUrl = publicUrlData?.publicUrl || newFilePath;
+						
+						// Create document record
+						const [newDoc] = await c.env.db
+							.insert(documentsFlutter)
+							.values({
+								legalEntityId,
+								type: fileUpload.type,
+								receiverBin: dealData.receiverBin,
+								receiverName: dealData.title, // Use deal title as receiver name
+								fields: {
+									fileName,
+									uploadedAt: new Date().toISOString(),
+									dealCreated: true,
+								},
+								documentPayload: fileUpload.documentPayload,
+								filePath: publicUrl,
+							})
+							.returning();
+							
+						uploadedDocumentIds.push(newDoc.id);
+					} catch (error) {
+						console.error("Error uploading file:", error);
+						// Clean up any uploaded files on error
+						if (uploadedDocumentIds.length > 0) {
+							await c.env.db
+								.delete(documentsFlutter)
+								.where(inArray(documentsFlutter.id, uploadedDocumentIds));
+						}
+						throw new HTTPException(500, {
+							message: `Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`
+						});
+					}
+				}
+			}
 
 			const result = await dealAccountingService.createDealWithAccounting({
 				...dealData,
@@ -184,6 +282,13 @@ dealRouter.post(
 
 			// Link pre-uploaded documents to the deal
 			const documentResults = [];
+			
+			// Combine all document IDs (uploaded + pre-existing)
+			const allDocumentIds = [
+				...uploadedDocumentIds,
+				...(documentFlutterIds || []),
+				...(documentsWithPayload?.map(d => d.documentFlutterId) || [])
+			];
 			
 			// Handle documents with payloads
 			if (documentsWithPayload && documentsWithPayload.length > 0) {
@@ -238,19 +343,19 @@ dealRouter.post(
 					}
 				}
 			}
-			// Handle legacy documentFlutterIds (without payloads)
-			else if (documentFlutterIds && documentFlutterIds.length > 0) {
+			// Handle uploaded documents and legacy documentFlutterIds
+			else if (allDocumentIds.length > 0) {
 				// Verify that all documents exist and belong to the legal entity
 				const existingDocuments = await c.env.db.query.documentsFlutter.findMany({
 					where: and(
-						inArray(documentsFlutter.id, documentFlutterIds),
+						inArray(documentsFlutter.id, allDocumentIds),
 						eq(documentsFlutter.legalEntityId, legalEntityId)
 					),
 				});
 
-				if (existingDocuments.length !== documentFlutterIds.length) {
+				if (existingDocuments.length !== allDocumentIds.length) {
 					const foundIds = new Set(existingDocuments.map(doc => doc.id));
-					const notFoundIds = documentFlutterIds.filter(id => !foundIds.has(id));
+					const notFoundIds = allDocumentIds.filter(id => !foundIds.has(id));
 					console.warn(`Some documents not found or don't belong to legal entity: ${notFoundIds.join(', ')}`);
 				}
 

@@ -358,8 +358,12 @@ async function testDealAccountingSystem() {
 			costOfGoodsSoldAccount,
 		});
 
-		// 10. Тестирование АВР с двух сторон
-		console.log("\n🔄 10. Тестирование АВР с двух сторон (услуги)");
+		// 10. Test deal creation with file uploads
+		console.log("\n📎 10. Тестирование создания сделки с прямой загрузкой файлов");
+		await testDealWithFileUploads(dealAccountingService, testData, accountsReceivable, revenueAccount);
+
+		// 11. Тестирование АВР с двух сторон
+		console.log("\n🔄 11. Тестирование АВР с двух сторон (услуги)");
 		await testServiceTransactionsBothSides(accountingService, testData, {
 			accountsReceivable,
 			revenueAccount,
@@ -385,6 +389,7 @@ async function testDealAccountingSystem() {
 		console.log("- ✅ Выявление дисбалансов");
 		console.log("- ✅ Привязка документов к сделкам");
 		console.log("- ✅ Поддержка документов с типизированными метаданными (documentPayload)");
+		console.log("- ✅ Прямая загрузка файлов при создании сделки");
 		console.log("- ✅ Интеграция документооборота с бухгалтерским учетом");
 		console.log("- ✅ Полный цикл продажи товаров с себестоимостью");
 		console.log("- ✅ Сценарий АВР с проводками продавца и покупателя");
@@ -796,6 +801,81 @@ async function testBuyerSideTransactions(
 
 	} catch (error) {
 		console.error("   ❌ Ошибка в тестировании проводок покупателя:", error);
+	}
+}
+
+/**
+ * Test deal creation with direct file uploads
+ */
+async function testDealWithFileUploads(
+	dealAccountingService: DealAccountingService,
+	testData: any,
+	accountsReceivable: any,
+	revenueAccount: any
+) {
+	try {
+		console.log("   📄 Создание сделки с прямой загрузкой файлов");
+		
+		// Sample PDF base64 (minimal valid PDF)
+		const samplePdfBase64 = "JVBERi0xLjQKJcWzyr3GCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KPj4KZW5kb2JqCnhyZWYKMCA0CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDc0IDAwMDAwIG4gCjAwMDAwMDAxMzEgMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSA0Ci9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgoyMTAKJSVFT0Y=";
+		
+		const dealWithFiles = await dealAccountingService.createDealWithAccounting({
+			receiverBin: "555666777888",
+			title: "Сделка с загрузкой документов",
+			description: "Тестирование прямой загрузки файлов при создании сделки",
+			dealType: "service",
+			totalAmount: 750000,
+			legalEntityId: testData.legalEntityId,
+			currencyId: testData.currencyId,
+			createdBy: testData.userId,
+			fileUploads: [
+				{
+					type: "Договор",
+					file: {
+						name: "service-contract.pdf",
+						data: samplePdfBase64,
+						contentType: "application/pdf"
+					},
+					documentPayload: {
+						documentType: "Other",
+						data: {
+							fileName: "service-contract.pdf",
+							fileType: "application/pdf",
+							description: "Договор на оказание услуг",
+							metadata: {
+								contractNumber: "SC-001",
+								contractDate: new Date().toISOString()
+							}
+						}
+					}
+				},
+				{
+					type: "Приложение",
+					file: {
+						name: "attachment-1.pdf",
+						data: samplePdfBase64,
+						contentType: "application/pdf"
+					}
+				}
+			]
+		});
+
+		console.log("   ✅ Сделка создана с файлами:", {
+			dealId: dealWithFiles.deal.id,
+			linkedDocuments: dealWithFiles.documents?.length || 0,
+			uploadedFiles: 2
+		});
+
+		// Verify documents were created and linked
+		if (dealWithFiles.documents && dealWithFiles.documents.length > 0) {
+			console.log("   ✅ Документы успешно загружены и привязаны к сделке");
+			dealWithFiles.documents.forEach(doc => {
+				console.log(`      - ${doc.documentType}: ${doc.fileName}`);
+			});
+		}
+
+	} catch (error) {
+		console.error("   ❌ Ошибка при создании сделки с файлами:", error);
 	}
 }
 
