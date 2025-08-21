@@ -12,6 +12,8 @@ import {
 	dealDocumentsFlutter,
 	documentsFlutter,
 	documentFlutterZodSchema,
+	documentPayloadSchema,
+	type DocumentPayload,
 	inArray,
 	or,
 	DEAL_TYPES,
@@ -44,6 +46,12 @@ const dealRouter = new Hono<HonoEnv>();
 // 	z.object({ documentType: z.literal("Доверенность"), data: kazakhDoverennostInputSchema }),
 // ]);
 
+// Schema for document upload with payload
+const documentWithPayloadSchema = z.object({
+	documentFlutterId: z.string().uuid(),
+	documentPayload: documentPayloadSchema.optional(),
+});
+
 // Schema for creating a deal with accounting
 const createDealWithAccountingSchema = z.object({
 	receiverBin: z.string().length(12, "Receiver BIN must be 12 characters"),
@@ -54,8 +62,8 @@ const createDealWithAccountingSchema = z.object({
 	currencyId: z.string().uuid(),
 	// Documents must be uploaded separately and linked by ID
 	documentFlutterIds: z.array(z.string().uuid()).optional(),
-	// COMMENTED OUT - Backend document generation removed
-	// documentsPayload: z.array(documentPayloadSchema).optional(),
+	// Document payloads for uploaded files
+	documentsWithPayload: z.array(documentWithPayloadSchema).optional(),
 });
 
 // Schema for recording payment
@@ -78,7 +86,7 @@ dealRouter.post(
 				content: {
 					"application/json": {
 						schema: createDealWithAccountingSchema.openapi({
-							description: "Deal creation with pre-uploaded document IDs",
+							description: "Deal creation with pre-uploaded document IDs and optional document payloads",
 							example: {
 								receiverBin: "123456789012",
 								title: "Service Agreement",
@@ -89,6 +97,33 @@ dealRouter.post(
 								documentFlutterIds: [
 									"550e8400-e29b-41d4-a716-446655440001",
 									"550e8400-e29b-41d4-a716-446655440002"
+								],
+								documentsWithPayload: [
+									{
+										documentFlutterId: "550e8400-e29b-41d4-a716-446655440003",
+										documentPayload: {
+											documentType: "АВР",
+											data: {
+												orgName: "Company Name",
+												orgBin: "123456789012",
+												buyerName: "Buyer Company",
+												buyerBin: "210987654321",
+												contractNumber: "001",
+												orgPersonRole: "Director",
+												buyerPersonRole: "Manager",
+												items: [
+													{
+														name: "Service",
+														quantity: 1,
+														unit: "pc",
+														price: 500000
+													}
+												],
+												actNumber: "001",
+												actDate: "2024-01-01"
+											}
+										}
+									}
 								]
 							}
 						}),
@@ -114,6 +149,7 @@ dealRouter.post(
 								filePath: z.string(),
 								fileName: z.string(),
 								documentType: z.string(),
+								hasPayload: z.boolean().optional(),
 							})).nullable().describe("Pre-uploaded documents linked to the deal"),
 						}),
 					},
@@ -137,7 +173,7 @@ dealRouter.post(
 				return c.json({ error: "Legal entity ID is required" }, 400);
 			}
 
-			const { documentFlutterIds, ...dealData } = c.req.valid("json");
+			const { documentFlutterIds, documentsWithPayload, ...dealData } = c.req.valid("json");
 			const dealAccountingService = new DealAccountingService(c.env.db);
 
 			const result = await dealAccountingService.createDealWithAccounting({
@@ -148,7 +184,62 @@ dealRouter.post(
 
 			// Link pre-uploaded documents to the deal
 			const documentResults = [];
-			if (documentFlutterIds && documentFlutterIds.length > 0) {
+			
+			// Handle documents with payloads
+			if (documentsWithPayload && documentsWithPayload.length > 0) {
+				const documentIds = documentsWithPayload.map(doc => doc.documentFlutterId);
+				
+				// Verify that all documents exist and belong to the legal entity
+				const existingDocuments = await c.env.db.query.documentsFlutter.findMany({
+					where: and(
+						inArray(documentsFlutter.id, documentIds),
+						eq(documentsFlutter.legalEntityId, legalEntityId)
+					),
+				});
+
+				if (existingDocuments.length !== documentIds.length) {
+					const foundIds = new Set(existingDocuments.map(doc => doc.id));
+					const notFoundIds = documentIds.filter(id => !foundIds.has(id));
+					console.warn(`Some documents not found or don't belong to legal entity: ${notFoundIds.join(', ')}`);
+				}
+
+				if (existingDocuments.length > 0) {
+					// Update documents with payloads
+					for (const docWithPayload of documentsWithPayload) {
+						const existingDoc = existingDocuments.find(doc => doc.id === docWithPayload.documentFlutterId);
+						if (existingDoc && docWithPayload.documentPayload) {
+							await c.env.db.update(documentsFlutter)
+								.set({ 
+									documentPayload: docWithPayload.documentPayload,
+									updatedAt: new Date()
+								})
+								.where(eq(documentsFlutter.id, docWithPayload.documentFlutterId));
+						}
+					}
+
+					// Create links between the deal and documents
+					const dealDocumentLinksToInsert = existingDocuments.map(doc => ({
+						dealId: result.deal.id,
+						documentFlutterId: doc.id,
+					}));
+
+					await c.env.db.insert(dealDocumentsFlutter).values(dealDocumentLinksToInsert);
+
+					// Prepare document results for response
+					for (const doc of existingDocuments) {
+						const docWithPayload = documentsWithPayload.find(d => d.documentFlutterId === doc.id);
+						documentResults.push({
+							id: doc.id,
+							filePath: doc.filePath,
+							fileName: doc.filePath.split('/').pop() || 'document',
+							documentType: doc.type,
+							hasPayload: !!docWithPayload?.documentPayload,
+						});
+					}
+				}
+			}
+			// Handle legacy documentFlutterIds (without payloads)
+			else if (documentFlutterIds && documentFlutterIds.length > 0) {
 				// Verify that all documents exist and belong to the legal entity
 				const existingDocuments = await c.env.db.query.documentsFlutter.findMany({
 					where: and(
@@ -179,6 +270,7 @@ dealRouter.post(
 							filePath: doc.filePath,
 							fileName: doc.filePath.split('/').pop() || 'document',
 							documentType: doc.type,
+							hasPayload: !!doc.documentPayload,
 						});
 					}
 				}

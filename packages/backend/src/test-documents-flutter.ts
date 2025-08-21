@@ -33,6 +33,7 @@ interface DocumentResponse {
     receiverBin: string;
     receiverName: string;
     fields: Record<string, any>;
+    documentPayload?: any; // Typed document metadata
     filePath: string;
     fileName?: string;
     createdAt: string;
@@ -304,11 +305,15 @@ async function testDocumentsFlutterSystem() {
 
             try {
                 const createData = {
+                    type: documentType,
                     receiverBin: RECEIVER_BIN,
                     receiverName: RECEIVER_NAME,
+                    fields: data,
                     documentPayload: {
                         documentType,
                         data,
+                        generatedAt: new Date().toISOString(),
+                        generatedBy: USER_ID
                     },
                 };
 
@@ -325,6 +330,7 @@ async function testDocumentsFlutterSystem() {
                     type: response.type,
                     fileName: response.fileName,
                     documentGenerated: response.documentGenerated,
+                    hasPayload: !!response.documentPayload,
                     publicUrl: response.publicUrl ? "✅" : "❌",
                 });
 
@@ -334,12 +340,17 @@ async function testDocumentsFlutterSystem() {
             }
         }
 
-        // 2. Test legacy file upload
-        console.log("\n📁 2. Testing legacy file upload");
+        // 2. Test legacy file upload (should not have documentPayload)
+        console.log("\n📁 2. Testing legacy file upload (without documentPayload)");
         try {
             const legacyData = {
+                type: "Other",
                 receiverBin: RECEIVER_BIN,
                 receiverName: RECEIVER_NAME,
+                fields: {
+                    fileName: "manual-document.pdf",
+                    uploadedAt: new Date().toISOString()
+                },
                 legacyFile: {
                     name: "manual-document.pdf",
                     data: samplePdfBase64,
@@ -360,6 +371,7 @@ async function testDocumentsFlutterSystem() {
                 type: legacyResponse.type,
                 fileName: legacyResponse.fileName,
                 documentGenerated: legacyResponse.documentGenerated,
+                hasPayload: !!legacyResponse.documentPayload,
             });
 
             createdDocuments.push(legacyResponse);
@@ -468,6 +480,8 @@ async function testDocumentsFlutterSystem() {
                     id: docResponse.id,
                     type: docResponse.type,
                     hasSignatures: docResponse.status !== "unsigned",
+                    hasPayload: !!docResponse.documentPayload,
+                    payloadType: docResponse.documentPayload?.documentType || "none",
                 });
 
                 // Test with includeCms parameter
@@ -492,6 +506,21 @@ async function testDocumentsFlutterSystem() {
             try {
                 const updateData = {
                     receiverName: "Updated Receiver Name",
+                    documentPayload: {
+                        documentType: "Other",
+                        data: {
+                            fileName: "updated-document.pdf",
+                            fileType: "application/pdf",
+                            fileSize: 1024,
+                            description: "Updated document with metadata",
+                            metadata: {
+                                updatedAt: new Date().toISOString(),
+                                updatedBy: USER_ID
+                            }
+                        },
+                        generatedAt: new Date().toISOString(),
+                        generatedBy: USER_ID
+                    },
                     legacyFile: {
                         name: "updated-document.pdf",
                         data: samplePdfBase64,
@@ -512,6 +541,8 @@ async function testDocumentsFlutterSystem() {
                     newReceiverName: updateResponse.receiverName,
                     originalFileName: testDoc.fileName,
                     newFileName: updateData.legacyFile.name,
+                    hasUpdatedPayload: !!updateResponse.documentPayload,
+                    newPayloadType: updateResponse.documentPayload?.documentType || "none",
                 });
             } catch (error) {
                 console.log("   ❌ Failed to update document:", (error as Error).message);
@@ -651,10 +682,11 @@ async function testDocumentsFlutterSystem() {
         console.log("\n🎉 Documents Flutter testing completed!");
         console.log("\n📋 Test Summary:");
         console.log(`- ✅ Document auto-generation: ${Object.keys(getSampleDocumentData()).length} types tested`);
-        console.log("- ✅ Legacy file upload: Tested");
+        console.log("- ✅ Document payload metadata: Tested for all document types");
+        console.log("- ✅ Legacy file upload: Tested (without payload)");
         console.log("- ✅ Validation errors: Tested");
         console.log("- ✅ Document retrieval: Multiple methods tested");
-        console.log("- ✅ Document update: Tested");
+        console.log("- ✅ Document update: Tested (including payload update)");
         console.log("- ✅ Read/Pin operations: Tested");
         console.log("- ✅ Signing endpoints: Tested (mock data)");
         console.log("- ✅ Document deletion: Tested");
@@ -691,11 +723,15 @@ async function testSpecificDocumentType(documentType: keyof ReturnType<typeof ge
         const sampleDocumentData = getSampleDocumentData();
         const data = sampleDocumentData[documentType];
         const createData = {
+            type: documentType,
             receiverBin: RECEIVER_BIN,
             receiverName: RECEIVER_NAME,
+            fields: data,
             documentPayload: {
                 documentType,
                 data,
+                generatedAt: new Date().toISOString(),
+                generatedBy: USER_ID
             },
         };
 
@@ -711,6 +747,8 @@ async function testSpecificDocumentType(documentType: keyof ReturnType<typeof ge
             id: response.id,
             type: response.type,
             fileName: response.fileName,
+            hasPayload: !!response.documentPayload,
+            payloadType: response.documentPayload?.documentType || "none",
             publicUrl: response.publicUrl,
             storagePath: response.storagePath,
         });

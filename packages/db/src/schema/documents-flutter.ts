@@ -33,6 +33,7 @@ export const documentsFlutter = pgTable(
 		receiverBin: varchar("receiver_bin", { length: 20 }).notNull(),
 		receiverName: varchar("receiver_name", { length: 255 }).notNull(),
 		fields: jsonb("fields").notNull(),
+		documentPayload: jsonb("document_payload"), // Stores typed document metadata
 		filePath: text("file_path").notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -194,3 +195,192 @@ export const documentSignaturesFlutterRelations = relations(
 		}),
 	}),
 );
+
+// Document Payload Schema Types
+// Base document payload schema
+const baseDocumentPayloadSchema = z.object({
+	generatedAt: z.string().datetime().optional(),
+	generatedBy: z.string().uuid().optional(),
+});
+
+// Item schemas reused across document types
+const documentItemSchema = z.object({
+	name: z.string(),
+	quantity: z.number(),
+	unit: z.string(),
+	price: z.number(),
+	description: z.string().optional(),
+});
+
+const bankSchema = z.object({
+	name: z.string().optional(),
+	account: z.string().optional(),
+	bik: z.string().optional(),
+});
+
+// Discriminated union for all document types
+export const documentPayloadSchema = z.discriminatedUnion("documentType", [
+	z.object({ 
+		documentType: z.literal("АВР"),
+		...baseDocumentPayloadSchema.shape,
+		data: z.object({
+			orgName: z.string(),
+			orgAddress: z.string(),
+			orgBin: z.string(),
+			buyerName: z.string(),
+			buyerBin: z.string(),
+			buyerAddress: z.string().optional(),
+			contractNumber: z.string(),
+			contractDate: z.string().optional(),
+			orgPersonName: z.string().optional().nullable(),
+			orgPersonRole: z.string(),
+			buyerPersonName: z.string().optional().nullable(),
+			buyerPersonRole: z.string(),
+			phone: z.string().optional(),
+			selectedBank: bankSchema.optional(),
+			items: z.array(documentItemSchema),
+			actNumber: z.string(),
+			actDate: z.string(),
+			sellerImage: z.string().optional(),
+			kbe: z.string().optional(),
+			executorName: z.string().optional().nullable(),
+			executorPosition: z.string().optional(),
+			customerName: z.string().optional().nullable(),
+			customerPosition: z.string().optional(),
+		}),
+	}),
+	z.object({ 
+		documentType: z.literal("Накладная"),
+		...baseDocumentPayloadSchema.shape,
+		data: z.object({
+			orgName: z.string(),
+			orgAddress: z.string().optional(),
+			orgBin: z.string(),
+			buyerName: z.string(),
+			buyerBin: z.string(),
+			orgPersonName: z.string().optional().nullable(),
+			orgPersonRole: z.string().optional(),
+			buyerPersonName: z.string().optional().nullable(),
+			buyerPersonRole: z.string().optional(),
+			phone: z.string().optional(),
+			selectedBank: bankSchema.optional(),
+			items: z.array(z.object({
+				...documentItemSchema.shape,
+				nomenclatureCode: z.string().optional(),
+			})),
+			waybillNumber: z.string(),
+			waybillDate: z.string(),
+			contractNumber: z.string().optional(),
+			contractDate: z.string().optional(),
+			senderEmployeeId: z.string().uuid().optional().nullable(),
+			receiverEmployeeId: z.string().uuid().optional().nullable(),
+			releaserEmployeeId: z.string().uuid().optional().nullable(),
+			transportOrgName: z.string().optional(),
+			transportResponsiblePerson: z.string().optional(),
+		}),
+	}),
+	z.object({ 
+		documentType: z.literal("Счет на оплату"),
+		...baseDocumentPayloadSchema.shape,
+		data: z.object({
+			orgName: z.string(),
+			orgAddress: z.string().optional(),
+			orgBin: z.string(),
+			orgIik: z.string().optional(),
+			orgBik: z.string().optional(),
+			buyerName: z.string(),
+			buyerBin: z.string(),
+			codeKnp: z.string().optional(),
+			contract: z.string(),
+			orgPersonName: z.string().optional().nullable(),
+			phone: z.string().optional(),
+			selectedBank: bankSchema.optional(),
+			items: z.array(documentItemSchema),
+			invoiceNumber: z.string(),
+			invoiceDate: z.string(),
+			contractDate: z.string().optional(),
+			executorEmployeeId: z.string().uuid().optional().nullable(),
+		}),
+	}),
+	z.object({ 
+		documentType: z.literal("Инвойс"),
+		...baseDocumentPayloadSchema.shape,
+		data: z.object({
+			orgName: z.string(),
+			orgAddress: z.string().optional(),
+			orgBin: z.string(),
+			orgIik: z.string().optional(),
+			orgBik: z.string().optional(),
+			buyerName: z.string(),
+			buyerBin: z.string(),
+			codeKnp: z.string().optional(),
+			contract: z.string(),
+			orgPersonName: z.string().optional().nullable(),
+			phone: z.string().optional(),
+			selectedBank: bankSchema.optional(),
+			items: z.array(documentItemSchema),
+			invoiceNumber: z.string(),
+			invoiceDate: z.string(),
+			contractDate: z.string().optional(),
+			executorEmployeeId: z.string().uuid().optional().nullable(),
+		}),
+	}),
+	z.object({ 
+		documentType: z.literal("Доверенность"),
+		...baseDocumentPayloadSchema.shape,
+		data: z.object({
+			orgName: z.string(),
+			orgAddress: z.string().optional(),
+			orgBin: z.string(),
+			buyerName: z.string(),
+			buyerBin: z.string(),
+			schetNaOplatu: z.string(),
+			orgPersonName: z.string().optional().nullable(),
+			orgPersonRole: z.string().optional(),
+			bookkeeperName: z.string().optional().nullable(),
+			phone: z.string().optional(),
+			selectedBank: bankSchema.optional(),
+			employeeName: z.string(),
+			employeeRole: z.string(),
+			employeeIin: z.string().optional().nullable(),
+			employeeDocNumber: z.string(),
+			employeeDocNumberDate: z.string(),
+			employeeWhoGives: z.string(),
+			dateUntil: z.string(),
+			items: z.array(documentItemSchema),
+			idx: z.string(),
+			issueDate: z.string(),
+		}),
+	}),
+	z.object({ 
+		documentType: z.literal("КП"), // Commercial Proposal
+		...baseDocumentPayloadSchema.shape,
+		data: z.object({
+			orgName: z.string(),
+			orgBin: z.string(),
+			buyerName: z.string(),
+			buyerBin: z.string(),
+			proposalNumber: z.string(),
+			proposalDate: z.string(),
+			validUntil: z.string().optional(),
+			items: z.array(documentItemSchema),
+			terms: z.string().optional(),
+			notes: z.string().optional(),
+		}),
+	}),
+	z.object({ 
+		documentType: z.literal("Other"), // For uploaded files without specific schema
+		...baseDocumentPayloadSchema.shape,
+		data: z.object({
+			fileName: z.string(),
+			fileType: z.string(),
+			fileSize: z.number().optional(),
+			description: z.string().optional(),
+			metadata: z.record(z.any()).optional(),
+		}),
+	}),
+]);
+
+// Export types
+export type DocumentPayload = z.infer<typeof documentPayloadSchema>;
+export type DocumentPayloadType = DocumentPayload["documentType"];

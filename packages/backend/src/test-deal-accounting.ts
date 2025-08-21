@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { DealAccountingService } from "./lib/accounting-service/deal-accounting-service";
 import { AccountingService } from "./lib/accounting-service/accounting-service.index";
-import { createDbClient, accounts, currencies, eq, and } from "@accounting-kz/db";
+import { createDbClient, accounts, currencies, eq, and, documentsFlutter } from "@accounting-kz/db";
 
 const LEGAL_ENTITY_ID = "2cc7dc33-f82a-4248-b969-f1d7902250ce";
 const USER_ID = "1bfd1699-c849-43bb-8e23-f528f3bd4a0c";
@@ -97,8 +97,45 @@ async function testDealAccountingSystem() {
 			accountsPayableId: accountsPayableAccount.id,
 		};
 
-		// 1. Создание сделки на услуги
-		console.log("\n📋 1. Создание сделки на услуги");
+		// 0. Create mock documents for the deal (simulating pre-uploaded documents)
+		console.log("\n📄 0. Creating mock documents for testing");
+		const mockServiceDocument = await db.insert(documentsFlutter).values({
+			legalEntityId: testData.legalEntityId,
+			type: "АВР",
+			receiverBin: "123456789012",
+			receiverName: "ТОО 'Тест'",
+			fields: {},
+			filePath: "/test/documents/act-001.pdf",
+			documentPayload: {
+				documentType: "АВР",
+				data: {
+					orgName: "ТОО 'НашаКомпания'",
+					orgAddress: "г. Алматы, ул. Абая 150",
+					orgBin: "123456789012",
+					buyerName: "ТОО 'Тест'",
+					buyerBin: "123456789012",
+					contractNumber: "001",
+					orgPersonRole: "Директор",
+					buyerPersonRole: "Генеральный директор",
+					items: [
+						{
+							name: "Консультационные услуги",
+							quantity: 1,
+							unit: "шт",
+							price: 500000
+						}
+					],
+					actNumber: "001",
+					actDate: new Date().toISOString().split('T')[0]
+				},
+				generatedAt: new Date().toISOString(),
+				generatedBy: testData.userId
+			}
+		}).returning();
+		console.log("✅ Mock service document created:", mockServiceDocument[0].id);
+
+		// 1. Создание сделки на услуги с документами
+		console.log("\n📋 1. Создание сделки на услуги с документами");
 		console.log(`   Проводка: Дт ${ACCOUNTS_RECEIVABLE_CODE} (${accountsReceivable.name}) - Кт ${REVENUE_ACCOUNT_CODE} (${revenueAccount.name})`);
 		const serviceDeal = await dealAccountingService.createDealWithAccounting({
 			receiverBin: "123456789012",
@@ -109,6 +146,35 @@ async function testDealAccountingSystem() {
 			legalEntityId: testData.legalEntityId,
 			currencyId: testData.currencyId,
 			createdBy: testData.userId,
+			// Using the new documentsWithPayload format
+			documentsWithPayload: [
+				{
+					documentFlutterId: mockServiceDocument[0].id,
+					documentPayload: {
+						documentType: "АВР",
+						data: {
+							orgName: "ТОО 'НашаКомпания'",
+							orgAddress: "г. Алматы, ул. Абая 150",
+							orgBin: "123456789012",
+							buyerName: "ТОО 'Тест'",
+							buyerBin: "123456789012",
+							contractNumber: "001",
+							orgPersonRole: "Директор",
+							buyerPersonRole: "Генеральный директор",
+							items: [
+								{
+									name: "Консультационные услуги",
+									quantity: 1,
+									unit: "шт",
+									price: 500000
+								}
+							],
+							actNumber: "001",
+							actDate: new Date().toISOString().split('T')[0]
+						}
+					}
+				}
+			]
 		});
 
 		console.log("✅ Сделка создана:", {
@@ -116,11 +182,8 @@ async function testDealAccountingSystem() {
 			type: serviceDeal.deal.dealType,
 			amount: serviceDeal.deal.totalAmount,
 			journalEntryId: serviceDeal.journalEntry.id,
-			document: serviceDeal.document ? {
-				success: serviceDeal.document.success,
-				documentType: serviceDeal.document.success ? serviceDeal.document.documentType : undefined,
-				fileName: serviceDeal.document.success ? serviceDeal.document.fileName : undefined,
-			} : null,
+			linkedDocuments: serviceDeal.documents ? serviceDeal.documents.length : 0,
+			documentsWithPayload: serviceDeal.documents ? serviceDeal.documents.filter(d => d.hasPayload).length : 0,
 		});
 
 		// 2. Частичная оплата
@@ -200,6 +263,40 @@ async function testDealAccountingSystem() {
 
 		// 6. Создание сделки на товары
 		console.log("\n📦 6. Создание сделки на товары");
+		
+		// Create mock product document
+		const mockProductDocument = await db.insert(documentsFlutter).values({
+			legalEntityId: testData.legalEntityId,
+			type: "Накладная",
+			receiverBin: "987654321098",
+			receiverName: "ТОО 'Покупатель'",
+			fields: {},
+			filePath: "/test/documents/waybill-001.pdf",
+			documentPayload: {
+				documentType: "Накладная",
+				data: {
+					orgName: "ТОО 'НашаКомпания'",
+					orgBin: "123456789012",
+					buyerName: "ТОО 'Покупатель'",
+					buyerBin: "987654321098",
+					items: [
+						{
+							name: "Канцелярские товары",
+							quantity: 10,
+							unit: "шт",
+							price: 15000,
+							nomenclatureCode: "12345"
+						}
+					],
+					waybillNumber: "WB-001",
+					waybillDate: new Date().toISOString().split('T')[0]
+				},
+				generatedAt: new Date().toISOString(),
+				generatedBy: testData.userId
+			}
+		}).returning();
+		console.log("✅ Mock product document created:", mockProductDocument[0].id);
+
 		const productDeal = await dealAccountingService.createDealWithAccounting({
 			receiverBin: "987654321098",
 			title: "Поставка канцелярских товаров",
@@ -211,28 +308,27 @@ async function testDealAccountingSystem() {
 			createdBy: testData.userId,
 			accountsReceivableId: testData.accountsReceivableId,
 			revenueAccountId: testData.revenueAccountId,
+			// Using legacy format for variety (both formats should work)
+			documentFlutterIds: [mockProductDocument[0].id]
 		});
 
 		console.log("✅ Сделка на товары создана:", {
 			dealId: productDeal.deal.id,
 			type: productDeal.deal.dealType,
 			amount: productDeal.deal.totalAmount,
-			document: productDeal.document ? {
-				success: productDeal.document.success,
-				documentType: productDeal.document.success ? productDeal.document.documentType : undefined,
-				fileName: productDeal.document.success ? productDeal.document.fileName : undefined,
-			} : null,
+			linkedDocuments: productDeal.documents ? productDeal.documents.length : 0,
+			documentsWithPayload: productDeal.documents ? productDeal.documents.filter(d => d.hasPayload).length : 0,
 		});
 
-		// 7. Проверка генерации документов
-		console.log("\n📄 7. Проверка сгенерированных документов");
-		console.log("   - Документ для сделки на услуги (АВР):", {
-			success: serviceDeal.document?.success,
-			fileName: serviceDeal.document?.success ? serviceDeal.document.fileName : serviceDeal.document?.error?.message,
+		// 7. Проверка связанных документов
+		console.log("\n📄 7. Проверка связанных документов");
+		console.log("   - Документы для сделки на услуги:", {
+			count: serviceDeal.documents?.length || 0,
+			withPayload: serviceDeal.documents?.filter(d => d.hasPayload).length || 0,
 		});
-		console.log("   - Документ для сделки на товары (Накладная):", {
-			success: productDeal.document?.success,
-			fileName: productDeal.document?.success ? productDeal.document.fileName : productDeal.document?.error?.message,
+		console.log("   - Документы для сделки на товары:", {
+			count: productDeal.documents?.length || 0,
+			withPayload: productDeal.documents?.filter(d => d.hasPayload).length || 0,
 		});
 
 		// 8. Тестирование переплаты (демонстрация выявления дисбаланса)
@@ -287,8 +383,8 @@ async function testDealAccountingSystem() {
 		console.log("- ✅ Отслеживание балансов и статусов");
 		console.log("- ✅ Генерация актов сверки");
 		console.log("- ✅ Выявление дисбалансов");
-		console.log("- ✅ Типизация документов по типу сделки");
-		console.log("- ✅ Автоматическая генерация документов при создании сделок");
+		console.log("- ✅ Привязка документов к сделкам");
+		console.log("- ✅ Поддержка документов с типизированными метаданными (documentPayload)");
 		console.log("- ✅ Интеграция документооборота с бухгалтерским учетом");
 		console.log("- ✅ Полный цикл продажи товаров с себестоимостью");
 		console.log("- ✅ Сценарий АВР с проводками продавца и покупателя");
@@ -321,10 +417,41 @@ async function testProductSaleWithCostOfGoods(
 ) {
 	try {
 		const { accountsReceivable, revenueAccount, cashAccount, inventoryAccount, costOfGoodsSoldAccount } = accounts;
+		const db = dealAccountingService['db']; // Access db from service
 
 		// 1. Создание сделки на товары
 		console.log("   📋 1. Создание накладной (продавец)");
 		console.log(`   Проводка: Дт ${accountsReceivable.code} (${accountsReceivable.name}) - Кт ${revenueAccount.code} (${revenueAccount.name})`);
+
+		// Create mock waybill document
+		const mockWaybillDocument = await db.insert(documentsFlutter).values({
+			legalEntityId: testData.legalEntityId,
+			type: "Накладная",
+			receiverBin: "123456789012",
+			receiverName: "ТОО 'Покупатель Товаров'",
+			fields: {},
+			filePath: "/test/documents/waybill-sale-001.pdf",
+			documentPayload: {
+				documentType: "Накладная",
+				data: {
+					orgName: "ТОО 'НашаКомпания'",
+					orgBin: "123456789012",
+					buyerName: "ТОО 'Покупатель Товаров'",
+					buyerBin: "123456789012",
+					items: [
+						{
+							name: "Канцелярские товары",
+							quantity: 50,
+							unit: "шт",
+							price: 5000,
+							nomenclatureCode: "12345"
+						}
+					],
+					waybillNumber: "WB-SALE-001",
+					waybillDate: new Date().toISOString().split('T')[0]
+				}
+			}
+		}).returning();
 
 		const productDeal = await dealAccountingService.createDealWithAccounting({
 			receiverBin: "123456789012",
@@ -337,6 +464,12 @@ async function testProductSaleWithCostOfGoods(
 			createdBy: testData.userId,
 			accountsReceivableId: accountsReceivable.id,
 			revenueAccountId: revenueAccount.id,
+			documentsWithPayload: [
+				{
+					documentFlutterId: mockWaybillDocument[0].id,
+					// No need to pass payload again since it's already in the document
+				}
+			]
 		});
 
 		console.log("   ✅ Накладная создана:", {
