@@ -56,7 +56,10 @@ const fileUploadSchema = z.object({
 // Schema for document with file upload
 const documentWithFileSchema = z.object({
 	file: fileUploadSchema,
-	documentPayload: documentPayloadSchema, // Now required since it contains documentType
+	documentType: z.enum(["АВР", "Накладная", "Счет на оплату", "Инвойс", "Доверенность", "КП", "Other"]),
+	generatedAt: z.string().datetime().optional(),
+	generatedBy: z.string().uuid().optional(),
+	data: z.record(z.any()), // Flexible data object based on documentType
 });
 
 // Schema for document upload with payload
@@ -147,13 +150,32 @@ dealRouter.post(
 											data: "JVBERi0xLjQKJeLjz9...", // Base64 encoded PDF
 											contentType: "application/pdf"
 										},
-										documentPayload: {
-											documentType: "Other",
-											data: {
-												fileName: "contract.pdf",
-												fileType: "application/pdf",
-												description: "Service contract"
-											}
+										documentType: "АВР",
+										generatedAt: "2024-01-15T10:30:00Z",
+										generatedBy: "550e8400-e29b-41d4-a716-446655440000",
+										data: {
+											orgName: "Company Name",
+											orgAddress: "г. Алматы, ул. Абая 150",
+											orgBin: "123456789012",
+											buyerName: "Buyer Company",
+											buyerBin: "210987654321",
+											buyerAddress: "г. Алматы, ул. Байтурсынова 123",
+											contractNumber: "001",
+											contractDate: "2024-01-10",
+											orgPersonName: "Иванов И.И.",
+											orgPersonRole: "Director",
+											buyerPersonName: "Петров П.П.",
+											buyerPersonRole: "Manager",
+											items: [
+												{
+													name: "Service",
+													quantity: 1,
+													unit: "pc",
+													price: 500000
+												}
+											],
+											actNumber: "001",
+											actDate: "2024-01-15"
 										}
 									}
 								]
@@ -243,7 +265,7 @@ dealRouter.post(
 							.insert(documentsFlutter)
 							.values({
 								legalEntityId,
-								type: fileUpload.documentPayload.documentType,
+								type: fileUpload.documentType,
 								receiverBin: dealData.receiverBin,
 								receiverName: dealData.title, // Use deal title as receiver name
 								fields: {
@@ -251,7 +273,12 @@ dealRouter.post(
 									uploadedAt: new Date().toISOString(),
 									dealCreated: true,
 								},
-								documentPayload: fileUpload.documentPayload,
+								documentPayload: {
+									documentType: fileUpload.documentType,
+									generatedAt: fileUpload.generatedAt || new Date().toISOString(),
+									generatedBy: fileUpload.generatedBy || userId,
+									data: fileUpload.data
+								},
 								filePath: publicUrl,
 							})
 							.returning();

@@ -835,16 +835,16 @@ async function testDealWithFileUploads(
 						data: samplePdfBase64,
 						contentType: "application/pdf"
 					},
-					documentPayload: {
-						documentType: "Other",
-						data: {
-							fileName: "service-contract.pdf",
-							fileType: "application/pdf",
-							description: "Договор на оказание услуг",
-							metadata: {
-								contractNumber: "SC-001",
-								contractDate: new Date().toISOString()
-							}
+					documentType: "Other",
+					generatedAt: new Date().toISOString(),
+					generatedBy: testData.userId,
+					data: {
+						fileName: "service-contract.pdf",
+						fileType: "application/pdf",
+						description: "Договор на оказание услуг",
+						metadata: {
+							contractNumber: "SC-001",
+							contractDate: new Date().toISOString()
 						}
 					}
 				},
@@ -854,13 +854,13 @@ async function testDealWithFileUploads(
 						data: samplePdfBase64,
 						contentType: "application/pdf"
 					},
-					documentPayload: {
-						documentType: "Other",
-						data: {
-							fileName: "attachment-1.pdf",
-							fileType: "application/pdf",
-							description: "Приложение к договору"
-						}
+					documentType: "Other",
+					generatedAt: new Date().toISOString(),
+					generatedBy: testData.userId,
+					data: {
+						fileName: "attachment-1.pdf",
+						fileType: "application/pdf",
+						description: "Приложение к договору"
 					}
 				}
 			]
