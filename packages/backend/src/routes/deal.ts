@@ -35,6 +35,23 @@ import { DealAccountingService } from "../lib/accounting-service/deal-accounting
 // } from "@accounting-kz/document-templates";
 
 const dealRouter = new Hono<HonoEnv>();
+
+// Helper function to merge documentPayload.data into fields
+function mergeDocumentFields(doc: any): any {
+	const fields = doc.fields || {};
+	const payloadData = doc.documentPayload?.data || {};
+	
+	// Merge payload data into fields, with payload data taking precedence
+	const mergedFields = {
+		...fields,
+		...payloadData
+	};
+	
+	return {
+		...doc,
+		fields: mergedFields
+	};
+}
 // COMMENTED OUT - Backend document generation removed
 // const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
 
@@ -235,9 +252,28 @@ dealRouter.post(
 			if (fileUploads && fileUploads.length > 0) {
 				for (const fileUpload of fileUploads) {
 					try {
-						// Generate file path
-						const fileName = fileUpload.file.name;
-						const newFilePath = `${legalEntityId}/${Date.now()}-${fileName}`;
+						// Sanitize filename for storage
+						const originalFileName = fileUpload.file.name;
+						const fileExtension = originalFileName.split('.').pop() || 'pdf';
+						
+						// Map document types to safe filenames
+						const docTypeMap: Record<string, string> = {
+							'АВР': 'avr',
+							'Накладная': 'waybill',
+							'Счет на оплату': 'invoice',
+							'Инвойс': 'invoice-intl',
+							'Доверенность': 'power-of-attorney',
+							'КП': 'commercial-proposal',
+							'Other': 'other-document'
+						};
+						
+						const baseNameFromType = docTypeMap[fileUpload.documentType] || 'document';
+						
+						// Generate unique file path with timestamp
+						const timestamp = Date.now();
+						const uniqueId = Math.random().toString(36).substring(2, 8);
+						const fileName = `${baseNameFromType}-${timestamp}-${uniqueId}.${fileExtension}`;
+						const newFilePath = `${legalEntityId}/${fileName}`;
 						
 						// Convert base64 to buffer
 						const fileBuffer = Buffer.from(fileUpload.file.data, "base64");
@@ -251,7 +287,7 @@ dealRouter.post(
 							
 						if (uploadError) {
 							console.error("File upload error:", uploadError);
-							throw new Error(`Failed to upload file ${fileName}`);
+							throw new Error(`Failed to upload file "${originalFileName}" (sanitized: ${fileName})`);
 						}
 						
 						// Get public URL
@@ -269,7 +305,8 @@ dealRouter.post(
 								receiverBin: dealData.receiverBin,
 								receiverName: dealData.title, // Use deal title as receiver name
 								fields: {
-									fileName,
+									fileName: originalFileName, // Store original filename
+									storedFileName: fileName, // Store sanitized filename
 									uploadedAt: new Date().toISOString(),
 									dealCreated: true,
 								},
@@ -277,7 +314,10 @@ dealRouter.post(
 									documentType: fileUpload.documentType,
 									generatedAt: fileUpload.generatedAt || new Date().toISOString(),
 									generatedBy: fileUpload.generatedBy || userId,
-									data: fileUpload.data
+									data: {
+										...fileUpload.data,
+										originalFileName: originalFileName // Ensure original name is preserved
+									}
 								},
 								filePath: publicUrl,
 							})
@@ -932,7 +972,7 @@ dealRouter.get(
 			const dealsWithDocuments = dealsList.map((deal) => ({
 				...deal,
 				documentsFlutter: deal.dealDocumentsFlutter.map(
-					(dealDocument) => dealDocument.documentFlutter,
+					(dealDocument) => mergeDocumentFields(dealDocument.documentFlutter),
 				),
 			}));
 
@@ -1004,7 +1044,7 @@ dealRouter.get(
 			const dealsWithDocuments = dealsList.map((deal) => ({
 				...deal,
 				documentsFlutter: deal.dealDocumentsFlutter.map(
-					(dealDocument) => dealDocument.documentFlutter,
+					(dealDocument) => mergeDocumentFields(dealDocument.documentFlutter),
 				),
 			}));
 			return c.json(dealsWithDocuments);
@@ -1066,7 +1106,7 @@ dealRouter.get(
 			const dealWithDocuments = {
 				...deal,
 				documentsFlutter: deal?.dealDocumentsFlutter.map(
-					(dealDocument) => dealDocument.documentFlutter,
+					(dealDocument) => mergeDocumentFields(dealDocument.documentFlutter),
 				),
 			};
 

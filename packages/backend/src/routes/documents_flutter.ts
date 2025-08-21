@@ -33,6 +33,23 @@ export const documentsFlutterRouter = new Hono<HonoEnv>();
 
 const NCALAYER_URL = "https://signer.infobuh.com";
 
+// Helper function to merge documentPayload.data into fields
+function mergeDocumentFields(doc: any): any {
+	const fields = doc.fields || {};
+	const payloadData = doc.documentPayload?.data || {};
+	
+	// Merge payload data into fields, with payload data taking precedence
+	const mergedFields = {
+		...fields,
+		...payloadData
+	};
+	
+	return {
+		...doc,
+		fields: mergedFields
+	};
+}
+
 // Utility function to extract storage path from public URL or return as-is if it's already a path
 function extractStoragePath(filePathOrUrl: string): string {
 	if (!filePathOrUrl) return filePathOrUrl;
@@ -269,8 +286,9 @@ documentsFlutterRouter.get(
 			if (doc.signatures.length >= 2) {
 				status = "signedBoth";
 			}
+			const mergedDoc = mergeDocumentFields(doc);
 			return {
-				...doc,
+				...mergedDoc,
 				status,
 			};
 		});
@@ -364,8 +382,9 @@ documentsFlutterRouter.get(
 				if (doc.signatures.length >= 2) {
 					status = "signedBoth";
 				}
+				const mergedDoc = mergeDocumentFields(doc);
 				return {
-					...doc,
+					...mergedDoc,
 					status,
 					isRead: doc.readStatuses.length > 0,
 					isPinned: doc.pins.length > 0,
@@ -478,8 +497,9 @@ documentsFlutterRouter.get(
 		if (doc.signatures.length >= 2) {
 			status = "signedBoth";
 		}
+		const mergedDoc = mergeDocumentFields(doc);
 		return c.json({
-			...doc,
+			...mergedDoc,
 			status,
 			isRead: doc.readStatuses.length > 0,
 			isPinned: doc.pins.length > 0,
@@ -745,8 +765,9 @@ documentsFlutterRouter.post(
 				);
 
 				// Return response with file info
+				const mergedDoc = mergeDocumentFields(newDoc);
 				const response = {
-					...newDoc,
+					...mergedDoc,
 					fileName, // Include fileName even though not stored in DB
 					documentGenerated: false, // Always false for legacy uploads
 					publicUrl,
@@ -928,7 +949,8 @@ documentsFlutterRouter.put(
 				}
 			}
 
-			return c.json(updatedDocResult[0]);
+			const mergedDoc = mergeDocumentFields(updatedDocResult[0]);
+			return c.json(mergedDoc);
 		} catch (dbError) {
 			console.error("Database update error:", dbError);
 			// If DB update fails after a new file was uploaded, try to delete the new file
