@@ -127,6 +127,13 @@ router.post(
 
 			const data = await c.req.json();
 			const validatedData = legalEntityInsertSchema.parse(data);
+			const firstData = await c.env.db.query.legalEntities.findFirst({
+				where: eq(legalEntities.bin, validatedData.bin),
+			});
+			if (firstData != null) {
+				throw 'Company already created';
+			}
+
 
 			const [newLegalEntity] = await c.env.db
 				.insert(legalEntities)
