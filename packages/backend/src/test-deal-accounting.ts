@@ -830,7 +830,6 @@ async function testDealWithFileUploads(
 			createdBy: testData.userId,
 			fileUploads: [
 				{
-					type: "Договор",
 					file: {
 						name: "service-contract.pdf",
 						data: samplePdfBase64,
@@ -850,11 +849,18 @@ async function testDealWithFileUploads(
 					}
 				},
 				{
-					type: "Приложение",
 					file: {
 						name: "attachment-1.pdf",
 						data: samplePdfBase64,
 						contentType: "application/pdf"
+					},
+					documentPayload: {
+						documentType: "Other",
+						data: {
+							fileName: "attachment-1.pdf",
+							fileType: "application/pdf",
+							description: "Приложение к договору"
+						}
 					}
 				}
 			]

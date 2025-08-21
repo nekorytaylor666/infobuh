@@ -55,9 +55,8 @@ const fileUploadSchema = z.object({
 
 // Schema for document with file upload
 const documentWithFileSchema = z.object({
-	type: z.string().min(1, "Document type is required"),
 	file: fileUploadSchema,
-	documentPayload: documentPayloadSchema.optional(),
+	documentPayload: documentPayloadSchema, // Now required since it contains documentType
 });
 
 // Schema for document upload with payload
@@ -143,7 +142,6 @@ dealRouter.post(
 								],
 								fileUploads: [
 									{
-										type: "Договор",
 										file: {
 											name: "contract.pdf",
 											data: "JVBERi0xLjQKJeLjz9...", // Base64 encoded PDF
@@ -245,7 +243,7 @@ dealRouter.post(
 							.insert(documentsFlutter)
 							.values({
 								legalEntityId,
-								type: fileUpload.type,
+								type: fileUpload.documentPayload.documentType,
 								receiverBin: dealData.receiverBin,
 								receiverName: dealData.title, // Use deal title as receiver name
 								fields: {
