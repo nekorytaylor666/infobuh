@@ -160,6 +160,13 @@ router.post(
 
 			// Validate request body
 			const validatedData = OnboardingDataSchema.parse(data);
+			const firstData = await c.env.db.query.legalEntities.findFirst({
+				where: eq(legalEntities.bin, validatedData.legalEntity.bin),
+			});
+			if (firstData != null) {
+				return c.json({ error: "Company already created" }, 409);
+			}
+
 
 			await c.env.db.transaction(async (tx) => {
 				// Update profile with name and image
@@ -207,7 +214,7 @@ router.post(
 					await tx.insert(employees).values(
 						validatedData.employees.map((employee) => ({
 							legalEntityId: legalEntity.id,
-							fullName: employee.fullName,	
+							fullName: employee.fullName,
 							residency: employee.residency,
 							salary: employee.salary,
 							socialStatus: employee.socialStatus,
