@@ -12,6 +12,7 @@ import {
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 import { validator } from "hono-openapi/zod";
+import { AccountingSeedService } from "../lib/accounting-service/seed-service";
 
 const router = new Hono<HonoEnv>();
 
@@ -168,7 +169,7 @@ router.post(
 			}
 
 
-			await c.env.db.transaction(async (tx) => {
+			const newLegalEntity = await c.env.db.transaction(async (tx) => {
 				// Update profile with name and image
 				await tx
 					.update(profile)
@@ -239,6 +240,8 @@ router.post(
 						completedAt: new Date(),
 					})
 					.where(eq(onboardingStatus.userId, userId));
+
+				return legalEntity;
 			});
 
 			// Get updated profile with relations
@@ -248,6 +251,19 @@ router.post(
 					legalEntities: true,
 				},
 			});
+
+			// Automatically seed accounting accounts for the new legal entity
+			try {
+				console.log(`🌱 Seeding accounting accounts for new legal entity: ${newLegalEntity.id}`);
+				const seedService = new AccountingSeedService(c.env.db);
+				await seedService.seedDatabase(newLegalEntity.id, userId);
+				console.log(`✅ Successfully seeded accounts for legal entity: ${newLegalEntity.id}`);
+			} catch (seedError) {
+				console.error(`❌ Error seeding accounts for legal entity ${newLegalEntity.id}:`, seedError);
+				// Note: We don't fail the legal entity creation if seeding fails
+				// This allows the user to continue and seed manually later if needed
+			}
+
 
 			return c.json({
 				profile: updatedProfile,
