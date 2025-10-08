@@ -10,13 +10,7 @@ import {
 	AccordionTrigger,
 	AccordionContent,
 } from "@/components/ui/accordion-motion";
-import {
-	ArrowRight,
-	CheckCircle,
-	ChevronUp,
-	Zap,
-	ChevronRight,
-} from "lucide-react";
+import { ArrowRight, ChevronUp, Zap, ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { motion, useScroll, AnimatePresence, useInView } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -28,6 +22,7 @@ import mockup4 from "@/assets/infobuhmockup4.png";
 import mockup5 from "@/assets/infobuhmockup5.png";
 import mockup6 from "@/assets/infobuhmockup6.png";
 import mockup7 from "@/assets/infobuhmockup7.png";
+import logo from "@/assets/logo.svg";
 
 export const Route = createFileRoute("/")({
 	component: HomeComponent,
@@ -49,97 +44,68 @@ function BarShine({ className }: { className?: string }) {
 }
 
 // Stats Section Component with Animated Numbers
-function StatsSection() {
+function Stats1() {
 	const [values, setValues] = React.useState([0, 0, 0, 0]);
-	const sectionRef = React.useRef(null);
-	const isInView = useInView(sectionRef, { once: true });
+	const ref = React.useRef(null);
+	const isInView = useInView(ref, { margin: "-100px" });
 
-	React.useEffect(() => {
-		if (isInView) {
-			// Delay slightly to ensure component is mounted
-			setTimeout(() => {
-				setValues([80, 10, 300, 90]);
-			}, 100);
-		}
-	}, [isInView]);
+	if (isInView && values[0] === 0) {
+		setValues([80, 10, 300, 90]);
+	}
 
 	return (
-		<section
-			ref={sectionRef}
-			className="relative mx-auto max-w-7xl px-8 py-24 md:px-12 lg:px-24"
+		<div
+			ref={ref}
+			className="relative mx-auto max-w-7xl px-8 py-12 md:px-12 lg:px-24"
 		>
 			<dl className="grid grid-cols-1 gap-x-6 gap-y-12 text-center sm:grid-cols-2 md:grid-cols-4">
-				<motion.div
-					className="flex flex-col"
-					initial={{ opacity: 0, y: 20 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.5, delay: 0.1 }}
-				>
+				<div className="flex flex-col">
 					<dt className="mt-1 text-base text-gray-600">
 						секунд на создание сделки
 					</dt>
 					<dd className="order-first text-4xl font-normal text-gray-900">
 						<AnimatedNumber
 							value={values[0]}
-							springOptions={{ bounce: 0.2, duration: 2 }}
+							springOptions={{ bounce: 0, duration: 2000 }}
 						/>
 					</dd>
-				</motion.div>
-				<motion.div
-					className="flex flex-col"
-					initial={{ opacity: 0, y: 20 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.5, delay: 0.2 }}
-				>
+				</div>
+				<div className="flex flex-col">
 					<dt className="mt-1 text-base text-gray-600">
 						раз меньше ручного труда
 					</dt>
 					<dd className="order-first text-4xl font-normal text-gray-900">
 						<AnimatedNumber
 							value={values[1]}
-							springOptions={{ bounce: 0.2, duration: 2 }}
+							springOptions={{ bounce: 0, duration: 2000 }}
 						/>
 						×
 					</dd>
-				</motion.div>
-				<motion.div
-					className="flex flex-col"
-					initial={{ opacity: 0, y: 20 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.5, delay: 0.3 }}
-				>
+				</div>
+				<div className="flex flex-col">
 					<dt className="mt-1 text-base text-gray-600">компаний уже с нами</dt>
 					<dd className="order-first text-4xl font-normal text-gray-900">
 						<AnimatedNumber
 							value={values[2]}
-							springOptions={{ bounce: 0.2, duration: 2 }}
+							springOptions={{ bounce: 0, duration: 2000 }}
 						/>
 						+
 					</dd>
-				</motion.div>
-				<motion.div
-					className="flex flex-col"
-					initial={{ opacity: 0, y: 20 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.5, delay: 0.4 }}
-				>
+				</div>
+				<div className="flex flex-col">
 					<dt className="mt-1 text-base text-gray-600">
 						процентов автоматизации
 					</dt>
 					<dd className="order-first text-4xl font-normal text-gray-900">
 						<AnimatedNumber
 							value={values[3]}
-							springOptions={{ bounce: 0.2, duration: 2 }}
+							springOptions={{ bounce: 0, duration: 2000 }}
 						/>
 						%
 					</dd>
-				</motion.div>
+				</div>
 			</dl>
-		</section>
+		</div>
 	);
 }
 
@@ -168,7 +134,8 @@ function Navigation() {
 							: "border-transparent bg-transparent backdrop-blur-0",
 					)}
 				>
-					<a href="#" className="flex items-center">
+					<a href="#" className="flex items-center gap-2">
+						<img src={logo} alt="Infobuh" className="h-6 w-6 sm:h-8 sm:w-8" />
 						<span className="text-lg sm:text-xl font-semibold text-gray-900">
 							Infobuh
 						</span>
@@ -226,7 +193,7 @@ function HomeComponent() {
 			<Navigation />
 
 			{/* Hero Section */}
-			<section className="px-4 pb-20 pt-32 sm:pt-48">
+			<section className="px-4 pb-12 pt-24 sm:pt-32">
 				<div className="container mx-auto">
 					<div className="flex flex-col items-center justify-center gap-6 text-center">
 						<div className="flex flex-col items-center gap-3">
@@ -333,9 +300,9 @@ function HomeComponent() {
 			</section>
 
 			{/* How it Works Section */}
-			<section id="how" className="px-4 py-16">
+			<section id="how" className="px-4 py-12">
 				<div className="container mx-auto max-w-5xl">
-					<div className="text-center mb-16">
+					<div className="text-center mb-8">
 						<h2 className="text-2xl font-bold text-gray-900 mb-4 sm:text-4xl">
 							Как это работает
 						</h2>
@@ -401,56 +368,57 @@ function HomeComponent() {
 			</section>
 
 			{/* Features Section */}
-			<section id="features" className="px-4 py-24 sm:py-40 bg-gray-50">
-				<div className="container mx-auto max-w-5xl">
-					<div className="text-center mb-16">
-						<h2 className="text-2xl font-bold text-gray-900 mb-4 sm:text-4xl">
-							Что внутри
+			<section id="features" className="px-4 py-24 sm:py-40">
+				<div className="container mx-auto max-w-6xl">
+					<div className="text-center mb-12">
+						<h2 className="text-2xl font-bold text-gray-900 mb-3 sm:text-4xl">
+							Возможности платформы
 						</h2>
-						<p className="text-gray-600 text-lg">
-							Только полезное. Ничего лишнего.
+						<p className="text-gray-600 text-base max-w-2xl mx-auto">
+							Все необходимые инструменты для эффективной работы с бухгалтерией
 						</p>
 					</div>
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
 						{[
 							{
-								title: "Прямой доступ к данным",
+								title: "Документы и сделки",
 								description:
-									"Понятный интерфейс с телефона. Без 1С и без ожиданий.",
+									"Создавайте первичные документы в три клика. Счета, акты, накладные — все в одном месте.",
 							},
 							{
-								title: "Первичные документы",
+								title: "Финансовый контроль",
 								description:
-									"Создайте сделку с реализацией, счетом на оплату в три клика.",
+									"Отслеживайте движение денег, балансы по счетам и проводки в режиме реального времени.",
 							},
 							{
-								title: "Деньги и проводки",
+								title: "База контрагентов",
 								description:
-									"Синхронны со сделками и контрагентами. Балансы по счетам, ДДС.",
+									"Импортируйте данные из госреестра, храните историю взаимодействий и документов.",
 							},
 							{
-								title: "Акты сверок",
+								title: "Управление персоналом",
 								description:
-									"Прямой доступ к актам сверок по сделкам и контрагентам.",
+									"Ведите учет сотрудников, контролируйте начисления и договоры в единой системе.",
 							},
 							{
-								title: "Контрагенты",
+								title: "Налоговый учет",
 								description:
-									"Добавляйте контрагентов из госреестра в один клик.",
+									"Встроенные калькуляторы НДС, ИПН и других налогов по актуальному законодательству.",
 							},
 							{
-								title: "Сотрудники",
+								title: "Аналитика и отчеты",
 								description:
-									"Реестр сотрудников: контролируйте выдачу зарплат и договоры.",
+									"Финансовые отчеты, ОСВ и аналитические дашборды для принятия решений.",
 							},
 							{
-								title: "Планирование налогов",
+								title: "Мобильный доступ",
 								description:
-									"Калькуляторы НДС, ИПН, транспортного и др. По законодательству.",
+									"Полноценная работа с любого устройства без установки дополнительных программ.",
 							},
 							{
-								title: "Отчеты без боли",
-								description: "Легкие фин. отчеты и ОСВ. Все на одном экране.",
+								title: "Интеграции",
+								description:
+									"API для связи с банками, ЭЦП, мессенджерами и другими сервисами.",
 							},
 						].map((feature, index) => (
 							<motion.div
@@ -459,18 +427,15 @@ function HomeComponent() {
 								whileInView={{ opacity: 1, y: 0 }}
 								viewport={{ once: true }}
 								transition={{ duration: 0.5, delay: index * 0.05 }}
-								className="p-6 rounded-xl border border-gray-200 bg-white hover:shadow-lg transition-all hover:-translate-y-1"
+								className="group"
 							>
-								<div className="flex items-start gap-3">
-									<CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-									<div>
-										<h3 className="text-base font-semibold text-gray-900 mb-2">
-											{feature.title}
-										</h3>
-										<p className="text-sm text-gray-600">
-											{feature.description}
-										</p>
-									</div>
+								<div className="p-6 rounded-lg border-gray-200 border hover:bg-gray-100 transition-colors">
+									<h3 className="text-lg font-semibold text-gray-900 mb-2">
+										{feature.title}
+									</h3>
+									<p className="text-gray-600 leading-relaxed">
+										{feature.description}
+									</p>
 								</div>
 							</motion.div>
 						))}
@@ -479,12 +444,12 @@ function HomeComponent() {
 			</section>
 
 			{/* Numbers Section with Animated Numbers */}
-			<StatsSection />
+			<Stats1 />
 
 			{/* Pricing Section */}
-			<section id="pricing" className="px-4 py-24 sm:py-40 bg-gray-50">
+			<section id="pricing" className="px-4 py-24  ">
 				<div className="container mx-auto max-w-5xl">
-					<div className="text-center mb-16">
+					<div className="text-center mb-8">
 						<h2 className="text-2xl font-bold text-gray-900 mb-4 sm:text-4xl">
 							Тарифы
 						</h2>
@@ -515,9 +480,9 @@ function HomeComponent() {
 							whileInView={{ opacity: 1, y: 0 }}
 							viewport={{ once: true }}
 							transition={{ duration: 0.5, delay: 0.2 }}
-							className="p-8 rounded-2xl border-2 border-blue-500 bg-white shadow-xl relative"
+							className="p-8 rounded-2xl border-2 border-gray-900 bg-white shadow-xl relative"
 						>
-							<div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-sm">
+							<div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-3 py-1 rounded-full text-sm">
 								Популярный
 							</div>
 							<h3 className="text-xl font-semibold text-gray-900 mb-4">
@@ -529,7 +494,7 @@ function HomeComponent() {
 							</div>
 							<p className="text-gray-600 mb-6">Все обновления включены</p>
 							<Button
-								className="w-full bg-blue-600 hover:bg-blue-700"
+								className="w-full bg-gray-900 hover:bg-gray-800"
 								size="lg"
 							>
 								Оформить
@@ -561,7 +526,7 @@ function HomeComponent() {
 			</section>
 
 			{/* CTA Section */}
-			<section className="px-4 py-24 sm:py-40">
+			<section className="px-4 py-12 sm:py-16">
 				<div className="mx-auto flex max-w-md flex-col items-center justify-center gap-6">
 					<div className="flex flex-col items-center gap-4 text-center">
 						<span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-sm leading-normal text-gray-700">

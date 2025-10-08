@@ -7,7 +7,7 @@ html {
 
 /* Focus states for accessibility */
 *:focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid #6B7280;
   outline-offset: 2px;
 }
 
