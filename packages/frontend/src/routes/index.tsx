@@ -1,196 +1,635 @@
+"use client";
 import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { TextEffect } from "@/components/ui/text-effect";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import {
+	Accordion,
+	AccordionItem,
+	AccordionTrigger,
+	AccordionContent,
+} from "@/components/ui/accordion-motion";
+import {
+	ArrowRight,
+	CheckCircle,
+	ChevronUp,
+	Zap,
+	ChevronRight,
+} from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { motion, useScroll, AnimatePresence, useInView } from "motion/react";
+import { cn } from "@/lib/utils";
 import "./landing/index.css";
-import mockup1 from '@/assets/infobuhmockup1.png'
-import mockup2 from '@/assets/infobuhmockup2.png'
-import mockup3 from '@/assets/infobuhmockup3.png'
-import mockup4 from '@/assets/infobuhmockup4.png'
-import mockup5 from '@/assets/infobuhmockup5.png'
-import mockup6 from '@/assets/infobuhmockup6.png'
-import mockup7 from '@/assets/infobuhmockup7.png'
+import mockup1 from "@/assets/infobuhmockup1.png";
+import mockup2 from "@/assets/infobuhmockup2.png";
+import mockup3 from "@/assets/infobuhmockup3.png";
+import mockup4 from "@/assets/infobuhmockup4.png";
+import mockup5 from "@/assets/infobuhmockup5.png";
+import mockup6 from "@/assets/infobuhmockup6.png";
+import mockup7 from "@/assets/infobuhmockup7.png";
 
 export const Route = createFileRoute("/")({
-  component: HomeComponent,
+	component: HomeComponent,
 });
 
+// BarShine component for subtle border effects
+function BarShine({ className }: { className?: string }) {
+	return (
+		<motion.div
+			className={cn(
+				"absolute top-0 left-0 z-10 h-[1px] w-full bg-gradient-to-r from-transparent from-10% via-gray-400 via-30% to-transparent to-90%",
+				className,
+			)}
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			transition={{ duration: 0.5, delay: 1 }}
+		/>
+	);
+}
+
+// Stats Section Component with Animated Numbers
+function StatsSection() {
+	const [values, setValues] = React.useState([0, 0, 0, 0]);
+	const sectionRef = React.useRef(null);
+	const isInView = useInView(sectionRef, { once: true });
+
+	React.useEffect(() => {
+		if (isInView) {
+			// Delay slightly to ensure component is mounted
+			setTimeout(() => {
+				setValues([80, 10, 300, 90]);
+			}, 100);
+		}
+	}, [isInView]);
+
+	return (
+		<section
+			ref={sectionRef}
+			className="relative mx-auto max-w-7xl px-8 py-24 md:px-12 lg:px-24"
+		>
+			<dl className="grid grid-cols-1 gap-x-6 gap-y-12 text-center sm:grid-cols-2 md:grid-cols-4">
+				<motion.div
+					className="flex flex-col"
+					initial={{ opacity: 0, y: 20 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.5, delay: 0.1 }}
+				>
+					<dt className="mt-1 text-base text-gray-600">
+						секунд на создание сделки
+					</dt>
+					<dd className="order-first text-4xl font-normal text-gray-900">
+						<AnimatedNumber
+							value={values[0]}
+							springOptions={{ bounce: 0.2, duration: 2 }}
+						/>
+					</dd>
+				</motion.div>
+				<motion.div
+					className="flex flex-col"
+					initial={{ opacity: 0, y: 20 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.5, delay: 0.2 }}
+				>
+					<dt className="mt-1 text-base text-gray-600">
+						раз меньше ручного труда
+					</dt>
+					<dd className="order-first text-4xl font-normal text-gray-900">
+						<AnimatedNumber
+							value={values[1]}
+							springOptions={{ bounce: 0.2, duration: 2 }}
+						/>
+						×
+					</dd>
+				</motion.div>
+				<motion.div
+					className="flex flex-col"
+					initial={{ opacity: 0, y: 20 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.5, delay: 0.3 }}
+				>
+					<dt className="mt-1 text-base text-gray-600">компаний уже с нами</dt>
+					<dd className="order-first text-4xl font-normal text-gray-900">
+						<AnimatedNumber
+							value={values[2]}
+							springOptions={{ bounce: 0.2, duration: 2 }}
+						/>
+						+
+					</dd>
+				</motion.div>
+				<motion.div
+					className="flex flex-col"
+					initial={{ opacity: 0, y: 20 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.5, delay: 0.4 }}
+				>
+					<dt className="mt-1 text-base text-gray-600">
+						процентов автоматизации
+					</dt>
+					<dd className="order-first text-4xl font-normal text-gray-900">
+						<AnimatedNumber
+							value={values[3]}
+							springOptions={{ bounce: 0.2, duration: 2 }}
+						/>
+						%
+					</dd>
+				</motion.div>
+			</dl>
+		</section>
+	);
+}
+
+// Navigation component with scroll-aware styling
+function Navigation() {
+	const [hasScrolled, setHasScrolled] = React.useState(false);
+	const { scrollYProgress } = useScroll({
+		offset: ["start start", "100px start"],
+	});
+
+	React.useEffect(() => {
+		const unsubscribe = scrollYProgress.on("change", (latest) => {
+			setHasScrolled(latest > 0);
+		});
+		return () => unsubscribe();
+	}, [scrollYProgress]);
+
+	return (
+		<div className="fixed top-4 sm:top-8 z-50 w-full px-4">
+			<div className="mx-auto w-full max-w-screen-xl">
+				<div
+					className={cn(
+						`flex w-full items-center justify-between rounded-xl border transition-all duration-200 ease-out px-4 py-2`,
+						hasScrolled
+							? "border-gray-200 bg-white/90 backdrop-blur-sm shadow-sm"
+							: "border-transparent bg-transparent backdrop-blur-0",
+					)}
+				>
+					<a href="#" className="flex items-center">
+						<span className="text-lg sm:text-xl font-semibold text-gray-900">
+							Infobuh
+						</span>
+					</a>
+					<nav className="flex items-center gap-x-2 sm:gap-x-6">
+						<a
+							href="#how"
+							className="hidden sm:inline-block text-sm font-normal text-gray-600 transition-colors hover:text-gray-900"
+						>
+							Как это работает
+						</a>
+						<a
+							href="#features"
+							className="hidden sm:inline-block text-sm font-normal text-gray-600 transition-colors hover:text-gray-900"
+						>
+							Возможности
+						</a>
+						<a
+							href="#pricing"
+							className="hidden md:inline-block text-sm font-normal text-gray-600 transition-colors hover:text-gray-900"
+						>
+							Цены
+						</a>
+						<Button variant="default" size="sm" className="ml-2">
+							Войти
+						</Button>
+					</nav>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function HomeComponent() {
-  const images = React.useMemo(
-    () => [mockup1, mockup2, mockup3, mockup4, mockup5, mockup6, mockup7],
-    []
-  );
-  const [idx, setIdx] = React.useState(0);
+	const images = React.useMemo(
+		() => [mockup1, mockup2, mockup3, mockup4, mockup5, mockup6, mockup7],
+		[],
+	);
+	const [idx, setIdx] = React.useState(0);
 
-  React.useEffect(() => {
-    const id = setInterval(() => {
-      setIdx((i) => (i + 1) % images.length);
-    }, 1300);
-    return () => clearInterval(id);
-  }, [images.length]);
+	React.useEffect(() => {
+		const id = setInterval(() => {
+			setIdx((i) => (i + 1) % images.length);
+		}, 1300);
+		return () => clearInterval(id);
+	}, [images.length]);
 
-  return (
-    <div className="ld-page">
-      <header className="ld-header">
-        <div className="ld-wrap ld-header-row">
-          <div className="ld-brand">
-            <span className="ld-brand-text">Infobuh</span>
-          </div>
+	const VARIANTS = {
+		hidden: { opacity: 0, y: 10, filter: "blur(10px)" },
+		visible: { opacity: 1, y: 0, filter: "blur(0px)" },
+	};
 
-          <nav className="ld-nav">
-            <a className="ld-nav-link" href="#how">Как это работает</a>
-            <a className="ld-nav-link" href="#features">Возможности</a>
-            <a className="ld-nav-link" href="#pricing">Цены</a>
-            <Button className="ld-cta" variant="default">Войти</Button>
-          </nav>
-        </div>
-      </header>
+	return (
+		<div className="min-h-screen bg-white">
+			<Navigation />
 
-      <main>
-        <section className="ld-hero">
-          <div className="ld-wrap">
-            <h1 className="ld-hero-title">
-              Простая бухгалтерия для казахстанских бизнесов
-            </h1>
-            <p className="ld-hero-sub">
-              Сокращает ручной труд в 10 раз. Автоматизирует 90% рутины
-            </p>
-            <div className="ld-hero-actions">
-              <Button className="ld-action-primary" size="lg">Попробовать бесплатно</Button>
-            </div>
+			{/* Hero Section */}
+			<section className="px-4 pb-20 pt-32 sm:pt-48">
+				<div className="container mx-auto">
+					<div className="flex flex-col items-center justify-center gap-6 text-center">
+						<div className="flex flex-col items-center gap-3">
+							<motion.a
+								href="#"
+								className="group inline-flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-sm leading-normal text-gray-700"
+								variants={{ ...VARIANTS }}
+								initial="hidden"
+								animate="visible"
+								transition={{ duration: 0.5, delay: 0.3 }}
+							>
+								<Zap className="h-4 w-4 fill-gray-700 stroke-gray-700" />
+								<span className="font-medium">Новое:</span>
+								ИИ-ассистент для документов{" "}
+								<ChevronRight className="h-4 w-4 transition-all duration-200 ease-out group-hover:translate-x-0.5" />
+							</motion.a>
+							<TextEffect
+								className="text-balance text-2xl tracking-tight text-gray-900 sm:text-5xl"
+								as="h1"
+								variants={{ item: VARIANTS }}
+								speedReveal={1.5}
+								speedSegment={0.5}
+								delay={0.2}
+								per="char"
+							>
+								Простая бухгалтерия для казахстанских бизнесов
+							</TextEffect>
+							<TextEffect
+								className="text-base font-normal text-gray-600 sm:text-lg"
+								as="p"
+								variants={{ item: VARIANTS }}
+								speedReveal={2}
+								speedSegment={1}
+								delay={0.35}
+								segmentWrapperClassName="overflow-hidden"
+								per="word"
+							>
+								Сокращает ручной труд в 10 раз. Автоматизирует 90% рутины
+							</TextEffect>
+						</div>
+						<div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+							<motion.div
+								variants={{ ...VARIANTS }}
+								initial="hidden"
+								animate="visible"
+								transition={{ duration: 0.5, delay: 0.6 }}
+								className="w-full sm:w-auto"
+							>
+								<Button
+									size="lg"
+									className="bg-gray-900 text-white hover:bg-gray-800 w-full sm:w-auto"
+								>
+									Попробовать бесплатно
+								</Button>
+							</motion.div>
+							<motion.div
+								variants={{ ...VARIANTS }}
+								initial="hidden"
+								animate="visible"
+								transition={{ duration: 0.5, delay: 0.65 }}
+								className="w-full sm:w-auto"
+							>
+								<Button
+									size="lg"
+									variant="outline"
+									className="border-gray-300 hover:border-gray-400 w-full sm:w-auto"
+								>
+									Узнать больше <ArrowRight className="ml-2 h-4 w-4" />
+								</Button>
+							</motion.div>
+						</div>
+					</div>
+					<div className="mt-16">
+						<div className="relative mx-auto max-w-sm sm:max-w-md lg:max-w-lg overflow-hidden">
+							<div className="relative w-full   ">
+								<motion.div
+									className="relative h-full w-full overflow-hidden rounded-lg flex items-center justify-center min-h-[400px] sm:min-h-[600px] lg:min-h-[800px]"
+									variants={{ ...VARIANTS }}
+									initial="hidden"
+									animate="visible"
+									transition={{ duration: 0.5, delay: 0.7 }}
+								>
+									<AnimatePresence initial={false}>
+										<motion.img
+											key={idx}
+											src={images[idx]}
+											alt="Скриншот интерфейса Infobuh"
+											className="absolute inset-0 w-auto h-auto max-w-full max-h-[600px] sm:max-h-[800px] lg:max-h-[1000px] object-contain m-auto"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											exit={{ opacity: 0 }}
+											transition={{ duration: 0.6, ease: "easeInOut" }}
+										/>
+									</AnimatePresence>
+								</motion.div>
+							</div>
+							<div
+								className="absolute inset-x-0 -bottom-0 -mx-10 h-2/4 bg-gradient-to-t from-white via-white to-transparent"
+								aria-hidden="true"
+							></div>
+						</div>
+					</div>
+				</div>
+			</section>
 
-            <div className="ld-mockup">
-              <img
-                className="ld-mockup-img"
-                src={images[idx]}
-                alt="Скриншот интерфейса Infobuh"
-                loading="eager"
-              />
-            </div>
-          </div>
-        </section>
+			{/* How it Works Section */}
+			<section id="how" className="px-4 py-16">
+				<div className="container mx-auto max-w-5xl">
+					<div className="text-center mb-16">
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 sm:text-4xl">
+							Как это работает
+						</h2>
+						<p className="text-gray-600 text-lg">
+							Три шага - и документы готовы.
+						</p>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							whileInView={{ opacity: 1, y: 0 }}
+							viewport={{ once: true }}
+							transition={{ duration: 0.5, delay: 0.1 }}
+							className="relative p-6 rounded-xl border border-gray-200 bg-white hover:shadow-lg transition-shadow"
+						>
+							<div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center font-semibold mb-4">
+								1
+							</div>
+							<h3 className="text-lg font-semibold text-gray-900 mb-2">
+								Создайте сделку за два клика
+							</h3>
+							<p className="text-gray-600">
+								Реквизиты, товары и ставки подтягиваются автоматически.
+							</p>
+						</motion.div>
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							whileInView={{ opacity: 1, y: 0 }}
+							viewport={{ once: true }}
+							transition={{ duration: 0.5, delay: 0.2 }}
+							className="relative p-6 rounded-xl border border-gray-200 bg-white hover:shadow-lg transition-shadow"
+						>
+							<div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center font-semibold mb-4">
+								2
+							</div>
+							<h3 className="text-lg font-semibold text-gray-900 mb-2">
+								Подписывайте и отправляйте
+							</h3>
+							<p className="text-gray-600">
+								ЭЦП в приложении, PDF за секунды, отправка в WhatsApp и на
+								почту.
+							</p>
+						</motion.div>
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							whileInView={{ opacity: 1, y: 0 }}
+							viewport={{ once: true }}
+							transition={{ duration: 0.5, delay: 0.3 }}
+							className="relative p-6 rounded-xl border border-gray-200 bg-white hover:shadow-lg transition-shadow"
+						>
+							<div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center font-semibold mb-4">
+								3
+							</div>
+							<h3 className="text-lg font-semibold text-gray-900 mb-2">
+								Хранение и контроль
+							</h3>
+							<p className="text-gray-600">
+								В сделке — документы, проводки, оплаты и история в одном месте.
+							</p>
+						</motion.div>
+					</div>
+				</div>
+			</section>
 
-        <section id="how" className="ld-how">
-          <div className="ld-wrap">
-            <div className="ld-section-head">
-              <h2 className="ld-h2">Как это работает</h2>
-              <p className="ld-lead">Три шага - и документы готовы.</p>
-            </div>
+			{/* Features Section */}
+			<section id="features" className="px-4 py-24 sm:py-40 bg-gray-50">
+				<div className="container mx-auto max-w-5xl">
+					<div className="text-center mb-16">
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 sm:text-4xl">
+							Что внутри
+						</h2>
+						<p className="text-gray-600 text-lg">
+							Только полезное. Ничего лишнего.
+						</p>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+						{[
+							{
+								title: "Прямой доступ к данным",
+								description:
+									"Понятный интерфейс с телефона. Без 1С и без ожиданий.",
+							},
+							{
+								title: "Первичные документы",
+								description:
+									"Создайте сделку с реализацией, счетом на оплату в три клика.",
+							},
+							{
+								title: "Деньги и проводки",
+								description:
+									"Синхронны со сделками и контрагентами. Балансы по счетам, ДДС.",
+							},
+							{
+								title: "Акты сверок",
+								description:
+									"Прямой доступ к актам сверок по сделкам и контрагентам.",
+							},
+							{
+								title: "Контрагенты",
+								description:
+									"Добавляйте контрагентов из госреестра в один клик.",
+							},
+							{
+								title: "Сотрудники",
+								description:
+									"Реестр сотрудников: контролируйте выдачу зарплат и договоры.",
+							},
+							{
+								title: "Планирование налогов",
+								description:
+									"Калькуляторы НДС, ИПН, транспортного и др. По законодательству.",
+							},
+							{
+								title: "Отчеты без боли",
+								description: "Легкие фин. отчеты и ОСВ. Все на одном экране.",
+							},
+						].map((feature, index) => (
+							<motion.div
+								key={index}
+								initial={{ opacity: 0, y: 20 }}
+								whileInView={{ opacity: 1, y: 0 }}
+								viewport={{ once: true }}
+								transition={{ duration: 0.5, delay: index * 0.05 }}
+								className="p-6 rounded-xl border border-gray-200 bg-white hover:shadow-lg transition-all hover:-translate-y-1"
+							>
+								<div className="flex items-start gap-3">
+									<CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+									<div>
+										<h3 className="text-base font-semibold text-gray-900 mb-2">
+											{feature.title}
+										</h3>
+										<p className="text-sm text-gray-600">
+											{feature.description}
+										</p>
+									</div>
+								</div>
+							</motion.div>
+						))}
+					</div>
+				</div>
+			</section>
 
-            <div className="ld-steps">
-              <div className="ld-step">
-                <div className="ld-step-num">1</div>
-                <h3 className="ld-step-title">Создайте сделку за два клика</h3>
-                <p className="ld-step-text">Реквизиты, товары и ставки подтягиваются автоматически.</p>
-              </div>
-              <div className="ld-step">
-                <div className="ld-step-num">2</div>
-                <h3 className="ld-step-title">Подписывайте и отправляйте</h3>
-                <p className="ld-step-text">ЭЦП в приложении, PDF за секунды, отправка в WhatsApp и на почту.</p>
-              </div>
-              <div className="ld-step">
-                <div className="ld-step-num">3</div>
-                <h3 className="ld-step-title">Хранение и контроль</h3>
-                <p className="ld-step-text">В сделке — документы, проводки, оплаты и история в одном месте.</p>
-              </div>
-            </div>
-          </div>
-        </section>
+			{/* Numbers Section with Animated Numbers */}
+			<StatsSection />
 
-        <section id="features" className="ld-features">
-          <div className="ld-wrap">
-            <div className="ld-section-head">
-              <h2 className="ld-h2">Что внутри</h2>
-              <p className="ld-lead">Только полезное. Ничего лишнего.</p>
-            </div>
+			{/* Pricing Section */}
+			<section id="pricing" className="px-4 py-24 sm:py-40 bg-gray-50">
+				<div className="container mx-auto max-w-5xl">
+					<div className="text-center mb-16">
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 sm:text-4xl">
+							Тарифы
+						</h2>
+						<p className="text-gray-600 text-lg">Выберите подходящий план</p>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							whileInView={{ opacity: 1, y: 0 }}
+							viewport={{ once: true }}
+							transition={{ duration: 0.5, delay: 0.1 }}
+							className="p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-lg transition-shadow"
+						>
+							<h3 className="text-xl font-semibold text-gray-900 mb-4">
+								Старт
+							</h3>
+							<div className="text-3xl font-bold text-gray-900 mb-2">0 тг</div>
+							<p className="text-gray-600 mb-6">
+								Создание первичных документов
+							</p>
+							<Button className="w-full" variant="outline" size="lg">
+								Начать
+							</Button>
+						</motion.div>
 
-            <div className="ld-grid">
-              <div className="ld-card">
-                <h3 className="ld-card-title">Прямой доступ к данным</h3>
-                <p className="ld-card-text">Понятный интерфейс с телефона. Без 1С и без ожиданий.</p>
-              </div>
-              <div className="ld-card">
-                <h3 className="ld-card-title">Первичные документы</h3>
-                <p className="ld-card-text">Создайте сделку с реализацией, счетом на оплату в три клика.</p>
-              </div>
-              <div className="ld-card">
-                <h3 className="ld-card-title">Деньги и проводки</h3>
-                <p className="ld-card-text">Синхронны со сделками и контрагентами. Балансы по счетам, ДДС. </p>
-              </div>
-              <div className="ld-card">
-                <h3 className="ld-card-title">Акты сверок</h3>
-                <p className="ld-card-text">Прямой доступ к актам сверок по сделкам и контрагентам.</p>
-              </div>
-              <div className="ld-card">
-                <h3 className="ld-card-title">Контрагенты</h3>
-                <p className="ld-card-text">Добавляйте контрагентов из госреестра в один клик.</p>
-              </div>
-              <div className="ld-card">
-                <h3 className="ld-card-title">Сотрудники</h3>
-                <p className="ld-card-text">Реестр сотрудников: контролируйте выдачу зарплат и договоры.</p>
-              </div>
-              <div className="ld-card">
-                <h3 className="ld-card-title">Планирование налогов</h3>
-                <p className="ld-card-text">Калькуляторы НДС, ИПН, транспортного и др. По законодательству.</p>
-              </div>
-              <div className="ld-card">
-                <h3 className="ld-card-title">Отчеты без боли</h3>
-                <p className="ld-card-text">Легкие фин. отчеты и ОСВ. Все на одном экране.</p>
-              </div>
-            </div>
-          </div>
-        </section>
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							whileInView={{ opacity: 1, y: 0 }}
+							viewport={{ once: true }}
+							transition={{ duration: 0.5, delay: 0.2 }}
+							className="p-8 rounded-2xl border-2 border-blue-500 bg-white shadow-xl relative"
+						>
+							<div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-sm">
+								Популярный
+							</div>
+							<h3 className="text-xl font-semibold text-gray-900 mb-4">
+								Бизнес
+							</h3>
+							<div className="text-3xl font-bold text-gray-900 mb-2">
+								10 000 тг
+								<span className="text-lg font-normal text-gray-600">/мес</span>
+							</div>
+							<p className="text-gray-600 mb-6">Все обновления включены</p>
+							<Button
+								className="w-full bg-blue-600 hover:bg-blue-700"
+								size="lg"
+							>
+								Оформить
+							</Button>
+						</motion.div>
 
-        <section className="ld-numbers">
-          <div className="ld-wrap ld-numbers-row">
-            <div className="ld-number">
-              <div className="ld-number-value">80 сек</div>
-              <div className="ld-number-label">на создание сделки</div>
-            </div>
-            <div className="ld-number">
-              <div className="ld-number-value">–10×</div>
-              <div className="ld-number-label">ручного труда</div>
-            </div>
-            <div className="ld-number">
-              <div className="ld-number-value">300+</div>
-              <div className="ld-number-label">компаний уже с нами</div>
-            </div>
-          </div>
-        </section>
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							whileInView={{ opacity: 1, y: 0 }}
+							viewport={{ once: true }}
+							transition={{ duration: 0.5, delay: 0.3 }}
+							className="p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-lg transition-shadow"
+						>
+							<h3 className="text-xl font-semibold text-gray-900 mb-4">
+								Enterprise
+							</h3>
+							<div className="text-3xl font-bold text-gray-900 mb-2">
+								Индивидуально
+							</div>
+							<p className="text-gray-600 mb-6">
+								Роли, API, SSO и приоритетная поддержка
+							</p>
+							<Button className="w-full" variant="outline" size="lg">
+								Связаться
+							</Button>
+						</motion.div>
+					</div>
+				</div>
+			</section>
 
-        <section id="pricing" className="ld-pricing">
-          <div className="ld-wrap ld-pricing-box">
-            <div className="ld-pricing-col">
-              <h3 className="ld-pricing-title">Старт</h3>
-              <div className="ld-price">0 тг</div>
-              <p className="ld-pricing-note">Создание первичных документов</p>
-              <Button className="ld-pricing-btn" size="lg">Начать</Button>
-            </div>
-            <div className="ld-pricing-col ld-pricing-col--accent">
-              <h3 className="ld-pricing-title">Бизнес</h3>
-              <div className="ld-price">10 000 тг/мес</div>
-              <p className="ld-pricing-note">Все обновления включены</p>
-              <Button className="ld-pricing-btn" size="lg">Оформить</Button>
-            </div>
-            <div className="ld-pricing-col">
-              <h3 className="ld-pricing-title">Enterprise</h3>
-              <div className="ld-price">Индивидуально</div>
-              <p className="ld-pricing-note">Роли, API, SSO и приоритетная поддержка</p>
-              <Button className="ld-pricing-btn" size="lg" variant="outline">Связаться</Button>
-            </div>
-          </div>
-        </section>
-      </main>
+			{/* CTA Section */}
+			<section className="px-4 py-24 sm:py-40">
+				<div className="mx-auto flex max-w-md flex-col items-center justify-center gap-6">
+					<div className="flex flex-col items-center gap-4 text-center">
+						<span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-sm leading-normal text-gray-700">
+							Начните бесплатно
+						</span>
+						<div className="flex flex-col gap-2">
+							<h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+								Готовы начать?
+							</h2>
+							<p className="text-gray-600">
+								Присоединяйтесь к сотням компаний, которые уже автоматизировали
+								свою бухгалтерию
+							</p>
+						</div>
+					</div>
+					<div className="flex flex-col gap-4">
+						<div className="flex items-center gap-4">
+							<Button
+								size="lg"
+								className="bg-gray-900 text-white hover:bg-gray-800"
+							>
+								Попробовать бесплатно
+							</Button>
+							<Button
+								size="lg"
+								variant="outline"
+								className="border-gray-300 hover:border-gray-400"
+							>
+								Демо <ArrowRight className="ml-2 h-4 w-4" />
+							</Button>
+						</div>
+						<p className="text-center text-sm text-gray-500">
+							Кредитная карта не требуется
+						</p>
+					</div>
+				</div>
+			</section>
 
-      <footer className="ld-footer">
-        <div className="ld-wrap ld-footer-row">
-          <span className="ld-footer-copy">© {new Date().getFullYear()} Infobuh</span>
-          <div className="ld-footer-links">
-            <a className="ld-footer-link" href="#privacy">Конфиденциальность</a>
-            <a className="ld-footer-link" href="#terms">Условия</a>
-            <a className="ld-footer-link" href="#contacts">Контакты</a>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
+			{/* Footer */}
+			<footer className="border-t border-gray-200 bg-white">
+				<div className="container mx-auto max-w-screen-lg px-4 py-8">
+					<div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+						<span className="text-sm text-gray-600">
+							© {new Date().getFullYear()} Infobuh. Все права защищены.
+						</span>
+						<div className="flex gap-6">
+							<a
+								href="#privacy"
+								className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+							>
+								Конфиденциальность
+							</a>
+							<a
+								href="#terms"
+								className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+							>
+								Условия
+							</a>
+							<a
+								href="#contacts"
+								className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+							>
+								Контакты
+							</a>
+						</div>
+					</div>
+				</div>
+			</footer>
+		</div>
+	);
 }
