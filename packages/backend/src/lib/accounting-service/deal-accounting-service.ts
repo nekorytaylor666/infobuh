@@ -294,6 +294,105 @@ export class DealAccountingService {
 		});
 	}
 
+	async recordExpensePayment(params: {
+		dealId: string;
+		amount: number;
+		description?: string;
+		reference?: string;
+		legalEntityId: string;
+		currencyId: string;
+		createdBy: string;
+		paymentMethod?: "bank" | "cash"; // Optional, defaults to bank
+	}) {
+		const accountingService = new AccountingService(this.db);
+
+		// Get the standard accounts
+		const standardAccounts = await this.getStandardAccounts(params.legalEntityId);
+
+		// Get the appropriate cash account based on payment method
+		const cashAccount = params.paymentMethod === "cash"
+			? await this.findAccountByCode(params.legalEntityId, "1010") // Cash account
+			: standardAccounts.bankAccount; // Bank account (1030)
+
+		return await this.db.transaction(async (tx) => {
+			// 1. Get current deal
+			const deal = await tx.query.deals.findFirst({
+				where: eq(dealsTable.id, params.dealId),
+			});
+
+			if (!deal) {
+				throw new Error("Deal not found");
+			}
+
+			// 2. Get partner information for better descriptions
+			const partner = await accountingService.findOrCreatePartnerByBin(
+				deal.receiverBin,
+				params.legalEntityId
+			);
+
+			// 3. Validate payment amount
+			const newPaidAmount = deal.paidAmount + params.amount;
+			if (newPaidAmount > deal.totalAmount) {
+				throw new Error("Payment amount exceeds remaining balance");
+			}
+
+			// 4. Create expense payment journal entry
+			const entryNumber = await this.generateEntryNumber(params.legalEntityId);
+
+			const journalEntryResult = await accountingService.createJournalEntry(
+				{
+					entryNumber,
+					entryDate: new Date().toISOString().split('T')[0],
+					description: params.description || `Расход по сделке: ${deal.title} (${partner.name})`,
+					reference: params.reference || `EXP-${params.dealId}`,
+					status: "draft",
+					currencyId: params.currencyId,
+					legalEntityId: params.legalEntityId,
+					createdBy: params.createdBy,
+				},
+				[
+					{
+						accountId: standardAccounts.revenue.id, // Account code 6010 - Expense account
+						debitAmount: params.amount,
+						creditAmount: 0,
+						description: `Расходы на ${partner.name}`,
+					},
+					{
+						accountId: cashAccount.id, // Account code 1030 (bank) or 1010 (cash)
+						debitAmount: 0,
+						creditAmount: params.amount,
+						description: `Выплата денежных средств для ${partner.name}`,
+					},
+				],
+				deal.receiverBin // Pass the BIN for partner linkage
+			);
+
+			if (!journalEntryResult.success) {
+				throw new Error(`Failed to create expense payment journal entry: ${journalEntryResult.error.message}`);
+			}
+
+			// 4. Update deal paid amount
+			const [updatedDeal] = await tx
+				.update(dealsTable)
+				.set({
+					paidAmount: newPaidAmount,
+					status: newPaidAmount === deal.totalAmount ? "completed" : "active",
+					updatedAt: new Date(),
+				})
+				.where(eq(dealsTable.id, params.dealId))
+				.returning();
+
+			// 5. Link payment with deal
+			await tx.insert(dealJournalEntries).values({
+				dealId: params.dealId,
+				journalEntryId: journalEntryResult.entry.id,
+				entryType: "payment",
+			});
+
+			return { deal: updatedDeal, journalEntry: journalEntryResult.entry };
+		});
+	}
+
 	async getDealBalance(dealId: string): Promise<DealBalance | null> {
 		const deal = await this.db.query.deals.findFirst({
 			where: eq(dealsTable.id, dealId),

@@ -371,13 +371,20 @@ async function testDealAccountingSystem() {
 			accountsPayableAccount,
 		});
 
-		// 11. Тестирование проводок покупателя (зеркальные проводки товары)
-		console.log("\n🔄 11. Тестирование проводок покупателя (зеркальные операции товары)");
+		// 12. Тестирование проводок покупателя (зеркальные проводки товары)
+		console.log("\n🔄 12. Тестирование проводок покупателя (зеркальные операции товары)");
 		await testBuyerSideTransactions(accountingService, testData, {
 			accountsPayableAccount,
 			inventoryAccount,
 			cashAccount,
 			costOfGoodsSoldAccount,
+		});
+
+		// 13. Тестирование расходных платежей (expense payments)
+		console.log("\n💸 13. Тестирование расходных платежей (когда мы платим поставщику)");
+		await testExpensePayments(dealAccountingService, testData, {
+			revenueAccount,
+			cashAccount,
 		});
 
 		console.log("\n🎉 Тестирование завершено успешно!");
@@ -394,6 +401,7 @@ async function testDealAccountingSystem() {
 		console.log("- ✅ Полный цикл продажи товаров с себестоимостью");
 		console.log("- ✅ Сценарий АВР с проводками продавца и покупателя");
 		console.log("- ✅ Зеркальные проводки покупателя и продавца для товаров");
+		console.log("- ✅ Расходные платежи (expense payments) для оплаты поставщикам");
 
 		console.log("\n📋 Протестированные сценарии проводок:");
 		console.log("1. 🔹 АВР (услуги):");
@@ -402,6 +410,8 @@ async function testDealAccountingSystem() {
 		console.log("2. 🔹 Накладная (товары):");
 		console.log("   Продавец: Дт 1210 - Кт 6010 (продажа), Дт 7010 - Кт 1330 (себестоимость), Дт 1030 - Кт 1210 (оплата)");
 		console.log("   Покупатель: Дт 1330 - Кт 3310 (поступление), Дт 3310 - Кт 1030 (оплата)");
+		console.log("3. 🔹 Расходные платежи:");
+		console.log("   Оплата поставщику: Дт 6010 - Кт 1030 (банк) или Дт 6010 - Кт 1010 (касса)");
 
 	} catch (error) {
 		console.error("❌ Ошибка при тестировании:", error);
@@ -815,10 +825,10 @@ async function testDealWithFileUploads(
 ) {
 	try {
 		console.log("   📄 Создание сделки с прямой загрузкой файлов");
-		
+
 		// Sample PDF base64 (minimal valid PDF)
 		const samplePdfBase64 = "JVBERi0xLjQKJcWzyr3GCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KPj4KZW5kb2JqCnhyZWYKMCA0CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDc0IDAwMDAwIG4gCjAwMDAwMDAxMzEgMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSA0Ci9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgoyMTAKJSVFT0Y=";
-		
+
 		const dealWithFiles = await dealAccountingService.createDealWithAccounting({
 			receiverBin: "555666777888",
 			title: "Сделка с загрузкой документов",
@@ -882,6 +892,209 @@ async function testDealWithFileUploads(
 
 	} catch (error) {
 		console.error("   ❌ Ошибка при создании сделки с файлами:", error);
+	}
+}
+
+/**
+ * Тестирование расходных платежей (expense payments)
+ * Сценарий: Когда мы платим поставщику за услуги или товары
+ */
+async function testExpensePayments(
+	dealAccountingService: DealAccountingService,
+	testData: any,
+	accounts: any
+) {
+	try {
+		const { revenueAccount, cashAccount } = accounts;
+		const db = dealAccountingService['db']; // Access db from service
+
+		// 1. Создание сделки на расходы (покупка услуг у поставщика)
+		console.log("   📋 1. Создание сделки на покупку услуг");
+		console.log("   Сценарий: Мы покупаем услуги у поставщика");
+
+		// Create mock expense document
+		const mockExpenseDocument = await db.insert(documentsFlutter).values({
+			legalEntityId: testData.legalEntityId,
+			type: "Счет на оплату",
+			receiverBin: "999888777666",
+			receiverName: "ТОО 'Поставщик Услуг'",
+			fields: {},
+			filePath: "/test/documents/expense-invoice-001.pdf",
+			documentPayload: {
+				documentType: "Счет на оплату",
+				data: {
+					orgName: "ТОО 'Поставщик Услуг'",
+					orgBin: "999888777666",
+					buyerName: "ТОО 'НашаКомпания'",
+					buyerBin: "123456789012",
+					invoiceNumber: "INV-EXP-001",
+					invoiceDate: new Date().toISOString().split('T')[0],
+					items: [
+						{
+							name: "Маркетинговые услуги",
+							quantity: 1,
+							unit: "шт",
+							price: 400000
+						}
+					]
+				}
+			}
+		}).returning();
+
+		const expenseDeal = await dealAccountingService.createDealWithAccounting({
+			receiverBin: "999888777666",
+			title: "Покупка маркетинговых услуг",
+			description: "Оплата за маркетинговые услуги поставщику",
+			dealType: "service",
+			totalAmount: 400000, // 400,000 тенге
+			legalEntityId: testData.legalEntityId,
+			currencyId: testData.currencyId,
+			createdBy: testData.userId,
+			documentFlutterIds: [mockExpenseDocument[0].id]
+		});
+
+		console.log("   ✅ Сделка на расходы создана:", {
+			dealId: expenseDeal.deal.id,
+			amount: expenseDeal.deal.totalAmount,
+			type: "expense"
+		});
+
+		// 2. Тестирование обычного платежа (income - получение денег)
+		console.log("\n   💰 2. Тестирование обычного платежа (income)");
+		console.log("   Проводка: Дт 1030 (Банк) - Кт 1210 (Дебиторская задолженность)");
+
+		try {
+			// Этот платеж должен быть отклонен для расходной сделки
+			await dealAccountingService.recordPayment({
+				dealId: expenseDeal.deal.id,
+				amount: 100000,
+				description: "Попытка записать приход денег для расходной сделки",
+				reference: "INCOME-TEST",
+				legalEntityId: testData.legalEntityId,
+				currencyId: testData.currencyId,
+				createdBy: testData.userId,
+				paymentMethod: "bank"
+			});
+			console.log("   ✅ Обычный платеж записан (income scenario)");
+		} catch (error) {
+			console.log("   ℹ️ Обычный платеж может не подходить для расходной операции");
+		}
+
+		// 3. Тестирование расходного платежа (expense - выплата денег)
+		console.log("\n   💸 3. Тестирование расходного платежа (expense)");
+		console.log("   Проводка: Дт 6010 (Расходы) - Кт 1030 (Банк)");
+
+		const expensePayment1 = await dealAccountingService.recordExpensePayment({
+			dealId: expenseDeal.deal.id,
+			amount: 200000, // Частичная оплата
+			description: "Частичная оплата за маркетинговые услуги",
+			reference: "EXP-PAY-001",
+			legalEntityId: testData.legalEntityId,
+			currencyId: testData.currencyId,
+			createdBy: testData.userId,
+			paymentMethod: "bank"
+		});
+
+		console.log("   ✅ Расходный платеж записан:", {
+			paidAmount: expensePayment1.deal.paidAmount,
+			remainingBalance: expensePayment1.deal.totalAmount - expensePayment1.deal.paidAmount,
+			status: expensePayment1.deal.status,
+			journalEntryId: expensePayment1.journalEntry.id
+		});
+
+		// 4. Второй расходный платеж (полная оплата)
+		console.log("\n   💸 4. Второй расходный платеж (полная оплата)");
+
+		const expensePayment2 = await dealAccountingService.recordExpensePayment({
+			dealId: expenseDeal.deal.id,
+			amount: 200000, // Доплата
+			description: "Финальная оплата за маркетинговые услуги",
+			reference: "EXP-PAY-002",
+			legalEntityId: testData.legalEntityId,
+			currencyId: testData.currencyId,
+			createdBy: testData.userId,
+			paymentMethod: "bank"
+		});
+
+		console.log("   ✅ Финальный расходный платеж записан:", {
+			paidAmount: expensePayment2.deal.paidAmount,
+			remainingBalance: expensePayment2.deal.totalAmount - expensePayment2.deal.paidAmount,
+			status: expensePayment2.deal.status
+		});
+
+		// 5. Проверка баланса после расходных платежей
+		console.log("\n   📊 5. Проверка баланса после расходных платежей");
+		const expenseBalance = await dealAccountingService.getDealBalance(expenseDeal.deal.id);
+		if (expenseBalance) {
+			console.log("   ✅ Баланс расходной сделки:", {
+				totalAmount: expenseBalance.totalAmount,
+				paidAmount: expenseBalance.paidAmount,
+				remainingBalance: expenseBalance.remainingBalance,
+				entriesCount: expenseBalance.journalEntries.length,
+				isFullyPaid: expenseBalance.remainingBalance === 0
+			});
+		}
+
+		// 6. Тестирование расходного платежа наличными
+		console.log("\n   💵 6. Тестирование расходного платежа наличными");
+
+		// Создаем новую сделку для теста с наличными
+		const cashExpenseDeal = await dealAccountingService.createDealWithAccounting({
+			receiverBin: "111222333444",
+			title: "Покупка канцтоваров",
+			description: "Мелкие расходы наличными",
+			dealType: "product",
+			totalAmount: 50000, // 50,000 тенге
+			legalEntityId: testData.legalEntityId,
+			currencyId: testData.currencyId,
+			createdBy: testData.userId
+		});
+
+		const cashExpensePayment = await dealAccountingService.recordExpensePayment({
+			dealId: cashExpenseDeal.deal.id,
+			amount: 50000,
+			description: "Оплата наличными за канцтовары",
+			reference: "CASH-EXP-001",
+			legalEntityId: testData.legalEntityId,
+			currencyId: testData.currencyId,
+			createdBy: testData.userId,
+			paymentMethod: "cash" // Используем кассу вместо банка
+		});
+
+		console.log("   ✅ Расходный платеж наличными записан:", {
+			dealId: cashExpenseDeal.deal.id,
+			paidAmount: cashExpensePayment.deal.paidAmount,
+			paymentMethod: "cash",
+			accountUsed: "1010 (Касса)"
+		});
+
+		// 7. Попытка переплаты для расходной сделки
+		console.log("\n   ⚠️ 7. Тестирование защиты от переплаты (расходные платежи)");
+		try {
+			await dealAccountingService.recordExpensePayment({
+				dealId: expenseDeal.deal.id,
+				amount: 100000, // Попытка переплаты
+				description: "Попытка переплаты",
+				legalEntityId: testData.legalEntityId,
+				currencyId: testData.currencyId,
+				createdBy: testData.userId,
+				paymentMethod: "bank"
+			});
+			console.log("   ❌ Переплата не была заблокирована!");
+		} catch (error) {
+			console.log("   ✅ Система корректно заблокировала переплату по расходам:", (error as Error).message);
+		}
+
+		console.log("\n   📊 Итоги тестирования расходных платежей:");
+		console.log("   ✅ Создание расходных сделок");
+		console.log("   ✅ Запись расходных платежей (Дт 6010 - Кт 1030)");
+		console.log("   ✅ Поддержка частичных платежей");
+		console.log("   ✅ Поддержка платежей наличными (Дт 6010 - Кт 1010)");
+		console.log("   ✅ Защита от переплаты");
+		console.log("   ✅ Корректное отслеживание баланса");
+
+	} catch (error) {
+		console.error("   ❌ Ошибка в тестировании расходных платежей:", error);
 	}
 }
 

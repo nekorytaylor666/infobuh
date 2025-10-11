@@ -92,6 +92,11 @@ export const dealAccountingService = {
         return response.data
     },
 
+    async recordExpensePayment(dealId: string, data: RecordPaymentRequest): Promise<PaymentResponse> {
+        const response = await api.post<PaymentResponse>(`/deals/${dealId}/expense-payments`, data)
+        return response.data
+    },
+
     async getDealBalance(dealId: string): Promise<BalanceResponse> {
         const response = await api.get<BalanceResponse>(`/deals/${dealId}/balance`)
         return response.data

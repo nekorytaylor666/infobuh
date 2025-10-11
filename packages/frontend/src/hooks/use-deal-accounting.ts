@@ -223,7 +223,7 @@ export function useCreateDeal(legalEntityId: string) {
 
 export function useRecordPayment(legalEntityId: string) {
     const queryClient = useQueryClient()
-    
+
     return useMutation({
         mutationFn: async ({ dealId, ...data }: RecordPaymentRequest & { dealId: string }): Promise<PaymentResponse> => {
             const response = await api.post<PaymentResponse>(`/deals/${dealId}/payments`, data, {
@@ -236,11 +236,35 @@ export function useRecordPayment(legalEntityId: string) {
             queryClient.invalidateQueries({ queryKey: dealAccountingKeys.deals(legalEntityId) })
             queryClient.invalidateQueries({ queryKey: dealAccountingKeys.balance(variables.dealId) })
             queryClient.invalidateQueries({ queryKey: dealAccountingKeys.reconciliation(variables.dealId) })
-            
+
             toast.success('Платеж записан успешно!')
         },
         onError: (error: any) => {
             toast.error(`Ошибка при записи платежа: ${error.response?.data?.error || error.message}`)
+        }
+    })
+}
+
+export function useRecordExpensePayment(legalEntityId: string) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async ({ dealId, ...data }: RecordPaymentRequest & { dealId: string }): Promise<PaymentResponse> => {
+            const response = await api.post<PaymentResponse>(`/deals/${dealId}/expense-payments`, data, {
+                params: { legalEntityId }
+            })
+            return response.data
+        },
+        onSuccess: (data, variables) => {
+            // Invalidate related queries
+            queryClient.invalidateQueries({ queryKey: dealAccountingKeys.deals(legalEntityId) })
+            queryClient.invalidateQueries({ queryKey: dealAccountingKeys.balance(variables.dealId) })
+            queryClient.invalidateQueries({ queryKey: dealAccountingKeys.reconciliation(variables.dealId) })
+
+            toast.success('Расходный платеж записан успешно!')
+        },
+        onError: (error: any) => {
+            toast.error(`Ошибка при записи расходного платежа: ${error.response?.data?.error || error.message}`)
         }
     })
 }
