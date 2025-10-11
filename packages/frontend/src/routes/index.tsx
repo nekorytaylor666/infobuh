@@ -268,9 +268,9 @@ function HomeComponent() {
 					</div>
 					<div className="mt-16">
 						<div className="relative mx-auto max-w-sm sm:max-w-md lg:max-w-lg overflow-hidden">
-							<div className="relative w-full   ">
+							<div className="relative w-full">
 								<motion.div
-									className="relative h-full w-full overflow-hidden rounded-lg flex items-center justify-center min-h-[400px] sm:min-h-[600px] lg:min-h-[800px]"
+									className="relative h-full w-full overflow-hidden rounded-lg flex items-center justify-center min-h-[300px] sm:min-h-[600px] lg:min-h-[800px]"
 									variants={{ ...VARIANTS }}
 									initial="hidden"
 									animate="visible"
@@ -281,7 +281,7 @@ function HomeComponent() {
 											key={idx}
 											src={images[idx]}
 											alt="Скриншот интерфейса Infobuh"
-											className="absolute inset-0 w-auto h-auto max-w-full max-h-[600px] sm:max-h-[800px] lg:max-h-[1000px] object-contain m-auto"
+											className="absolute inset-0 w-full h-full max-w-full max-h-[400px] sm:max-h-[800px] lg:max-h-[1000px] object-contain m-auto"
 											initial={{ opacity: 0 }}
 											animate={{ opacity: 1 }}
 											exit={{ opacity: 0 }}
@@ -527,7 +527,7 @@ function HomeComponent() {
 
 			{/* CTA Section */}
 			<section className="px-4 py-12 sm:py-16">
-				<div className="mx-auto flex max-w-md flex-col items-center justify-center gap-6">
+				<div className="mx-auto flex max-w-md flex-col items-center justify-center gap-6 px-4">
 					<div className="flex flex-col items-center gap-4 text-center">
 						<span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-sm leading-normal text-gray-700">
 							Начните бесплатно
@@ -542,18 +542,18 @@ function HomeComponent() {
 							</p>
 						</div>
 					</div>
-					<div className="flex flex-col gap-4">
-						<div className="flex items-center gap-4">
+					<div className="flex flex-col gap-4 w-full">
+						<div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center">
 							<Button
 								size="lg"
-								className="bg-gray-900 text-white hover:bg-gray-800"
+								className="bg-gray-900 text-white hover:bg-gray-800 w-full sm:w-auto"
 							>
 								Попробовать бесплатно
 							</Button>
 							<Button
 								size="lg"
 								variant="outline"
-								className="border-gray-300 hover:border-gray-400"
+								className="border-gray-300 hover:border-gray-400 w-full sm:w-auto"
 							>
 								Демо <ArrowRight className="ml-2 h-4 w-4" />
 							</Button>
@@ -573,18 +573,18 @@ function HomeComponent() {
 							© {new Date().getFullYear()} Infobuh. Все права защищены.
 						</span>
 						<div className="flex gap-6">
-							<a
-								href="#privacy"
+							<Link
+								to="/privacy-policy"
 								className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
 							>
 								Конфиденциальность
-							</a>
-							<a
-								href="#terms"
+							</Link>
+							<Link
+								to="/legal"
 								className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
 							>
 								Условия
-							</a>
+							</Link>
 							<a
 								href="#contacts"
 								className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
