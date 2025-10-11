@@ -159,8 +159,10 @@ function Navigation() {
 						>
 							Цены
 						</a>
-						<Button variant="default" size="sm" className="ml-2">
-							Войти
+						<Button asChild variant="default" size="sm" className="ml-2">
+							<Link to="/auth/signup" search={{ returnTo: "/" }}>
+								Зарегистрироваться
+							</Link>
 						</Button>
 					</nav>
 				</div>
