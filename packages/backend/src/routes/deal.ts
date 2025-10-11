@@ -517,11 +517,11 @@ dealRouter.post(
 	},
 );
 
-// Record payment for a deal
+// Record payment for a deal (income - receiving money)
 dealRouter.post(
 	"/:dealId/payments",
 	describeRoute({
-		description: "Record a payment for a specific deal",
+		description: "Record a payment for a specific deal (income - receiving money)",
 		tags: ["Deals", "Payments", "Accounting"],
 		parameters: [
 			{
@@ -598,6 +598,91 @@ dealRouter.post(
 			const status = message.includes("not found") ? 404 :
 				message.includes("exceeds") ? 400 : 500;
 			return c.json({ error: "Failed to record payment", message }, status);
+		}
+	},
+);
+
+// Record expense payment for a deal (expense - paying out money)
+dealRouter.post(
+	"/:dealId/expense-payments",
+	describeRoute({
+		description: "Record an expense payment for a specific deal (expense - paying out money)",
+		tags: ["Deals", "Payments", "Accounting"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		request: {
+			body: {
+				content: {
+					"application/json": {
+						schema: recordPaymentSchema,
+					},
+				},
+			},
+		},
+		responses: {
+			200: {
+				description: "Expense payment recorded successfully",
+				content: {
+					"application/json": {
+						schema: z.object({
+							deal: dealZodSchema,
+							journalEntry: z.object({
+								id: z.string(),
+								entryNumber: z.string(),
+								description: z.string().optional(),
+								status: z.string(),
+							}),
+						}),
+					},
+				},
+			},
+			400: { description: "Invalid input or payment amount exceeds balance" },
+			401: { description: "Unauthorized" },
+			404: { description: "Deal not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	zValidator("json", recordPaymentSchema),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const legalEntityId = c.req.query("legalEntityId");
+			if (!legalEntityId) {
+				return c.json({ error: "Legal entity ID is required" }, 400);
+			}
+
+			const dealId = c.req.param("dealId");
+			const paymentData = c.req.valid("json");
+			const dealAccountingService = new DealAccountingService(c.env.db);
+
+			const result = await dealAccountingService.recordExpensePayment({
+				dealId,
+				...paymentData,
+				legalEntityId,
+				createdBy: userId,
+			});
+
+			return c.json(result);
+		} catch (error) {
+			console.error("Error recording expense payment:", error);
+			if (error instanceof z.ZodError) {
+				return c.json({ error: error.errors }, 400);
+			}
+			const message = error instanceof Error ? error.message : "Unknown error";
+			const status = message.includes("not found") ? 404 :
+				message.includes("exceeds") ? 400 : 500;
+			return c.json({ error: "Failed to record expense payment", message }, status);
 		}
 	},
 );
