@@ -16,6 +16,7 @@ import { accounts } from "./accounts";
 import { currencies } from "./currencies";
 import { legalEntities } from "../legal-entities";
 import { partners } from "../partners";
+import { dealJournalEntries } from "../deal";
 
 export const journalEntries = pgTable(
 	"journal_entries",
@@ -89,6 +90,7 @@ export const journalEntriesRelations = relations(
 			fields: [journalEntries.partnerId],
 			references: [partners.id],
 		}),
+		dealJournalEntries: many(dealJournalEntries),
 		// Note: User relations will be added when auth schema is properly integrated
 	}),
 );
