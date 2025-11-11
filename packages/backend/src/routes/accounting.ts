@@ -322,9 +322,17 @@ accountingRouter.get("/journal-entries", async (c) => {
 		const service = new AccountingService(c.env.db);
 		const entries = await service.getJournalEntries(legalEntityId);
 
+		// Transform entries to include deal field (null if no deal linked)
+		const entriesWithDeal = entries.map((entry: any) => ({
+			...entry,
+			deal: entry.dealJournalEntries?.[0]?.deal ?? null,
+			// Remove the junction table from the response to keep it clean
+			dealJournalEntries: undefined,
+		}));
+
 		return c.json({
 			success: true,
-			data: entries,
+			data: entriesWithDeal,
 		});
 	} catch (error) {
 		return c.json(
@@ -360,12 +368,18 @@ accountingRouter.get("/journal-entries/:id", async (c) => {
 			);
 		}
 
+		// Transform entry to include deal field (null if no deal linked)
+		const entryWithDeal: any = {
+			...entry,
+			lines,
+			deal: (entry as any).dealJournalEntries?.[0]?.deal ?? null,
+			// Remove the junction table from the response to keep it clean
+			dealJournalEntries: undefined,
+		};
+
 		return c.json({
 			success: true,
-			data: {
-				...entry,
-				lines,
-			},
+			data: entryWithDeal,
 		});
 	} catch (error) {
 		return c.json(

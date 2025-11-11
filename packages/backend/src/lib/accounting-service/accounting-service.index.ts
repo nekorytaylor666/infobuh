@@ -340,17 +340,39 @@ export class AccountingService {
 					},
 				},
 				partner: true,
+				dealJournalEntries: {
+					with: {
+						deal: {
+							columns: {
+								id: true,
+								title: true,
+								totalAmount: true,
+							},
+						},
+					},
+				},
 			},
 			orderBy: [desc(journalEntries.entryDate), desc(journalEntries.createdAt)],
 		});
 	}
 
 	async getJournalEntryById(id: string, legalEntityId: string): Promise<JournalEntry | null> {
-		const [entry] = await this.db
-			.select()
-			.from(journalEntries)
-			.where(and(eq(journalEntries.id, id), eq(journalEntries.legalEntityId, legalEntityId)))
-			.limit(1);
+		const entry = await this.db.query.journalEntries.findFirst({
+			where: and(eq(journalEntries.id, id), eq(journalEntries.legalEntityId, legalEntityId)),
+			with: {
+				dealJournalEntries: {
+					with: {
+						deal: {
+							columns: {
+								id: true,
+								title: true,
+								totalAmount: true,
+							},
+						},
+					},
+				},
+			},
+		});
 
 		return entry || null;
 	}

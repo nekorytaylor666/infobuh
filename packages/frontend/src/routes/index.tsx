@@ -159,11 +159,6 @@ function Navigation() {
 						>
 							Цены
 						</a>
-						<Button asChild variant="default" size="sm" className="ml-2">
-							<Link to="/auth/signup" search={{ returnTo: "/" }}>
-								Зарегистрироваться
-							</Link>
-						</Button>
 					</nav>
 				</div>
 			</div>
@@ -247,8 +242,15 @@ function HomeComponent() {
 								<Button
 									size="lg"
 									className="bg-gray-900 text-white hover:bg-gray-800 w-full sm:w-auto"
+									asChild
 								>
-									Попробовать бесплатно
+									<a
+										href="http://wa.me/77079201320?text=Здравствуйте%2C%20хочу%20узнать%20подробнее"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										Попробовать бесплатно
+									</a>
 								</Button>
 							</motion.div>
 							<motion.div
@@ -262,8 +264,15 @@ function HomeComponent() {
 									size="lg"
 									variant="outline"
 									className="border-gray-300 hover:border-gray-400 w-full sm:w-auto"
+									asChild
 								>
-									Узнать больше <ArrowRight className="ml-2 h-4 w-4" />
+									<a
+										href="http://wa.me/77079201320?text=Здравствуйте%2C%20хочу%20узнать%20подробнее"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										Узнать больше <ArrowRight className="ml-2 h-4 w-4" />
+									</a>
 								</Button>
 							</motion.div>
 						</div>
@@ -549,8 +558,15 @@ function HomeComponent() {
 							<Button
 								size="lg"
 								className="bg-gray-900 text-white hover:bg-gray-800 w-full sm:w-auto"
+								asChild
 							>
-								Попробовать бесплатно
+								<a
+									href="http://wa.me/77079201320?text=Здравствуйте%2C%20хочу%20узнать%20подробнее"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Попробовать бесплатно
+								</a>
 							</Button>
 							<Button
 								size="lg"
