@@ -606,7 +606,7 @@ dealRouter.post(
 dealRouter.post(
 	"/:dealId/expense-payments",
 	describeRoute({
-		description: "Record an expense payment for a specific deal (expense - paying out money). Automatically creates accrual entries based on deal type: 7110-3310 for services, 1330-3310 for products",
+		description: "Record an expense payment for a specific deal (expense - paying out money). Creates payment entry 3310-1010/1030. If accrual entry (7110-3310 for services or 1330-3310 for products) doesn't exist yet, creates it automatically",
 		tags: ["Deals", "Payments", "Accounting"],
 		parameters: [
 			{

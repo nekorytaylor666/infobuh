@@ -306,18 +306,21 @@ export class DealAccountingService {
 	}) {
 		const accountingService = new AccountingService(this.db);
 
-		// Get the standard accounts
-		const standardAccounts = await this.getStandardAccounts(params.legalEntityId);
-
 		// Get the appropriate cash account based on payment method
 		const cashAccount = params.paymentMethod === "cash"
 			? await this.findAccountByCode(params.legalEntityId, "1010") // Cash account
-			: standardAccounts.bankAccount; // Bank account (1030)
+			: await this.findAccountByCode(params.legalEntityId, "1030"); // Bank account
+
+		// Get accounts payable account
+		const accountsPayable = await this.findAccountByCode(params.legalEntityId, "3310");
 
 		return await this.db.transaction(async (tx) => {
 			// 1. Get current deal
 			const deal = await tx.query.deals.findFirst({
 				where: eq(dealsTable.id, params.dealId),
+				with: {
+					dealJournalEntries: true,
+				}
 			});
 
 			if (!deal) {
@@ -336,60 +339,18 @@ export class DealAccountingService {
 				throw new Error("Payment amount exceeds remaining balance");
 			}
 
-			// 4. Create expense payment journal entry
-			const entryNumber = await this.generateEntryNumber(params.legalEntityId);
-
-			const journalEntryResult = await accountingService.createJournalEntry(
-				{
-					entryNumber,
-					entryDate: new Date().toISOString().split('T')[0],
-					description: params.description || `Расход по сделке: ${deal.title} (${partner.name})`,
-					reference: params.reference || `EXP-${params.dealId}`,
-					status: "draft",
-					currencyId: params.currencyId,
-					legalEntityId: params.legalEntityId,
-					createdBy: params.createdBy,
-				},
-				[
-					{
-						accountId: standardAccounts.revenue.id, // Account code 6010 - Expense account
-						debitAmount: params.amount,
-						creditAmount: 0,
-						description: `Расходы на ${partner.name}`,
-					},
-					{
-						accountId: cashAccount.id, // Account code 1030 (bank) or 1010 (cash)
-						debitAmount: 0,
-						creditAmount: params.amount,
-						description: `Выплата денежных средств для ${partner.name}`,
-					},
-				],
-				deal.receiverBin // Pass the BIN for partner linkage
-			);
-
-			if (!journalEntryResult.success) {
-				throw new Error(`Failed to create expense payment journal entry: ${journalEntryResult.error.message}`);
-			}
-
-			// 5. Link payment with deal
-			await tx.insert(dealJournalEntries).values({
-				dealId: params.dealId,
-				journalEntryId: journalEntryResult.entry.id,
-				entryType: "payment",
-			});
-
-			// 6. Create additional accrual entry based on deal type
+			// 4. Check if accrual entry (7110-3310 or 1330-3310) already exists for this deal
 			let accrualJournalEntry = null;
-			if (deal.dealType === "service" || deal.dealType === "product") {
+			const hasAccrualEntry = deal.dealJournalEntries.some(entry => entry.entryType === "invoice");
+
+			// 5. Create accrual entry if not exists and deal type is service or product
+			if (!hasAccrualEntry && (deal.dealType === "service" || deal.dealType === "product")) {
 				const accrualEntryNumber = await this.generateEntryNumber(params.legalEntityId);
 				
 				// Get the appropriate debit account based on deal type
 				const debitAccount = deal.dealType === "service"
 					? await this.findAccountByCode(params.legalEntityId, "7110") // Services
 					: await this.findAccountByCode(params.legalEntityId, "1330"); // Products (inventory)
-				
-				// Get credit account (accounts payable)
-				const creditAccount = await this.findAccountByCode(params.legalEntityId, "3310");
 
 				const accrualJournalEntryResult = await accountingService.createJournalEntry(
 					{
@@ -412,7 +373,7 @@ export class DealAccountingService {
 								: `Приобретение товаров: ${partner.name}`,
 						},
 						{
-							accountId: creditAccount.id, // 3310 - Accounts Payable
+							accountId: accountsPayable.id, // 3310 - Accounts Payable
 							debitAmount: 0,
 							creditAmount: params.amount,
 							description: `Кредиторская задолженность: ${partner.name}`,
@@ -435,7 +396,49 @@ export class DealAccountingService {
 				});
 			}
 
-			// 7. Update deal paid amount
+			// 6. Create payment journal entry: 3310 (Debit) - 1010/1030 (Credit)
+			const paymentEntryNumber = await this.generateEntryNumber(params.legalEntityId);
+
+			const paymentJournalEntryResult = await accountingService.createJournalEntry(
+				{
+					entryNumber: paymentEntryNumber,
+					entryDate: new Date().toISOString().split('T')[0],
+					description: params.description || `Оплата по сделке: ${deal.title} (${partner.name})`,
+					reference: params.reference || `PAY-${params.dealId}`,
+					status: "draft",
+					currencyId: params.currencyId,
+					legalEntityId: params.legalEntityId,
+					createdBy: params.createdBy,
+				},
+				[
+					{
+						accountId: accountsPayable.id, // 3310 - Accounts Payable (Debit)
+						debitAmount: params.amount,
+						creditAmount: 0,
+						description: `Погашение кредиторской задолженности: ${partner.name}`,
+					},
+					{
+						accountId: cashAccount.id, // 1030 (bank) or 1010 (cash) - Credit
+						debitAmount: 0,
+						creditAmount: params.amount,
+						description: `Выплата денежных средств для ${partner.name}`,
+					},
+				],
+				deal.receiverBin
+			);
+
+			if (!paymentJournalEntryResult.success) {
+				throw new Error(`Failed to create payment journal entry: ${paymentJournalEntryResult.error.message}`);
+			}
+
+			// 7. Link payment with deal
+			await tx.insert(dealJournalEntries).values({
+				dealId: params.dealId,
+				journalEntryId: paymentJournalEntryResult.entry.id,
+				entryType: "payment",
+			});
+
+			// 8. Update deal paid amount
 			const [updatedDeal] = await tx
 				.update(dealsTable)
 				.set({
@@ -448,7 +451,7 @@ export class DealAccountingService {
 
 			return { 
 				deal: updatedDeal, 
-				journalEntry: journalEntryResult.entry,
+				journalEntry: paymentJournalEntryResult.entry,
 				accrualJournalEntry
 			};
 		});

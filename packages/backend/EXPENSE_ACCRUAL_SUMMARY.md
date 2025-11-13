@@ -6,14 +6,18 @@
 **Endpoint:** `POST /deals/:dealId/expense-payments`
 
 **What it does now:**
-- Records the payment entry (existing functionality)
-- **NEW:** Automatically creates accrual entries based on deal type
+- **NEW:** Checks if accrual entry exists, creates it if missing
+- Records the payment entry (погашение задолженности)
 - Returns both entries in the response
 
-**Accrual entries created:**
+**Logic:**
+1. Checks if accrual entry already exists for this deal
+2. If NO accrual entry exists AND deal is service/product → Creates accrual entry
+3. Always creates payment entry: `3310 (Debit) - 1010/1030 (Credit)`
+
+**Accrual entries (created only if not exists):**
 - **Service deals** → Creates: `7110 (Debit) - 3310 (Credit)`
 - **Product deals** → Creates: `1330 (Debit) - 3310 (Credit)`
-- **Other types** → No accrual entry (keeps existing behavior)
 
 ### 2. New Standalone Accrual Endpoint
 **Endpoint:** `POST /deals/:dealId/expense-accrual`
@@ -25,51 +29,87 @@
 
 ## 🎯 Usage Scenarios
 
-### Scenario A: Payment with Automatic Accrual
-**When to use:** You're paying for a service/product that was just received
-
-```
-POST /deals/:dealId/expense-payments
-
-Result:
-✓ Payment recorded (6010 → 1030)
-✓ Accrual recorded (7110 → 3310 or 1330 → 3310)
-✓ Deal paid amount updated
-```
-
-### Scenario B: Accrual Only (No Payment Yet)
-**When to use:** You received services/goods but haven't paid yet
+### Scenario A: Accrual First, Payment Later (Recommended)
+**Step 1:** Record that you received service/goods
 
 ```
 POST /deals/:dealId/expense-accrual
 
 Result:
 ✓ Accrual recorded (7110 → 3310 or 1330 → 3310)
-✗ Deal paid amount NOT updated (payment pending)
+✗ Deal paid amount NOT updated
+```
+
+**Step 2:** When you pay
+
+```
+POST /deals/:dealId/expense-payments
+
+Result:
+✓ Payment recorded (3310 → 1010/1030)
+✓ Deal paid amount updated
+✗ Accrual NOT created (already exists)
+```
+
+### Scenario B: Payment + Accrual Together
+**When to use:** You're paying immediately when receiving service/goods
+
+```
+POST /deals/:dealId/expense-payments
+
+Result:
+✓ Accrual recorded (7110 → 3310 or 1330 → 3310)
+✓ Payment recorded (3310 → 1010/1030)
+✓ Deal paid amount updated
+```
+
+### Scenario C: Multiple Payments for One Deal
+**First payment:**
+```
+POST /deals/:dealId/expense-payments
+
+Result:
+✓ Accrual recorded (7110 → 3310)
+✓ Payment recorded (3310 → 1010)
+```
+
+**Second payment:**
+```
+POST /deals/:dealId/expense-payments
+
+Result:
+✓ Payment recorded (3310 → 1010)
+✗ Accrual NOT created (already exists from first payment)
 ```
 
 ## 📊 Accounting Entries
 
 ### For Services (dealType: "service")
-```
-Payment Entry:
-  Debit:  6010 (Expenses)         100,000
-  Credit: 1030 (Bank)             100,000
 
-Accrual Entry:
-  Debit:  7110 (Service Expenses)  100,000
-  Credit: 3310 (Accounts Payable)  100,000
+**Accrual Entry (when received service):**
+```
+Debit:  7110 (Service Expenses)     100,000
+Credit: 3310 (Accounts Payable)     100,000
+```
+
+**Payment Entry (when paid):**
+```
+Debit:  3310 (Accounts Payable)     100,000
+Credit: 1010 (Cash) or 1030 (Bank)  100,000
 ```
 
 ### For Products (dealType: "product")
-```
-Payment Entry:
-  Debit:  6010 (Expenses)         100,000
-  Credit: 1030 (Bank)             100,000
 
-Accrual Entry:
-  Debit:  1330 (Inventory)        100,000
-  Credit: 3310 (Accounts Payable) 100,000
+**Accrual Entry (when received goods):**
+```
+Debit:  1330 (Inventory)            100,000
+Credit: 3310 (Accounts Payable)     100,000
+```
+
+**Payment Entry (when paid):**
+```
+Debit:  3310 (Accounts Payable)     100,000
+Credit: 1010 (Cash) or 1030 (Bank)  100,000
 ```
 
 ## 🔄 Response Changes
@@ -78,8 +118,8 @@ Accrual Entry:
 ```json
 {
   "deal": { ... },
-  "journalEntry": { ... },
-  "accrualJournalEntry": {  // ← NEW FIELD
+  "journalEntry": { ... },  // ← This is the PAYMENT entry (3310 → 1010/1030)
+  "accrualJournalEntry": {  // ← NEW FIELD (null if already exists)
     "id": "uuid",
     "entryNumber": "JE-xxx",
     "description": "...",
@@ -88,29 +128,81 @@ Accrual Entry:
 }
 ```
 
-Note: `accrualJournalEntry` is `null` if deal type is not service/product
+**Note:** `accrualJournalEntry` is:
+- `null` if accrual entry already exists for this deal
+- `null` if deal type is not service/product
+- Contains entry data if accrual was just created
 
 ## ✨ Key Features
 
-- ✅ **Automatic:** No need to manually create accrual entries
+- ✅ **Smart Deduplication:** Doesn't create duplicate accrual entries
 - ✅ **Type-based:** Different accounts based on service vs product
-- ✅ **Transactional:** Both entries created atomically (all or nothing)
-- ✅ **Backwards compatible:** Existing calls work unchanged
+- ✅ **Transactional:** All entries created atomically (all or nothing)
 - ✅ **Flexible:** Separate endpoint for accrual-only scenarios
+- ✅ **Correct Accounting:** Payment entry debits Accounts Payable (погашение долга)
 
 ## 🧪 Quick Test
 
-1. Create a service deal
-2. Call: `POST /deals/{dealId}/expense-payments` with amount
-3. Check transactions: `GET /deals/{dealId}/transactions`
-4. You should see 2 journal entries:
-   - One with entry type "payment"
-   - One with entry type "invoice"
+### Test 1: Accrual First, Payment Second
+```bash
+# Step 1: Record accrual
+POST /deals/{dealId}/expense-accrual
+{ "amount": 100000, "currencyId": "..." }
+
+# Check: Should see 1 entry (type: "invoice")
+GET /deals/{dealId}/transactions
+
+# Step 2: Record payment
+POST /deals/{dealId}/expense-payments  
+{ "amount": 100000, "currencyId": "..." }
+
+# Check: Should see 2 entries now
+# - Entry 1 (type: "invoice"): 7110 → 3310
+# - Entry 2 (type: "payment"): 3310 → 1010/1030
+GET /deals/{dealId}/transactions
+```
+
+### Test 2: Payment + Accrual Together
+```bash
+# Record payment (first time for this deal)
+POST /deals/{dealId}/expense-payments
+{ "amount": 100000, "currencyId": "..." }
+
+# Check: Should see 2 entries created
+# - Entry 1 (type: "invoice"): 7110 → 3310 (auto-created)
+# - Entry 2 (type: "payment"): 3310 → 1010/1030
+GET /deals/{dealId}/transactions
+```
+
+### Test 3: Second Payment (No Duplicate Accrual)
+```bash
+# Record second payment for same deal
+POST /deals/{dealId}/expense-payments
+{ "amount": 50000, "currencyId": "..." }
+
+# Check: Should see 3 entries total (no duplicate accrual)
+# - Entry 1 (type: "invoice"): 7110 → 3310 (from first payment)
+# - Entry 2 (type: "payment"): 3310 → 1010/1030 (first payment)
+# - Entry 3 (type: "payment"): 3310 → 1010/1030 (second payment)
+GET /deals/{dealId}/transactions
+```
 
 ## 📝 Important Notes
 
-- Accrual entries are only created for "service" and "product" deal types
-- If deal type is missing or different, only payment entry is created
-- The accrual endpoint REQUIRES deal type to be service or product
+- **Accrual entries** are only created for "service" and "product" deal types
+- **No duplicates:** System checks if accrual entry exists before creating
+- **Payment entry** ALWAYS debits 3310 (Accounts Payable) and credits 1010/1030 (Cash/Bank)
+- **Accrual entry** debits 7110 (Services) or 1330 (Inventory) and credits 3310 (Accounts Payable)
 - All entries are linked to the deal in `deal_journal_entries` table
+- Both entries use the same amount from the payment request
+
+## 🔑 Account Codes Reference
+
+| Code | Name | Type | Used In |
+|------|------|------|---------|
+| 1010 | Касса (Cash) | Asset | Payment entry (Credit) |
+| 1030 | Банковский счет (Bank) | Asset | Payment entry (Credit) |
+| 1330 | Товары (Inventory) | Asset | Accrual entry - Products (Debit) |
+| 3310 | Кредиторская задолженность (Accounts Payable) | Liability | Accrual entry (Credit), Payment entry (Debit) |
+| 7110 | Расходы на услуги (Service Expenses) | Expense | Accrual entry - Services (Debit) |
 
