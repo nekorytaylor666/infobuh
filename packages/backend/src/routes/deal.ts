@@ -606,7 +606,7 @@ dealRouter.post(
 dealRouter.post(
 	"/:dealId/expense-payments",
 	describeRoute({
-		description: "Record an expense payment for a specific deal (expense - paying out money)",
+		description: "Record an expense payment for a specific deal (expense - paying out money). Automatically creates accrual entries based on deal type: 7110-3310 for services, 1330-3310 for products",
 		tags: ["Deals", "Payments", "Accounting"],
 		parameters: [
 			{
@@ -628,7 +628,7 @@ dealRouter.post(
 		},
 		responses: {
 			200: {
-				description: "Expense payment recorded successfully",
+				description: "Expense payment recorded successfully with accrual entries",
 				content: {
 					"application/json": {
 						schema: z.object({
@@ -639,6 +639,12 @@ dealRouter.post(
 								description: z.string().optional(),
 								status: z.string(),
 							}),
+							accrualJournalEntry: z.object({
+								id: z.string(),
+								entryNumber: z.string(),
+								description: z.string().optional(),
+								status: z.string(),
+							}).nullable().optional(),
 						}),
 					},
 				},
@@ -683,6 +689,99 @@ dealRouter.post(
 			const status = message.includes("not found") ? 404 :
 				message.includes("exceeds") ? 400 : 500;
 			return c.json({ error: "Failed to record expense payment", message }, status);
+		}
+	},
+);
+
+// Schema for expense accrual (without payment)
+const recordAccrualSchema = z.object({
+	amount: z.number().min(0, "Accrual amount must be positive"),
+	description: z.string().optional(),
+	reference: z.string().optional(),
+	currencyId: z.string().uuid(),
+});
+
+// Record expense accrual for a deal (without payment)
+dealRouter.post(
+	"/:dealId/expense-accrual",
+	describeRoute({
+		description: "Record an expense accrual for a specific deal without payment. Creates entries: 7110-3310 for services, 1330-3310 for products",
+		tags: ["Deals", "Payments", "Accounting"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		request: {
+			body: {
+				content: {
+					"application/json": {
+						schema: recordAccrualSchema,
+					},
+				},
+			},
+		},
+		responses: {
+			200: {
+				description: "Expense accrual recorded successfully",
+				content: {
+					"application/json": {
+						schema: z.object({
+							deal: dealZodSchema,
+							journalEntry: z.object({
+								id: z.string(),
+								entryNumber: z.string(),
+								description: z.string().optional(),
+								status: z.string(),
+							}),
+						}),
+					},
+				},
+			},
+			400: { description: "Invalid input or deal type not supported" },
+			401: { description: "Unauthorized" },
+			404: { description: "Deal not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	zValidator("json", recordAccrualSchema),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const legalEntityId = c.req.query("legalEntityId");
+			if (!legalEntityId) {
+				return c.json({ error: "Legal entity ID is required" }, 400);
+			}
+
+			const dealId = c.req.param("dealId");
+			const accrualData = c.req.valid("json");
+			const dealAccountingService = new DealAccountingService(c.env.db);
+
+			const result = await dealAccountingService.recordExpenseAccrual({
+				dealId,
+				...accrualData,
+				legalEntityId,
+				createdBy: userId,
+			});
+
+			return c.json(result);
+		} catch (error) {
+			console.error("Error recording expense accrual:", error);
+			if (error instanceof z.ZodError) {
+				return c.json({ error: error.errors }, 400);
+			}
+			const message = error instanceof Error ? error.message : "Unknown error";
+			const status = message.includes("not found") ? 404 :
+				message.includes("Deal type") ? 400 : 500;
+			return c.json({ error: "Failed to record expense accrual", message }, status);
 		}
 	},
 );

@@ -371,7 +371,71 @@ export class DealAccountingService {
 				throw new Error(`Failed to create expense payment journal entry: ${journalEntryResult.error.message}`);
 			}
 
-			// 4. Update deal paid amount
+			// 5. Link payment with deal
+			await tx.insert(dealJournalEntries).values({
+				dealId: params.dealId,
+				journalEntryId: journalEntryResult.entry.id,
+				entryType: "payment",
+			});
+
+			// 6. Create additional accrual entry based on deal type
+			let accrualJournalEntry = null;
+			if (deal.dealType === "service" || deal.dealType === "product") {
+				const accrualEntryNumber = await this.generateEntryNumber(params.legalEntityId);
+				
+				// Get the appropriate debit account based on deal type
+				const debitAccount = deal.dealType === "service"
+					? await this.findAccountByCode(params.legalEntityId, "7110") // Services
+					: await this.findAccountByCode(params.legalEntityId, "1330"); // Products (inventory)
+				
+				// Get credit account (accounts payable)
+				const creditAccount = await this.findAccountByCode(params.legalEntityId, "3310");
+
+				const accrualJournalEntryResult = await accountingService.createJournalEntry(
+					{
+						entryNumber: accrualEntryNumber,
+						entryDate: new Date().toISOString().split('T')[0],
+						description: `Начисление: ${deal.dealType === 'service' ? 'услуги' : 'товары'} от ${partner.name}`,
+						reference: `ACCR-${params.dealId}`,
+						status: "draft",
+						currencyId: params.currencyId,
+						legalEntityId: params.legalEntityId,
+						createdBy: params.createdBy,
+					},
+					[
+						{
+							accountId: debitAccount.id, // 7110 for service or 1330 for product
+							debitAmount: params.amount,
+							creditAmount: 0,
+							description: deal.dealType === 'service' 
+								? `Расходы на услуги: ${partner.name}`
+								: `Приобретение товаров: ${partner.name}`,
+						},
+						{
+							accountId: creditAccount.id, // 3310 - Accounts Payable
+							debitAmount: 0,
+							creditAmount: params.amount,
+							description: `Кредиторская задолженность: ${partner.name}`,
+						},
+					],
+					deal.receiverBin
+				);
+
+				if (!accrualJournalEntryResult.success) {
+					throw new Error(`Failed to create accrual journal entry: ${accrualJournalEntryResult.error.message}`);
+				}
+
+				accrualJournalEntry = accrualJournalEntryResult.entry;
+
+				// Link accrual entry with deal
+				await tx.insert(dealJournalEntries).values({
+					dealId: params.dealId,
+					journalEntryId: accrualJournalEntry.id,
+					entryType: "invoice",
+				});
+			}
+
+			// 7. Update deal paid amount
 			const [updatedDeal] = await tx
 				.update(dealsTable)
 				.set({
@@ -382,14 +446,101 @@ export class DealAccountingService {
 				.where(eq(dealsTable.id, params.dealId))
 				.returning();
 
-			// 5. Link payment with deal
-			await tx.insert(dealJournalEntries).values({
-				dealId: params.dealId,
-				journalEntryId: journalEntryResult.entry.id,
-				entryType: "payment",
+			return { 
+				deal: updatedDeal, 
+				journalEntry: journalEntryResult.entry,
+				accrualJournalEntry
+			};
+		});
+	}
+
+	async recordExpenseAccrual(params: {
+		dealId: string;
+		amount: number;
+		description?: string;
+		reference?: string;
+		legalEntityId: string;
+		currencyId: string;
+		createdBy: string;
+	}) {
+		const accountingService = new AccountingService(this.db);
+
+		return await this.db.transaction(async (tx) => {
+			// 1. Get current deal
+			const deal = await tx.query.deals.findFirst({
+				where: eq(dealsTable.id, params.dealId),
 			});
 
-			return { deal: updatedDeal, journalEntry: journalEntryResult.entry };
+			if (!deal) {
+				throw new Error("Deal not found");
+			}
+
+			// 2. Get partner information
+			const partner = await accountingService.findOrCreatePartnerByBin(
+				deal.receiverBin,
+				params.legalEntityId
+			);
+
+			// 3. Create accrual entry based on deal type
+			if (deal.dealType !== "service" && deal.dealType !== "product") {
+				throw new Error("Deal type must be 'service' or 'product' for accrual entry");
+			}
+
+			const accrualEntryNumber = await this.generateEntryNumber(params.legalEntityId);
+			
+			// Get the appropriate debit account based on deal type
+			const debitAccount = deal.dealType === "service"
+				? await this.findAccountByCode(params.legalEntityId, "7110") // Services
+				: await this.findAccountByCode(params.legalEntityId, "1330"); // Products (inventory)
+			
+			// Get credit account (accounts payable)
+			const creditAccount = await this.findAccountByCode(params.legalEntityId, "3310");
+
+			const accrualJournalEntryResult = await accountingService.createJournalEntry(
+				{
+					entryNumber: accrualEntryNumber,
+					entryDate: new Date().toISOString().split('T')[0],
+					description: params.description || `Начисление: ${deal.dealType === 'service' ? 'услуги' : 'товары'} от ${partner.name}`,
+					reference: params.reference || `ACCR-${params.dealId}`,
+					status: "draft",
+					currencyId: params.currencyId,
+					legalEntityId: params.legalEntityId,
+					createdBy: params.createdBy,
+				},
+				[
+					{
+						accountId: debitAccount.id, // 7110 for service or 1330 for product
+						debitAmount: params.amount,
+						creditAmount: 0,
+						description: deal.dealType === 'service' 
+							? `Расходы на услуги: ${partner.name}`
+							: `Приобретение товаров: ${partner.name}`,
+					},
+					{
+						accountId: creditAccount.id, // 3310 - Accounts Payable
+						debitAmount: 0,
+						creditAmount: params.amount,
+						description: `Кредиторская задолженность: ${partner.name}`,
+					},
+				],
+				deal.receiverBin
+			);
+
+			if (!accrualJournalEntryResult.success) {
+				throw new Error(`Failed to create accrual journal entry: ${accrualJournalEntryResult.error.message}`);
+			}
+
+			// Link accrual entry with deal
+			await tx.insert(dealJournalEntries).values({
+				dealId: params.dealId,
+				journalEntryId: accrualJournalEntryResult.entry.id,
+				entryType: "invoice",
+			});
+
+			return { 
+				deal, 
+				journalEntry: accrualJournalEntryResult.entry
+			};
 		});
 	}
 
