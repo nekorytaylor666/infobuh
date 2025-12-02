@@ -13,7 +13,7 @@
 **Logic:**
 1. Checks if accrual entry already exists for this deal
 2. If NO accrual entry exists AND deal is service/product → Creates accrual entry
-3. Always creates payment entry: `3310 (Debit) - 1010/1030 (Credit)`
+3. Always creates payment entry: `6060 (Debit) - 1010/1030 (Credit)`
 
 **Accrual entries (created only if not exists):**
 - **Service deals** → Creates: `7110 (Debit) - 3310 (Credit)`
@@ -46,7 +46,7 @@ Result:
 POST /deals/:dealId/expense-payments
 
 Result:
-✓ Payment recorded (3310 → 1010/1030)
+✓ Payment recorded (6060 → 1010/1030)
 ✓ Deal paid amount updated
 ✗ Accrual NOT created (already exists)
 ```
@@ -59,7 +59,7 @@ POST /deals/:dealId/expense-payments
 
 Result:
 ✓ Accrual recorded (7110 → 3310 or 1330 → 3310)
-✓ Payment recorded (3310 → 1010/1030)
+✓ Payment recorded (6060 → 1010/1030)
 ✓ Deal paid amount updated
 ```
 
@@ -70,7 +70,7 @@ POST /deals/:dealId/expense-payments
 
 Result:
 ✓ Accrual recorded (7110 → 3310)
-✓ Payment recorded (3310 → 1010)
+✓ Payment recorded (6060 → 1010)
 ```
 
 **Second payment:**
@@ -78,7 +78,7 @@ Result:
 POST /deals/:dealId/expense-payments
 
 Result:
-✓ Payment recorded (3310 → 1010)
+✓ Payment recorded (6060 → 1010)
 ✗ Accrual NOT created (already exists from first payment)
 ```
 
@@ -108,7 +108,7 @@ Credit: 3310 (Accounts Payable)     100,000
 
 **Payment Entry (when paid):**
 ```
-Debit:  3310 (Accounts Payable)     100,000
+Debit:  6060 (Expenses)             100,000
 Credit: 1010 (Cash) or 1030 (Bank)  100,000
 ```
 
@@ -118,7 +118,7 @@ Credit: 1010 (Cash) or 1030 (Bank)  100,000
 ```json
 {
   "deal": { ... },
-  "journalEntry": { ... },  // ← This is the PAYMENT entry (3310 → 1010/1030)
+  "journalEntry": { ... },  // ← This is the PAYMENT entry (6060 → 1010/1030)
   "accrualJournalEntry": {  // ← NEW FIELD (null if already exists)
     "id": "uuid",
     "entryNumber": "JE-xxx",
@@ -139,7 +139,7 @@ Credit: 1010 (Cash) or 1030 (Bank)  100,000
 - ✅ **Type-based:** Different accounts based on service vs product
 - ✅ **Transactional:** All entries created atomically (all or nothing)
 - ✅ **Flexible:** Separate endpoint for accrual-only scenarios
-- ✅ **Correct Accounting:** Payment entry debits Accounts Payable (погашение долга)
+- ✅ **Correct Accounting:** Payment entry debits 6060 (Expenses) and credits Cash/Bank
 
 ## 🧪 Quick Test
 
@@ -158,7 +158,7 @@ POST /deals/{dealId}/expense-payments
 
 # Check: Should see 2 entries now
 # - Entry 1 (type: "invoice"): 7110 → 3310
-# - Entry 2 (type: "payment"): 3310 → 1010/1030
+# - Entry 2 (type: "payment"): 6060 → 1010/1030
 GET /deals/{dealId}/transactions
 ```
 
@@ -170,7 +170,7 @@ POST /deals/{dealId}/expense-payments
 
 # Check: Should see 2 entries created
 # - Entry 1 (type: "invoice"): 7110 → 3310 (auto-created)
-# - Entry 2 (type: "payment"): 3310 → 1010/1030
+# - Entry 2 (type: "payment"): 6060 → 1010/1030
 GET /deals/{dealId}/transactions
 ```
 
@@ -182,8 +182,8 @@ POST /deals/{dealId}/expense-payments
 
 # Check: Should see 3 entries total (no duplicate accrual)
 # - Entry 1 (type: "invoice"): 7110 → 3310 (from first payment)
-# - Entry 2 (type: "payment"): 3310 → 1010/1030 (first payment)
-# - Entry 3 (type: "payment"): 3310 → 1010/1030 (second payment)
+# - Entry 2 (type: "payment"): 6060 → 1010/1030 (first payment)
+# - Entry 3 (type: "payment"): 6060 → 1010/1030 (second payment)
 GET /deals/{dealId}/transactions
 ```
 
@@ -191,7 +191,7 @@ GET /deals/{dealId}/transactions
 
 - **Accrual entries** are only created for "service" and "product" deal types
 - **No duplicates:** System checks if accrual entry exists before creating
-- **Payment entry** ALWAYS debits 3310 (Accounts Payable) and credits 1010/1030 (Cash/Bank)
+- **Payment entry** ALWAYS debits 6060 (Expenses) and credits 1010/1030 (Cash/Bank)
 - **Accrual entry** debits 7110 (Services) or 1330 (Inventory) and credits 3310 (Accounts Payable)
 - All entries are linked to the deal in `deal_journal_entries` table
 - Both entries use the same amount from the payment request
@@ -203,6 +203,7 @@ GET /deals/{dealId}/transactions
 | 1010 | Касса (Cash) | Asset | Payment entry (Credit) |
 | 1030 | Банковский счет (Bank) | Asset | Payment entry (Credit) |
 | 1330 | Товары (Inventory) | Asset | Accrual entry - Products (Debit) |
-| 3310 | Кредиторская задолженность (Accounts Payable) | Liability | Accrual entry (Credit), Payment entry (Debit) |
+| 3310 | Кредиторская задолженность (Accounts Payable) | Liability | Accrual entry (Credit) |
+| 6060 | Расходы (Expenses) | Expense | Payment entry (Debit) |
 | 7110 | Расходы на услуги (Service Expenses) | Expense | Accrual entry - Services (Debit) |
 

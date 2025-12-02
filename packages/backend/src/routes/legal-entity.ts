@@ -16,6 +16,7 @@ import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { findEntity } from "@accounting-kz/bin-verifier";
 import { findUgdByAddressComponents } from "../services/ugdService";
 import { AccountingSeedService } from "../lib/accounting-service/seed-service";
+import { EntityInitializationService } from "../lib/entity-initialization-service";
 const router = new Hono<HonoEnv>();
 
 router.get(
@@ -156,7 +157,21 @@ router.post(
 				// This allows the user to continue and seed manually later if needed
 			}
 
-			return c.json(newLegalEntity, 201);
+			// Automatically initialize default employee and partner
+			try {
+			console.log(`👤 Initializing default employee and partner for legal entity: ${newLegalEntity.id}`);
+			const initService = new EntityInitializationService(c.env.db);
+			await initService.initializeDefaultEntities(
+				newLegalEntity.id,
+				new Date(validatedData.registrationDate),
+			);
+			console.log(`✅ Successfully initialized default entities for legal entity: ${newLegalEntity.id}`);
+		} catch (initError) {
+			console.error(`❌ Error initializing default entities for legal entity ${newLegalEntity.id}:`, initError);
+			// Note: We don't fail the legal entity creation if initialization fails
+		}
+
+		return c.json(newLegalEntity, 201);
 		} catch (error) {
 			console.error("Error creating legal entity:", error);
 			if (error instanceof z.ZodError) {

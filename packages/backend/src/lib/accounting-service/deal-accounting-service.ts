@@ -12,6 +12,8 @@ import {
 	and,
 	journalEntries,
 	journalEntryLines,
+	legalEntities,
+	ne,
 } from "@accounting-kz/db";
 import { AccountingService } from "./accounting-service.index";
 
@@ -225,19 +227,36 @@ export class DealAccountingService {
 				throw new Error("Deal not found");
 			}
 
-			// 2. Get partner information for better descriptions
+			// 2. Check for mirror entries
+			const hasMirrorEntries = await this.checkForMirrorEntries(
+				params.dealId,
+				deal.receiverBin,
+				params.legalEntityId
+			);
+
+			if (hasMirrorEntries) {
+				console.log(`Skipping payment entry creation - mirror entries exist for deal ${params.dealId}`);
+				return {
+					deal,
+					journalEntry: null as any,
+					skipped: true,
+					reason: 'Mirror entries exist',
+				};
+			}
+
+			// 3. Get partner information for better descriptions
 			const partner = await accountingService.findOrCreatePartnerByBin(
 				deal.receiverBin,
 				params.legalEntityId
 			);
 
-			// 3. Validate payment amount
+			// 4. Validate payment amount
 			const newPaidAmount = deal.paidAmount + params.amount;
 			if (newPaidAmount > deal.totalAmount) {
 				throw new Error("Payment amount exceeds remaining balance");
 			}
 
-			// 4. Create payment journal entry
+			// 5. Create payment journal entry
 			const entryNumber = await this.generateEntryNumber(params.legalEntityId);
 
 			const journalEntryResult = await accountingService.createJournalEntry(
@@ -272,7 +291,7 @@ export class DealAccountingService {
 				throw new Error(`Failed to create payment journal entry: ${journalEntryResult.error.message}`);
 			}
 
-			// 4. Update deal paid amount
+			// 6. Update deal paid amount
 			const [updatedDeal] = await tx
 				.update(dealsTable)
 				.set({
@@ -283,7 +302,7 @@ export class DealAccountingService {
 				.where(eq(dealsTable.id, params.dealId))
 				.returning();
 
-			// 5. Link payment with deal
+			// 7. Link payment with deal
 			await tx.insert(dealJournalEntries).values({
 				dealId: params.dealId,
 				journalEntryId: journalEntryResult.entry.id,
@@ -311,8 +330,8 @@ export class DealAccountingService {
 			? await this.findAccountByCode(params.legalEntityId, "1010") // Cash account
 			: await this.findAccountByCode(params.legalEntityId, "1030"); // Bank account
 
-		// Get accounts payable account
-		const accountsPayable = await this.findAccountByCode(params.legalEntityId, "3310");
+		// Get expense account for payment entry
+		const expenseAccount = await this.findAccountByCode(params.legalEntityId, "6060");
 
 		return await this.db.transaction(async (tx) => {
 			// 1. Get current deal
@@ -327,23 +346,41 @@ export class DealAccountingService {
 				throw new Error("Deal not found");
 			}
 
-			// 2. Get partner information for better descriptions
+			// 2. Check for mirror entries
+			const hasMirrorEntries = await this.checkForMirrorEntries(
+				params.dealId,
+				deal.receiverBin,
+				params.legalEntityId
+			);
+
+			if (hasMirrorEntries) {
+				console.log(`Skipping expense payment - mirror entries exist for deal ${params.dealId}`);
+				return {
+					deal,
+					journalEntry: null as any,
+					accrualJournalEntry: null,
+					skipped: true,
+					reason: 'Mirror entries exist',
+				};
+			}
+
+			// 3. Get partner information for better descriptions
 			const partner = await accountingService.findOrCreatePartnerByBin(
 				deal.receiverBin,
 				params.legalEntityId
 			);
 
-			// 3. Validate payment amount
+			// 4. Validate payment amount
 			const newPaidAmount = deal.paidAmount + params.amount;
 			if (newPaidAmount > deal.totalAmount) {
 				throw new Error("Payment amount exceeds remaining balance");
 			}
 
-			// 4. Check if accrual entry (7110-3310 or 1330-3310) already exists for this deal
+			// 5. Check if accrual entry (7110-3310 or 1330-3310) already exists for this deal
 			let accrualJournalEntry = null;
 			const hasAccrualEntry = deal.dealJournalEntries.some(entry => entry.entryType === "invoice");
 
-			// 5. Create accrual entry if not exists and deal type is service or product
+			// 6. Create accrual entry if not exists and deal type is service or product
 			if (!hasAccrualEntry && (deal.dealType === "service" || deal.dealType === "product")) {
 				const accrualEntryNumber = await this.generateEntryNumber(params.legalEntityId);
 				
@@ -351,6 +388,9 @@ export class DealAccountingService {
 				const debitAccount = deal.dealType === "service"
 					? await this.findAccountByCode(params.legalEntityId, "7110") // Services
 					: await this.findAccountByCode(params.legalEntityId, "1330"); // Products (inventory)
+				
+				// Get accounts payable account
+				const accountsPayable = await this.findAccountByCode(params.legalEntityId, "3310");
 
 				const accrualJournalEntryResult = await accountingService.createJournalEntry(
 					{
@@ -396,7 +436,7 @@ export class DealAccountingService {
 				});
 			}
 
-			// 6. Create payment journal entry: 3310 (Debit) - 1010/1030 (Credit)
+			// 7. Create payment journal entry: 6060 (Debit) - 1010/1030 (Credit)
 			const paymentEntryNumber = await this.generateEntryNumber(params.legalEntityId);
 
 			const paymentJournalEntryResult = await accountingService.createJournalEntry(
@@ -412,10 +452,10 @@ export class DealAccountingService {
 				},
 				[
 					{
-						accountId: accountsPayable.id, // 3310 - Accounts Payable (Debit)
+						accountId: expenseAccount.id, // 6060 - Expense account (Debit)
 						debitAmount: params.amount,
 						creditAmount: 0,
-						description: `Погашение кредиторской задолженности: ${partner.name}`,
+						description: `Расходы на оплату: ${partner.name}`,
 					},
 					{
 						accountId: cashAccount.id, // 1030 (bank) or 1010 (cash) - Credit
@@ -431,14 +471,14 @@ export class DealAccountingService {
 				throw new Error(`Failed to create payment journal entry: ${paymentJournalEntryResult.error.message}`);
 			}
 
-			// 7. Link payment with deal
+			// 8. Link payment with deal
 			await tx.insert(dealJournalEntries).values({
 				dealId: params.dealId,
 				journalEntryId: paymentJournalEntryResult.entry.id,
 				entryType: "payment",
 			});
 
-			// 8. Update deal paid amount
+			// 9. Update deal paid amount
 			const [updatedDeal] = await tx
 				.update(dealsTable)
 				.set({
@@ -478,13 +518,30 @@ export class DealAccountingService {
 				throw new Error("Deal not found");
 			}
 
-			// 2. Get partner information
+			// 2. Check for mirror entries
+			const hasMirrorEntries = await this.checkForMirrorEntries(
+				params.dealId,
+				deal.receiverBin,
+				params.legalEntityId
+			);
+
+			if (hasMirrorEntries) {
+				console.log(`Skipping accrual - mirror entries exist for deal ${params.dealId}`);
+				return {
+					deal,
+					journalEntry: null as any,
+					skipped: true,
+					reason: 'Mirror entries exist',
+				};
+			}
+
+			// 3. Get partner information
 			const partner = await accountingService.findOrCreatePartnerByBin(
 				deal.receiverBin,
 				params.legalEntityId
 			);
 
-			// 3. Create accrual entry based on deal type
+			// 4. Create accrual entry based on deal type
 			if (deal.dealType !== "service" && deal.dealType !== "product") {
 				throw new Error("Deal type must be 'service' or 'product' for accrual entry");
 			}
@@ -671,8 +728,14 @@ export class DealAccountingService {
 			return null;
 		}
 
-		// Transform the data to get real transaction details
-		const transactions = deal.dealJournalEntries.map((dealJournalEntry) => {
+		// Filter journal entries to only those belonging to deal's legal entity
+		const filteredDealJournalEntries = deal.dealJournalEntries.filter(
+			(dealJournalEntry) =>
+				dealJournalEntry.journalEntry.legalEntityId === deal.legalEntityId
+		);
+
+		// Transform the FILTERED data to get real transaction details
+		const transactions = filteredDealJournalEntries.map((dealJournalEntry) => {
 			const journalEntry = dealJournalEntry.journalEntry;
 
 			return {
@@ -703,6 +766,60 @@ export class DealAccountingService {
 			paidAmount: deal.paidAmount,
 			transactions,
 		};
+	}
+
+	/**
+	 * Check if mirror entries exist for a deal
+	 * Mirror entries occur when the receiverBin corresponds to a legal entity
+	 * that has already created journal entries for the reverse transaction
+	 */
+	private async checkForMirrorEntries(
+		currentDealId: string,
+		receiverBin: string,
+		legalEntityId: string
+	): Promise<boolean> {
+		// Step 1: Check if receiverBin corresponds to a legal entity in the system
+		const receiverLegalEntity = await this.db.query.legalEntities.findFirst({
+			where: eq(legalEntities.bin, receiverBin),
+		});
+
+		if (!receiverLegalEntity) {
+			return false; // Receiver not in system, no mirror possible
+		}
+
+		// Step 2: Get current deal's owner BIN
+		const ownerLegalEntity = await this.db.query.legalEntities.findFirst({
+			where: eq(legalEntities.id, legalEntityId),
+		});
+
+		if (!ownerLegalEntity?.bin) {
+			return false;
+		}
+
+		// Step 3: Look for mirror deals
+		// Mirror: receiverLegalEntity owns the deal, ownerLegalEntity is the receiver
+		const mirrorDeals = await this.db.query.deals.findMany({
+			where: and(
+				eq(dealsTable.legalEntityId, receiverLegalEntity.id),
+				eq(dealsTable.receiverBin, ownerLegalEntity.bin),
+				ne(dealsTable.id, currentDealId) // Exclude current deal
+			),
+			with: {
+				dealJournalEntries: true,
+			},
+		});
+
+		// Step 4: Check if any mirror deal has payment or invoice entries
+		for (const mirrorDeal of mirrorDeals) {
+			const hasEntries = mirrorDeal.dealJournalEntries.some(
+				(dje) => dje.entryType === 'payment' || dje.entryType === 'invoice'
+			);
+			if (hasEntries) {
+				return true; // Mirror entries exist
+			}
+		}
+
+		return false;
 	}
 
 	private async generateEntryNumber(legalEntityId: string): Promise<string> {
