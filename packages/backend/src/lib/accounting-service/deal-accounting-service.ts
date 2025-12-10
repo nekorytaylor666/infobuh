@@ -701,7 +701,7 @@ export class DealAccountingService {
 		return report;
 	}
 
-	async getDealTransactions(dealId: string) {
+	async getDealTransactions(dealId: string, requestingLegalEntityId?: string) {
 		// Get deal with all related journal entries
 		const deal = await this.db.query.deals.findFirst({
 			where: eq(dealsTable.id, dealId),
@@ -728,10 +728,13 @@ export class DealAccountingService {
 			return null;
 		}
 
-		// Filter journal entries to only those belonging to deal's legal entity
+		// Filter journal entries to only those belonging to the requesting legal entity
+		// If no requestingLegalEntityId is provided, default to deal owner's entity
+		const filterByLegalEntityId = requestingLegalEntityId || deal.legalEntityId;
+
 		const filteredDealJournalEntries = deal.dealJournalEntries.filter(
 			(dealJournalEntry) =>
-				dealJournalEntry.journalEntry.legalEntityId === deal.legalEntityId
+				dealJournalEntry.journalEntry.legalEntityId === filterByLegalEntityId
 		);
 
 		// Transform the FILTERED data to get real transaction details

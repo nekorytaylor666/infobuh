@@ -1236,8 +1236,8 @@ async function testMirrorEntryPrevention(
 		// Проверяем транзакции обеих сторон
 		console.log("\n   📊 6. Проверка транзакций обеих компаний");
 
-		const transactionsA = await dealAccountingService.getDealTransactions(dealFromA.deal.id);
-		const transactionsB = await dealAccountingService.getDealTransactions(dealFromB.deal.id);
+		const transactionsA = await dealAccountingService.getDealTransactions(dealFromA.deal.id, testData.legalEntityId);
+		const transactionsB = await dealAccountingService.getDealTransactions(dealFromB.deal.id, companyB.id);
 
 		console.log("   Company A transactions:", {
 			count: transactionsA?.transactions.length || 0,
@@ -1355,7 +1355,7 @@ async function testTransactionFiltering(
 		// Get transactions - should only show Company A's entries
 		console.log("\n   🔍 5. Получение транзакций сделки");
 
-		const transactions = await dealAccountingService.getDealTransactions(deal.deal.id);
+		const transactions = await dealAccountingService.getDealTransactions(deal.deal.id, testData.legalEntityId);
 
 		if (!transactions) {
 			console.log("   ❌ Транзакции не найдены");

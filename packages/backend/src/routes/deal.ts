@@ -1869,6 +1869,13 @@ dealRouter.get(
 				schema: { type: "string", format: "uuid" },
 				description: "UUID of the deal",
 			},
+			{
+				name: "legalEntityId",
+				in: "query",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "Legal entity ID making the request",
+			},
 		],
 		responses: {
 			200: {
@@ -1915,10 +1922,42 @@ dealRouter.get(
 				return c.json({ error: "Unauthorized" }, 401);
 			}
 
+			const legalEntityId = c.req.query("legalEntityId");
+			if (!legalEntityId) {
+				return c.json({ error: "Legal entity ID is required" }, 400);
+			}
+
 			const dealId = c.req.param("dealId");
 			const dealAccountingService = new DealAccountingService(c.env.db);
 
-			const transactions = await dealAccountingService.getDealTransactions(dealId);
+			// Get the deal to verify access
+			const deal = await c.env.db.query.deals.findFirst({
+				where: eq(deals.id, dealId),
+			});
+
+			if (!deal) {
+				return c.json({ error: "Deal not found" }, 404);
+			}
+
+			// Verify the requesting legal entity has permission to view this deal
+			// They must be either the owner or the receiver
+			const requestingEntity = await c.env.db.query.legalEntities.findFirst({
+				where: eq(legalEntities.id, legalEntityId),
+			});
+
+			if (!requestingEntity) {
+				return c.json({ error: "Legal entity not found" }, 404);
+			}
+
+			const isOwner = deal.legalEntityId === legalEntityId;
+			const isReceiver = deal.receiverBin === requestingEntity.bin;
+
+			if (!isOwner && !isReceiver) {
+				return c.json({ error: "Forbidden - You don't have access to this deal" }, 403);
+			}
+
+			// Get transactions filtered by the requesting legal entity
+			const transactions = await dealAccountingService.getDealTransactions(dealId, legalEntityId);
 			if (!transactions) {
 				return c.json({ error: "Deal not found" }, 404);
 			}
