@@ -173,11 +173,17 @@ export class AccountingService {
 		entryData: Omit<NewJournalEntry, "id" | "totalDebit" | "totalCredit" | "createdAt" | "updatedAt">,
 		lines: Omit<NewJournalEntryLine, "id" | "journalEntryId" | "lineNumber" | "createdAt" | "updatedAt">[],
 		partnerBin?: string,
+		tx?: any,
 	): Promise<CreateJournalEntryResult> {
 		try {
 			// Zod validation for debit/credit balance, min lines, etc., is handled by the route middleware.
 
-			const entry = await this.db.transaction(async (trx) => {
+			// If transaction context provided, use it; otherwise create new transaction
+			const executeWithinTransaction = tx
+				? async (fn: (trx: any) => Promise<any>) => fn(tx)
+				: async (fn: (trx: any) => Promise<any>) => this.db.transaction(fn);
+
+			const entry = await executeWithinTransaction(async (trx) => {
 				// Handle partner lookup/creation if BIN provided
 				let partnerId: string | undefined;
 				if (partnerBin) {

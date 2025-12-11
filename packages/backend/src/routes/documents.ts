@@ -208,12 +208,9 @@ documentsRouter.post("/:legalEntityId/:id/sign", async (c) => {
 			{
 				key,
 				password,
-				keyAlias: null,
-			},
-		],
-		withTsp: true,
-		tsaPolicy: "TSA_GOST_POLICY",
-		detached: false,
+				keyAlias: null
+			}
+		]
 	};
 
 	try {

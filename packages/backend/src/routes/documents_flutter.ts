@@ -1184,12 +1184,9 @@ documentsFlutterRouter.post(
 				{
 					key,
 					password,
-					keyAlias: null,
-				},
-			],
-			withTsp: true,
-			tsaPolicy: "TSA_GOST_POLICY",
-			detached: false,
+					keyAlias: null
+				}
+			]
 		};
 
 		try {

@@ -506,9 +506,8 @@ export class DealAccountingService {
 		currencyId: string;
 		createdBy: string;
 	}) {
-		const accountingService = new AccountingService(this.db);
-
 		return await this.db.transaction(async (tx) => {
+			const accountingService = new AccountingService(this.db);
 			// 1. Get current deal
 			const deal = await tx.query.deals.findFirst({
 				where: eq(dealsTable.id, params.dealId),
