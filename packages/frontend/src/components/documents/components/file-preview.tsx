@@ -14,6 +14,7 @@ import type {
 } from "@backend/db/schema";
 import { documentCache } from "../utils/document-cache";
 import { signDocument } from "../utils/document-utils";
+import { PdfViewer } from "./pdf-viewer";
 import {
   Dialog,
   DialogContent,
@@ -237,10 +238,10 @@ export function FilePreview({ file }: FilePreviewProps) {
           </div>
         )}
         {isPDF && (
-          <iframe
-            src={`${getFileUrl()}#toolbar=0`}
-            className="w-full h-full aspect-[9/16] rounded-lg"
-            title={file.name}
+          <PdfViewer
+            url={getFileUrl()}
+            className="w-full h-full rounded-lg"
+            mode="full"
             onLoad={() => {
               setIsLoading(false);
               setHasError(false);
@@ -249,7 +250,6 @@ export function FilePreview({ file }: FilePreviewProps) {
               setIsLoading(false);
               setHasError(true);
             }}
-            style={{ opacity: isLoading ? 0 : 1 }}
           />
         )}
         {hasError && (
