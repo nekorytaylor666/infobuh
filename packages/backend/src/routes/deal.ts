@@ -1841,15 +1841,15 @@ dealRouter.delete(
 dealRouter.get(
 	"/:dealId/documents/:documentFlutterId",
 	describeRoute({
-		description: "Get a specific document associated with a deal.",
+		description: "Get a specific document associated with a deal. Supports public access with valid share token.",
 		tags: ["Deals", "Deal Documents"],
 		parameters: [
 			{
 				name: "dealId",
 				in: "path",
 				required: true,
-				schema: { type: "string", format: "uuid" },
-				description: "UUID of the deal",
+				schema: { type: "string" },
+				description: "UUID of the deal or share token",
 			},
 			{
 				name: "documentFlutterId",
@@ -1857,6 +1857,13 @@ dealRouter.get(
 				required: true,
 				schema: { type: "string", format: "uuid" },
 				description: "UUID of the documentFlutter",
+			},
+			{
+				name: "token",
+				in: "query",
+				required: false,
+				schema: { type: "string" },
+				description: "Public share token for unauthenticated access",
 			},
 		],
 		responses: {
@@ -1877,20 +1884,28 @@ dealRouter.get(
 	async (c) => {
 		try {
 			const { dealId, documentFlutterId } = c.req.param();
+			const shareToken = c.req.query("token");
 
-			// Validate UUIDs
-			const paramsValidation = dealDocumentPathParamsSchema.safeParse({
-				dealId,
-				documentFlutterId,
-			});
-			if (!paramsValidation.success) {
-				return c.json({ error: "Invalid Deal ID or Document ID format" }, 400);
+			let actualDealId = dealId;
+
+			// If share token is provided, validate it and get the actual deal ID
+			if (shareToken) {
+				const deal = await validateShareToken(c.env.db, dealId);
+				if (!deal) {
+					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
+				}
+				actualDealId = deal.id;
+			}
+
+			// Validate document UUID
+			if (!documentFlutterId || typeof documentFlutterId !== 'string') {
+				return c.json({ error: "Invalid Document ID format" }, 400);
 			}
 
 			// 1. Check if the deal-document association exists
 			const association = await c.env.db.query.dealDocumentsFlutter.findFirst({
 				where: and(
-					eq(dealDocumentsFlutter.dealId, dealId),
+					eq(dealDocumentsFlutter.dealId, actualDealId),
 					eq(dealDocumentsFlutter.documentFlutterId, documentFlutterId),
 				),
 				columns: { documentFlutterId: true }, // We only need to confirm existence

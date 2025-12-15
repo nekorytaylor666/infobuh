@@ -112,15 +112,19 @@ export async function getEmployee(legalEntityId: string, employeeId: string) {
 	return response.data;
 }
 
-export async function getDeal(dealId: string) {
-	const response = await api.get<DealWithRelations>(`/deals/${dealId}`);
+export async function getDeal(dealId: string, shareToken?: string) {
+	const url = shareToken
+		? `/deals/${dealId}?token=${shareToken}`
+		: `/deals/${dealId}`;
+	const response = await api.get<DealWithRelations>(url);
 
 	return response.data;
 }
 
-export async function getDealDocument(dealId: string, documentId: string) {
-	const response = await api.get<DealDocuments>(
-		`/deals/${dealId}/documents/${documentId}`,
-	);
+export async function getDealDocument(dealId: string, documentId: string, shareToken?: string) {
+	const url = shareToken
+		? `/deals/${dealId}/documents/${documentId}?token=${shareToken}`
+		: `/deals/${dealId}/documents/${documentId}`;
+	const response = await api.get<DealDocuments>(url);
 	return response.data;
 }

@@ -24,7 +24,9 @@ export const Route = createFileRoute("/share/deals/$dealId/")({
 
   pendingComponent: DealPagePendingComponent,
   loader: async ({ params }) => {
-    const deal = await getDeal(params.dealId);
+    // dealId parameter is actually the share token
+    const shareToken = params.dealId;
+    const deal = await getDeal(shareToken, shareToken);
     return deal;
   },
 });
