@@ -17,11 +17,13 @@ import { Route as LegalImport } from './routes/legal'
 import { Route as DealAccountingImport } from './routes/deal-accounting'
 import { Route as AboutImport } from './routes/about'
 import { Route as ShareRouteImport } from './routes/share/route'
+import { Route as PreviewRouteImport } from './routes/preview/route'
 import { Route as IndexImport } from './routes/index'
 import { Route as AuthSignupImport } from './routes/auth/signup'
 import { Route as AuthSignImport } from './routes/auth/sign'
 import { Route as AuthLoginImport } from './routes/auth/login'
 import { Route as ShareDealsDealIdIndexImport } from './routes/share/deals/$dealId/index'
+import { Route as PreviewDealsShareTokenIndexImport } from './routes/preview/deals/$shareToken/index'
 import { Route as ShareDealsDealIdDocumentIdImport } from './routes/share/deals/$dealId/$documentId'
 
 // Create/Update Routes
@@ -62,6 +64,12 @@ const ShareRouteRoute = ShareRouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const PreviewRouteRoute = PreviewRouteImport.update({
+  id: '/preview',
+  path: '/preview',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
@@ -92,6 +100,13 @@ const ShareDealsDealIdIndexRoute = ShareDealsDealIdIndexImport.update({
   getParentRoute: () => ShareRouteRoute,
 } as any)
 
+const PreviewDealsShareTokenIndexRoute =
+  PreviewDealsShareTokenIndexImport.update({
+    id: '/deals/$shareToken/',
+    path: '/deals/$shareToken/',
+    getParentRoute: () => PreviewRouteRoute,
+  } as any)
+
 const ShareDealsDealIdDocumentIdRoute = ShareDealsDealIdDocumentIdImport.update(
   {
     id: '/deals/$dealId/$documentId',
@@ -109,6 +124,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/preview': {
+      id: '/preview'
+      path: '/preview'
+      fullPath: '/preview'
+      preLoaderRoute: typeof PreviewRouteImport
       parentRoute: typeof rootRoute
     }
     '/share': {
@@ -181,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareDealsDealIdDocumentIdImport
       parentRoute: typeof ShareRouteImport
     }
+    '/preview/deals/$shareToken/': {
+      id: '/preview/deals/$shareToken/'
+      path: '/deals/$shareToken'
+      fullPath: '/preview/deals/$shareToken'
+      preLoaderRoute: typeof PreviewDealsShareTokenIndexImport
+      parentRoute: typeof PreviewRouteImport
+    }
     '/share/deals/$dealId/': {
       id: '/share/deals/$dealId/'
       path: '/deals/$dealId'
@@ -192,6 +221,18 @@ declare module '@tanstack/react-router' {
 }
 
 // Create and export the route tree
+
+interface PreviewRouteRouteChildren {
+  PreviewDealsShareTokenIndexRoute: typeof PreviewDealsShareTokenIndexRoute
+}
+
+const PreviewRouteRouteChildren: PreviewRouteRouteChildren = {
+  PreviewDealsShareTokenIndexRoute: PreviewDealsShareTokenIndexRoute,
+}
+
+const PreviewRouteRouteWithChildren = PreviewRouteRoute._addFileChildren(
+  PreviewRouteRouteChildren,
+)
 
 interface ShareRouteRouteChildren {
   ShareDealsDealIdDocumentIdRoute: typeof ShareDealsDealIdDocumentIdRoute
@@ -209,6 +250,7 @@ const ShareRouteRouteWithChildren = ShareRouteRoute._addFileChildren(
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/preview': typeof PreviewRouteRouteWithChildren
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/deal-accounting': typeof DealAccountingRoute
@@ -219,11 +261,13 @@ export interface FileRoutesByFullPath {
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
   '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
+  '/preview/deals/$shareToken': typeof PreviewDealsShareTokenIndexRoute
   '/share/deals/$dealId': typeof ShareDealsDealIdIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/preview': typeof PreviewRouteRouteWithChildren
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/deal-accounting': typeof DealAccountingRoute
@@ -234,12 +278,14 @@ export interface FileRoutesByTo {
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
   '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
+  '/preview/deals/$shareToken': typeof PreviewDealsShareTokenIndexRoute
   '/share/deals/$dealId': typeof ShareDealsDealIdIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/preview': typeof PreviewRouteRouteWithChildren
   '/share': typeof ShareRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/deal-accounting': typeof DealAccountingRoute
@@ -250,6 +296,7 @@ export interface FileRoutesById {
   '/auth/sign': typeof AuthSignRoute
   '/auth/signup': typeof AuthSignupRoute
   '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
+  '/preview/deals/$shareToken/': typeof PreviewDealsShareTokenIndexRoute
   '/share/deals/$dealId/': typeof ShareDealsDealIdIndexRoute
 }
 
@@ -257,6 +304,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/preview'
     | '/share'
     | '/about'
     | '/deal-accounting'
@@ -267,10 +315,12 @@ export interface FileRouteTypes {
     | '/auth/sign'
     | '/auth/signup'
     | '/share/deals/$dealId/$documentId'
+    | '/preview/deals/$shareToken'
     | '/share/deals/$dealId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/preview'
     | '/share'
     | '/about'
     | '/deal-accounting'
@@ -281,10 +331,12 @@ export interface FileRouteTypes {
     | '/auth/sign'
     | '/auth/signup'
     | '/share/deals/$dealId/$documentId'
+    | '/preview/deals/$shareToken'
     | '/share/deals/$dealId'
   id:
     | '__root__'
     | '/'
+    | '/preview'
     | '/share'
     | '/about'
     | '/deal-accounting'
@@ -295,12 +347,14 @@ export interface FileRouteTypes {
     | '/auth/sign'
     | '/auth/signup'
     | '/share/deals/$dealId/$documentId'
+    | '/preview/deals/$shareToken/'
     | '/share/deals/$dealId/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PreviewRouteRoute: typeof PreviewRouteRouteWithChildren
   ShareRouteRoute: typeof ShareRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   DealAccountingRoute: typeof DealAccountingRoute
@@ -314,6 +368,7 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PreviewRouteRoute: PreviewRouteRouteWithChildren,
   ShareRouteRoute: ShareRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   DealAccountingRoute: DealAccountingRoute,
@@ -336,6 +391,7 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/preview",
         "/share",
         "/about",
         "/deal-accounting",
@@ -349,6 +405,12 @@ export const routeTree = rootRoute
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/preview": {
+      "filePath": "preview/route.tsx",
+      "children": [
+        "/preview/deals/$shareToken/"
+      ]
     },
     "/share": {
       "filePath": "share/route.tsx",
@@ -384,6 +446,10 @@ export const routeTree = rootRoute
     "/share/deals/$dealId/$documentId": {
       "filePath": "share/deals/$dealId/$documentId.tsx",
       "parent": "/share"
+    },
+    "/preview/deals/$shareToken/": {
+      "filePath": "preview/deals/$shareToken/index.tsx",
+      "parent": "/preview"
     },
     "/share/deals/$dealId/": {
       "filePath": "share/deals/$dealId/index.tsx",

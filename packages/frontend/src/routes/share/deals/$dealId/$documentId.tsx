@@ -27,18 +27,14 @@ export const Route = createFileRoute("/share/deals/$dealId/$documentId")({
   loader: async ({ params }) => {
     const document = await getDealDocument(params.dealId, params.documentId);
     console.log(document);
-    const pathForSupabase = document.filePath;
 
     let pdfUrl = null;
     let pdfError = null;
 
     try {
-      const { data: urlData } = await supabase.storage
-        .from("documents")
-        .getPublicUrl(pathForSupabase);
-
-      if (urlData?.publicUrl) {
-        pdfUrl = urlData.publicUrl;
+      // Use filePath directly as it's already a full Supabase public URL
+      if (document.filePath) {
+        pdfUrl = document.filePath;
       } else {
         pdfError = "Не удалось получить валидную ссылку на документ.";
       }

@@ -40,17 +40,47 @@ const dealRouter = new Hono<HonoEnv>();
 function mergeDocumentFields(doc: any): any {
 	const fields = doc.fields || {};
 	const payloadData = doc.documentPayload?.data || {};
-	
+
 	// Merge payload data into fields, with payload data taking precedence
 	const mergedFields = {
 		...fields,
 		...payloadData
 	};
-	
+
 	return {
 		...doc,
 		fields: mergedFields
 	};
+}
+
+// Helper function to generate cryptographically secure share token
+function generateShareToken(): string {
+	const array = new Uint8Array(32);
+	crypto.getRandomValues(array);
+	return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Helper function to validate share token
+async function validateShareToken(db: any, shareToken: string) {
+	const deal = await db.query.deals.findFirst({
+		where: and(
+			eq(deals.publicShareToken, shareToken),
+			eq(deals.isPublic, true)
+		),
+		with: {
+			dealDocumentsFlutter: {
+				with: {
+					documentFlutter: true,
+				},
+			},
+			comments: {
+				with: {
+					author: true
+				}
+			},
+		},
+	});
+	return deal;
 }
 // COMMENTED OUT - Backend document generation removed
 // const documentTypes: [DocumentType, ...DocumentType[]] = ["АВР", "Доверенность", "Накладная", "Инвойс", "КП", "Счет на оплату"];
@@ -790,15 +820,22 @@ dealRouter.post(
 dealRouter.get(
 	"/:dealId/balance",
 	describeRoute({
-		description: "Get balance information for a specific deal",
+		description: "Get balance information for a specific deal. Supports public access with valid share token.",
 		tags: ["Deals", "Accounting"],
 		parameters: [
 			{
 				name: "dealId",
 				in: "path",
 				required: true,
-				schema: { type: "string", format: "uuid" },
-				description: "UUID of the deal",
+				schema: { type: "string" },
+				description: "UUID of the deal or share token",
+			},
+			{
+				name: "token",
+				in: "query",
+				required: false,
+				schema: { type: "string" },
+				description: "Public share token for unauthenticated access",
 			},
 		],
 		responses: {
@@ -829,15 +866,26 @@ dealRouter.get(
 	}),
 	async (c) => {
 		try {
-			const userId = c.get("userId");
-			if (!userId) {
-				return c.json({ error: "Unauthorized" }, 401);
+			const dealId = c.req.param("dealId");
+			const shareToken = c.req.query("token");
+
+			// Check public access first if token provided
+			if (shareToken) {
+				const deal = await validateShareToken(c.env.db, dealId);
+				if (!deal) {
+					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
+				}
+			} else {
+				// Require authentication if no token
+				const userId = c.get("userId");
+				if (!userId) {
+					return c.json({ error: "Unauthorized" }, 401);
+				}
 			}
 
-			const dealId = c.req.param("dealId");
 			const dealAccountingService = new DealAccountingService(c.env.db);
-
 			const balance = await dealAccountingService.getDealBalance(dealId);
+
 			if (!balance) {
 				return c.json({ error: "Deal not found" }, 404);
 			}
@@ -854,15 +902,22 @@ dealRouter.get(
 dealRouter.get(
 	"/:dealId/reconciliation",
 	describeRoute({
-		description: "Generate reconciliation report for a specific deal",
+		description: "Generate reconciliation report for a specific deal. Supports public access with valid share token.",
 		tags: ["Deals", "Accounting", "Reports"],
 		parameters: [
 			{
 				name: "dealId",
 				in: "path",
 				required: true,
-				schema: { type: "string", format: "uuid" },
-				description: "UUID of the deal",
+				schema: { type: "string" },
+				description: "UUID of the deal or share token",
+			},
+			{
+				name: "token",
+				in: "query",
+				required: false,
+				schema: { type: "string" },
+				description: "Public share token for unauthenticated access",
 			},
 		],
 		responses: {
@@ -901,15 +956,26 @@ dealRouter.get(
 	}),
 	async (c) => {
 		try {
-			const userId = c.get("userId");
-			if (!userId) {
-				return c.json({ error: "Unauthorized" }, 401);
+			const dealId = c.req.param("dealId");
+			const shareToken = c.req.query("token");
+
+			// Check public access first if token provided
+			if (shareToken) {
+				const deal = await validateShareToken(c.env.db, dealId);
+				if (!deal) {
+					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
+				}
+			} else {
+				// Require authentication if no token
+				const userId = c.get("userId");
+				if (!userId) {
+					return c.json({ error: "Unauthorized" }, 401);
+				}
 			}
 
-			const dealId = c.req.param("dealId");
 			const dealAccountingService = new DealAccountingService(c.env.db);
-
 			const report = await dealAccountingService.generateReconciliationReport(dealId);
+
 			if (!report) {
 				return c.json({ error: "Deal not found" }, 404);
 			}
@@ -1243,15 +1309,22 @@ dealRouter.get(
 dealRouter.get(
 	"/:id",
 	describeRoute({
-		description: "Get a specific deal by ID",
+		description: "Get a specific deal by ID or share token. Supports public access with valid share token.",
 		tags: ["Deals"],
 		parameters: [
 			{
 				name: "id",
 				in: "path",
 				required: true,
-				schema: { type: "string", format: "uuid" },
-				description: "UUID of the deal",
+				schema: { type: "string" },
+				description: "UUID of the deal or share token",
+			},
+			{
+				name: "token",
+				in: "query",
+				required: false,
+				schema: { type: "string" },
+				description: "Public share token for unauthenticated access",
 			},
 		],
 		responses: {
@@ -1271,26 +1344,48 @@ dealRouter.get(
 	async (c) => {
 		try {
 			const id = c.req.param("id");
+			const shareToken = c.req.query("token");
 
-			const deal = await c.env.db.query.deals.findFirst({
-				where: eq(deals.id, id),
-				with: {
-					dealDocumentsFlutter: {
-						with: {
-							documentFlutter: true,
+			let deal;
+
+			// If share token is provided, validate it
+			if (shareToken) {
+				deal = await validateShareToken(c.env.db, id);
+				if (!deal) {
+					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
+				}
+			} else {
+				// Regular authenticated access (or try by ID if it's a token)
+				deal = await c.env.db.query.deals.findFirst({
+					where: eq(deals.id, id),
+					with: {
+						dealDocumentsFlutter: {
+							with: {
+								documentFlutter: true,
+							},
+						},
+						comments: {
+							with: {
+								author: true
+							}
 						},
 					},
-					comments: true,
-				},
-			});
-			if (!deal) {
-				return c.json({ error: "Deal not found" }, 404);
+				});
+
+				// If not found by ID, try as share token
+				if (!deal) {
+					deal = await validateShareToken(c.env.db, id);
+				}
+
+				if (!deal) {
+					return c.json({ error: "Deal not found" }, 404);
+				}
 			}
 
 			const dealWithDocuments = {
 				...deal,
 				documentsFlutter: deal?.dealDocumentsFlutter.map(
-					(dealDocument) => mergeDocumentFields(dealDocument.documentFlutter),
+					(dealDocument: any) => mergeDocumentFields(dealDocument.documentFlutter),
 				),
 			};
 
@@ -1390,6 +1485,91 @@ dealRouter.put(
 				throw error;
 			}
 			return c.json({ error: "Failed to update deal" }, 500);
+		}
+	},
+);
+
+// Generate public share link for a deal
+dealRouter.post(
+	"/:dealId/share",
+	describeRoute({
+		description: "Generate a public share link for a deal",
+		tags: ["Deals", "Public Sharing"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the deal",
+			},
+		],
+		responses: {
+			200: {
+				description: "Share token generated successfully",
+				content: {
+					"application/json": {
+						schema: z.object({
+							shareToken: z.string(),
+							shareUrl: z.string(),
+							isPublic: z.boolean(),
+						}),
+					},
+				},
+			},
+			401: { description: "Unauthorized" },
+			403: { description: "Forbidden - User cannot share this deal" },
+			404: { description: "Deal not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		try {
+			const userId = c.get("userId");
+			if (!userId) {
+				return c.json({ error: "Unauthorized" }, 401);
+			}
+
+			const dealId = c.req.param("dealId");
+
+			// Check if deal exists and user has permission
+			const existingDeal = await c.env.db.query.deals.findFirst({
+				where: eq(deals.id, dealId),
+			});
+
+			if (!existingDeal) {
+				return c.json({ error: "Deal not found" }, 404);
+			}
+
+			// Generate share token if doesn't exist
+			const shareToken = existingDeal.publicShareToken || generateShareToken();
+
+			// Update deal with share token and set as public
+			const [updatedDeal] = await c.env.db
+				.update(deals)
+				.set({
+					isPublic: true,
+					publicShareToken: shareToken,
+					updatedAt: new Date(),
+				})
+				.where(eq(deals.id, dealId))
+				.returning();
+
+			if (!updatedDeal) {
+				return c.json({ error: "Failed to generate share link" }, 500);
+			}
+
+			// Construct share URL (frontend will handle this route)
+			const shareUrl = `/preview/deals/${shareToken}`;
+
+			return c.json({
+				shareToken,
+				shareUrl,
+				isPublic: updatedDeal.isPublic,
+			});
+		} catch (error) {
+			console.error("Error generating share link:", error);
+			return c.json({ error: "Failed to generate share link" }, 500);
 		}
 	},
 );
@@ -1859,22 +2039,29 @@ dealRouter.put(
 dealRouter.get(
 	"/:dealId/transactions",
 	describeRoute({
-		description: "Get all accounting transactions (journal entries) for a specific deal",
+		description: "Get all accounting transactions (journal entries) for a specific deal. Supports public access with valid share token.",
 		tags: ["Deals", "Accounting", "Transactions"],
 		parameters: [
 			{
 				name: "dealId",
 				in: "path",
 				required: true,
-				schema: { type: "string", format: "uuid" },
-				description: "UUID of the deal",
+				schema: { type: "string" },
+				description: "UUID of the deal or share token",
 			},
 			{
 				name: "legalEntityId",
 				in: "query",
-				required: true,
+				required: false,
 				schema: { type: "string", format: "uuid" },
-				description: "Legal entity ID making the request",
+				description: "Legal entity ID making the request (not required for public access)",
+			},
+			{
+				name: "token",
+				in: "query",
+				required: false,
+				schema: { type: "string" },
+				description: "Public share token for unauthenticated access",
 			},
 		],
 		responses: {
@@ -1917,44 +2104,54 @@ dealRouter.get(
 	}),
 	async (c) => {
 		try {
-			const userId = c.get("userId");
-			if (!userId) {
-				return c.json({ error: "Unauthorized" }, 401);
-			}
-
-			const legalEntityId = c.req.query("legalEntityId");
-			if (!legalEntityId) {
-				return c.json({ error: "Legal entity ID is required" }, 400);
-			}
-
 			const dealId = c.req.param("dealId");
+			const shareToken = c.req.query("token");
+			const legalEntityId = c.req.query("legalEntityId");
+
+			// Check public access first if token provided
+			if (shareToken) {
+				const deal = await validateShareToken(c.env.db, dealId);
+				if (!deal) {
+					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
+				}
+			} else {
+				// Require authentication if no token
+				const userId = c.get("userId");
+				if (!userId) {
+					return c.json({ error: "Unauthorized" }, 401);
+				}
+
+				if (!legalEntityId) {
+					return c.json({ error: "Legal entity ID is required" }, 400);
+				}
+
+				// Get the deal to verify access
+				const deal = await c.env.db.query.deals.findFirst({
+					where: eq(deals.id, dealId),
+				});
+
+				if (!deal) {
+					return c.json({ error: "Deal not found" }, 404);
+				}
+
+				// Verify the requesting legal entity has permission to view this deal
+				const requestingEntity = await c.env.db.query.legalEntities.findFirst({
+					where: eq(legalEntities.id, legalEntityId),
+				});
+
+				if (!requestingEntity) {
+					return c.json({ error: "Legal entity not found" }, 404);
+				}
+
+				const isOwner = deal.legalEntityId === legalEntityId;
+				const isReceiver = deal.receiverBin === requestingEntity.bin;
+
+				if (!isOwner && !isReceiver) {
+					return c.json({ error: "Forbidden - You don't have access to this deal" }, 403);
+				}
+			}
+
 			const dealAccountingService = new DealAccountingService(c.env.db);
-
-			// Get the deal to verify access
-			const deal = await c.env.db.query.deals.findFirst({
-				where: eq(deals.id, dealId),
-			});
-
-			if (!deal) {
-				return c.json({ error: "Deal not found" }, 404);
-			}
-
-			// Verify the requesting legal entity has permission to view this deal
-			// They must be either the owner or the receiver
-			const requestingEntity = await c.env.db.query.legalEntities.findFirst({
-				where: eq(legalEntities.id, legalEntityId),
-			});
-
-			if (!requestingEntity) {
-				return c.json({ error: "Legal entity not found" }, 404);
-			}
-
-			const isOwner = deal.legalEntityId === legalEntityId;
-			const isReceiver = deal.receiverBin === requestingEntity.bin;
-
-			if (!isOwner && !isReceiver) {
-				return c.json({ error: "Forbidden - You don't have access to this deal" }, 403);
-			}
 
 			// Get transactions filtered by the requesting legal entity
 			const transactions = await dealAccountingService.getDealTransactions(dealId, legalEntityId);

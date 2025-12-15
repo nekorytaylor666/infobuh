@@ -6,6 +6,7 @@ import {
 	varchar,
 	bigint,
 	text,
+	boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { documentsFlutter } from "./documents-flutter";
@@ -43,6 +44,8 @@ export const deals = pgTable("deals", {
 	legalEntityId: uuid("legal_entity_id")
 		.references(() => legalEntities.id)
 		.notNull(),
+	isPublic: boolean("is_public").default(false).notNull(),
+	publicShareToken: varchar("public_share_token", { length: 64 }).unique(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -61,6 +64,8 @@ export const dealInsertSchema = createInsertSchema(deals, {
 	createdAt: true,
 	updatedAt: true,
 	paidAmount: true,
+	isPublic: true,
+	publicShareToken: true,
 });
 export const dealUpdateSchema = dealInsertSchema.partial();
 

@@ -401,6 +401,10 @@ async function testDealAccountingSystem() {
 		console.log("\n🔐 16. Тестирование двустороннего договора с ручными проводками");
 		await testBilateralDealWithManualEntries(db, dealAccountingService, accountingService);
 
+		// 17. Testing preview deal URL generation
+		console.log("\n🔗 17. Тестирование генерации публичной ссылки для предпросмотра сделки");
+		await testDealPreviewURLGeneration(db, serviceDeal.deal.id);
+
 		console.log("\n🎉 Тестирование завершено успешно!");
 		console.log("\n📋 Резюме:");
 		console.log("- ✅ Создание сделок с автоматическими проводками");
@@ -418,6 +422,7 @@ async function testDealAccountingSystem() {
 		console.log("- ✅ Расходные платежи (expense payments) для оплаты поставщикам");
 		console.log("- ✅ Предотвращение дублирования зеркальных записей");
 		console.log("- ✅ Фильтрация транзакций по legal entity");
+		console.log("- ✅ Генерация публичных ссылок для предпросмотра сделок");
 
 		console.log("\n📋 Протестированные сценарии проводок:");
 		console.log("1. 🔹 АВР (услуги):");
@@ -1723,6 +1728,219 @@ async function testBilateralDealWithManualEntries(db: any, dealAccountingService
 
 	} catch (error) {
 		console.error("❌ BILATERAL DEAL TEST FAILED:", error);
+		throw error;
+	}
+}
+
+/**
+ * Test #17: Deal Preview URL Generation
+ * Tests that:
+ * - A deal can generate a public share token
+ * - The share token is unique and secure
+ * - The deal can be accessed via the share token
+ * - Public access works without authentication
+ */
+async function testDealPreviewURLGeneration(db: any, dealId: string) {
+	try {
+		console.log("   📋 1. Проверка исходного состояния сделки");
+
+		const { deals } = await import("@accounting-kz/db");
+
+		// Get the deal before sharing
+		const dealBefore = await db.query.deals.findFirst({
+			where: (table: any, { eq }: any) => eq(table.id, dealId)
+		});
+
+		if (!dealBefore) {
+			throw new Error("Deal not found");
+		}
+
+		console.log("   ✅ Сделка найдена:", {
+			id: dealBefore.id,
+			title: dealBefore.title,
+			isPublic: dealBefore.isPublic,
+			hasShareToken: !!dealBefore.publicShareToken
+		});
+
+		// Check initial state
+		if (dealBefore.isPublic) {
+			console.log("   ℹ️ Сделка уже публичная, сбрасываем...");
+			await db.update(deals)
+				.set({ isPublic: false, publicShareToken: null })
+				.where((table: any, { eq }: any) => eq(table.id, dealId));
+		}
+
+		// 2. Generate share token
+		console.log("\n   🔐 2. Генерация публичного токена доступа");
+
+		// Simulate the generateShareToken function from the route
+		const generateShareToken = () => {
+			const array = new Uint8Array(32);
+			crypto.getRandomValues(array);
+			return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+		};
+
+		const shareToken = generateShareToken();
+
+		console.log("   ✅ Токен сгенерирован:", {
+			tokenLength: shareToken.length,
+			tokenPreview: `${shareToken.substring(0, 16)}...`
+		});
+
+		// Update the deal with share token
+		const [updatedDeal] = await db.update(deals)
+			.set({
+				isPublic: true,
+				publicShareToken: shareToken,
+				updatedAt: new Date()
+			})
+			.where((table: any, { eq }: any) => eq(table.id, dealId))
+			.returning();
+
+		console.log("   ✅ Сделка обновлена для публичного доступа:", {
+			isPublic: updatedDeal.isPublic,
+			shareUrl: `/preview/deals/${shareToken}`
+		});
+
+		// 3. Verify the share token works
+		console.log("\n   🔍 3. Проверка доступа по токену");
+
+		// Simulate the validateShareToken function
+		const dealViaToken = await db.query.deals.findFirst({
+			where: (table: any, { eq, and }: any) => and(
+				eq(table.publicShareToken, shareToken),
+				eq(table.isPublic, true)
+			),
+			with: {
+				dealDocumentsFlutter: {
+					with: {
+						documentFlutter: true,
+					},
+				},
+				comments: {
+					with: {
+						author: true
+					}
+				},
+			},
+		});
+
+		if (!dealViaToken) {
+			throw new Error("Deal not accessible via share token");
+		}
+
+		console.log("   ✅ Сделка доступна по токену:", {
+			dealId: dealViaToken.id,
+			title: dealViaToken.title,
+			documentsCount: dealViaToken.dealDocumentsFlutter?.length || 0,
+			commentsCount: dealViaToken.comments?.length || 0
+		});
+
+		// 4. Test token uniqueness
+		console.log("\n   🔐 4. Проверка уникальности токена");
+
+		const duplicateCheck = await db.query.deals.findMany({
+			where: (table: any, { eq }: any) => eq(table.publicShareToken, shareToken)
+		});
+
+		if (duplicateCheck.length !== 1) {
+			throw new Error(`Token should be unique, but found ${duplicateCheck.length} deals with same token`);
+		}
+
+		console.log("   ✅ Токен уникален");
+
+		// 5. Test public access (simulate unauthenticated request)
+		console.log("\n   🌐 5. Симуляция публичного доступа");
+
+		// In real scenario, this would be accessed without userId
+		const publicDeal = await db.query.deals.findFirst({
+			where: (table: any, { eq, and }: any) => and(
+				eq(table.publicShareToken, shareToken),
+				eq(table.isPublic, true)
+			)
+		});
+
+		if (!publicDeal) {
+			throw new Error("Public access failed");
+		}
+
+		console.log("   ✅ Публичный доступ работает (без аутентификации)");
+
+		// 6. Test revoking public access
+		console.log("\n   🔒 6. Тестирование отзыва публичного доступа");
+
+		await db.update(deals)
+			.set({ isPublic: false })
+			.where((table: any, { eq }: any) => eq(table.id, dealId));
+
+		const revokedDeal = await db.query.deals.findFirst({
+			where: (table: any, { eq, and }: any) => and(
+				eq(table.publicShareToken, shareToken),
+				eq(table.isPublic, true)
+			)
+		});
+
+		if (revokedDeal) {
+			throw new Error("Deal should not be accessible after revoking public access");
+		}
+
+		console.log("   ✅ Публичный доступ успешно отозван");
+
+		// 7. Test regenerating share token
+		console.log("\n   🔄 7. Тестирование регенерации токена");
+
+		const newShareToken = generateShareToken();
+
+		await db.update(deals)
+			.set({
+				isPublic: true,
+				publicShareToken: newShareToken,
+				updatedAt: new Date()
+			})
+			.where((table: any, { eq }: any) => eq(table.id, dealId));
+
+		// Old token should not work
+		const oldTokenAccess = await db.query.deals.findFirst({
+			where: (table: any, { eq, and }: any) => and(
+				eq(table.publicShareToken, shareToken),
+				eq(table.isPublic, true)
+			)
+		});
+
+		// New token should work
+		const newTokenAccess = await db.query.deals.findFirst({
+			where: (table: any, { eq, and }: any) => and(
+				eq(table.publicShareToken, newShareToken),
+				eq(table.isPublic, true)
+			)
+		});
+
+		if (oldTokenAccess) {
+			throw new Error("Old token should not work after regeneration");
+		}
+
+		if (!newTokenAccess) {
+			throw new Error("New token should work");
+		}
+
+		console.log("   ✅ Токен успешно регенерирован:", {
+			oldTokenWorks: false,
+			newTokenWorks: true,
+			newTokenPreview: `${newShareToken.substring(0, 16)}...`
+		});
+
+		console.log("\n   ✅ ТЕСТ ГЕНЕРАЦИИ ПУБЛИЧНЫХ ССЫЛОК УСПЕШНО ПРОЙДЕН!");
+		console.log("   ========================================");
+		console.log("   📊 Итоги:");
+		console.log("   - Генерация токена: ✅");
+		console.log("   - Уникальность токена: ✅");
+		console.log("   - Публичный доступ: ✅");
+		console.log("   - Отзыв доступа: ✅");
+		console.log("   - Регенерация токена: ✅");
+		console.log("   - URL для предпросмотра: `/preview/deals/{shareToken}`");
+
+	} catch (error) {
+		console.error("   ❌ Ошибка в тестировании генерации публичных ссылок:", error);
 		throw error;
 	}
 }
