@@ -55,7 +55,7 @@ function LoginPage() {
 						<Logo className="size-4" />
 					</div>
 					<span className="text-lg font-semibold tracking-tighter text-gray-900 dark:text-gray-50">
-						ИнфоБух
+						Infobuh
 					</span>
 				</a>
 				<Card>

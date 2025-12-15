@@ -29,7 +29,7 @@ export const Route = createFileRoute('/deal-accounting')({
 
 // For demo purposes, we'll use a hardcoded legal entity ID
 // In a real app, this would come from user context/authentication
-const DEMO_LEGAL_ENTITY_ID = "2cc7dc33-f82a-4248-b969-f1d7902250ce"
+const DEMO_LEGAL_ENTITY_ID = "1f85ca3f-e200-4ea9-b307-471e29c1b131"
 
 function RouteComponent() {
     const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null)

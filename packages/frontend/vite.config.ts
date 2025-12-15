@@ -23,8 +23,11 @@ export default defineConfig({
 		},
 	},
 	server: {
+		port: 3002,
+		strictPort: true,
 		proxy: {
 			"/api": "http://localhost:3000",
+			"/deals": "http://localhost:3000",
 		},
 	},
 });
