@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealPreviewHeader } from "@/components/deal-preview/DealPreviewHeader";
 import { DealInfoSection } from "@/components/deal-preview/DealInfoSection";
-import { AccountingDetailsSection } from "@/components/deal-preview/AccountingDetailsSection";
 import { CommentsSection } from "@/components/deal-preview/CommentsSection";
 import { DocumentsSection } from "@/components/deal-preview/DocumentsSection";
 
@@ -16,49 +15,13 @@ export const Route = createFileRoute("/preview/deals/$shareToken/")({
     const shareToken = params.shareToken;
 
     try {
-      // Parallel data fetching for optimal performance
-      const [dealRes, balanceRes, reconciliationRes, transactionsRes] =
-        await Promise.allSettled([
-          api.get(`/deals/${shareToken}`, { params: { token: shareToken } }),
-          api.get(`/deals/${shareToken}/balance`, {
-            params: { token: shareToken },
-          }),
-          api.get(`/deals/${shareToken}/reconciliation`, {
-            params: { token: shareToken },
-          }),
-          api.get(`/deals/${shareToken}/transactions`, {
-            params: { token: shareToken },
-          }),
-        ]);
+      // Fetch only deal data, no accounting information
+      const dealRes = await api.get(`/deals/${shareToken}`, {
+        params: { token: shareToken }
+      });
 
       return {
-        deal:
-          dealRes.status === "fulfilled" ? dealRes.value.data : null,
-        balance:
-          balanceRes.status === "fulfilled"
-            ? balanceRes.value.data
-            : null,
-        reconciliation:
-          reconciliationRes.status === "fulfilled"
-            ? reconciliationRes.value.data
-            : null,
-        transactions:
-          transactionsRes.status === "fulfilled"
-            ? transactionsRes.value.data
-            : null,
-        errors: {
-          deal: dealRes.status === "rejected" ? String(dealRes.reason) : null,
-          balance:
-            balanceRes.status === "rejected" ? String(balanceRes.reason) : null,
-          reconciliation:
-            reconciliationRes.status === "rejected"
-              ? String(reconciliationRes.reason)
-              : null,
-          transactions:
-            transactionsRes.status === "rejected"
-              ? String(transactionsRes.reason)
-              : null,
-        },
+        deal: dealRes.data,
       };
     } catch (error) {
       console.error("Error loading deal preview:", error);
@@ -92,7 +55,8 @@ export const Route = createFileRoute("/preview/deals/$shareToken/")({
 
 function DealPreviewComponent() {
   const data = Route.useLoaderData();
-  const { deal, balance, reconciliation, transactions } = data;
+  const { deal } = data;
+  const { shareToken } = Route.useParams();
 
   if (!deal) {
     return (
@@ -118,21 +82,14 @@ function DealPreviewComponent() {
         <DealPreviewHeader deal={deal} />
 
         <div className="mt-6 space-y-6">
-          {/* Two-column layout on desktop */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <DealInfoSection deal={deal} />
-            <AccountingDetailsSection
-              balance={balance}
-              reconciliation={reconciliation}
-              transactions={transactions}
-            />
-          </div>
+          {/* Single column layout */}
+          <DealInfoSection deal={deal} />
 
           {/* Full-width sections */}
           <CommentsSection comments={deal.comments || []} />
           <DocumentsSection
             documents={deal.documentsFlutter || []}
-            dealId={deal.id}
+            dealId={shareToken}
           />
         </div>
       </div>
@@ -160,11 +117,8 @@ function DealPreviewPendingComponent() {
         </div>
 
         <div className="space-y-6">
-          {/* Two-column layout skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Skeleton className="h-80 w-full" />
-            <Skeleton className="h-80 w-full" />
-          </div>
+          {/* Deal info skeleton */}
+          <Skeleton className="h-80 w-full" />
 
           {/* Comments section skeleton */}
           <Skeleton className="h-64 w-full" />
