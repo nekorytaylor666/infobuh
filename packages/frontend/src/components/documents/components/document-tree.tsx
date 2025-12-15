@@ -22,6 +22,7 @@ import {
   HoverCardContent,
 } from "@/components/ui/hover-card";
 import { documentCache } from "../utils/document-cache";
+import { PdfViewer } from "./pdf-viewer";
 
 interface DocumentTreeProps {
   documents: DocumentWithOwnerSignature[];
@@ -93,10 +94,10 @@ const FilePreviewHoverCard = ({ doc }: { doc: DocumentWithOwnerSignature }) => {
         />
       )}
       {isPDF && (
-        <iframe
-          src={`${getFileUrl()}#toolbar=0&view=FitH`}
-          className="w-full h-min aspect-[9/16] "
-          title={doc.name}
+        <PdfViewer
+          url={getFileUrl()}
+          className="w-full h-min aspect-[9/16]"
+          mode="compact"
         />
       )}
     </div>

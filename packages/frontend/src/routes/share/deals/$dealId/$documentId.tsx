@@ -19,6 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PdfViewer } from "@/components/documents/components/pdf-viewer";
 
 export const Route = createFileRoute("/share/deals/$dealId/$documentId")({
   component: DealDocumentPageComponent,
@@ -259,12 +260,10 @@ export function DealDocumentPageComponent() {
           <div className="bg-card md:rounded-lg md:border w-full lg:aspect-[9/16] md:border-border md:shadow-xl lg:h-[calc(100vh-12rem)] overflow-hidden">
             <div className="h-full w-full flex flex-col items-center justify-center">
               {pdfUrl && (
-                <iframe
-                  src={pdfUrl + "#toolbar=0&navpanes=0&scrollbar=0"}
-                
-                 
+                <PdfViewer
+                  url={pdfUrl}
                   className="h-full w-full pb-20 md:pb-0"
-                  title="PDF Viewer"
+                  mode="full"
                 />
               )}
             </div>
