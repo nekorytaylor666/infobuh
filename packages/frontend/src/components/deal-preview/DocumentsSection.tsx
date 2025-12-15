@@ -57,7 +57,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, dealId, legalEntityId 
 
     async function load() {
       try {
-        const res = ''
+        const res = await api.get(`/documents_flutter/getSignatures/${doc.id}`, {
+          params: { legalEntityId }
+        });
 
 
         const signatures = (res.data || []) as Signature[];

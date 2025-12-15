@@ -90,6 +90,7 @@ function DealPreviewComponent() {
           <DocumentsSection
             documents={deal.documentsFlutter || []}
             dealId={shareToken}
+            legalEntityId={deal.legalEntityId}
           />
         </div>
       </div>
