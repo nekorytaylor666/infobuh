@@ -868,6 +868,7 @@ dealRouter.get(
 		try {
 			const dealId = c.req.param("dealId");
 			const shareToken = c.req.query("token");
+			let actualDealId = dealId;
 
 			// Check public access first if token provided
 			if (shareToken) {
@@ -875,6 +876,7 @@ dealRouter.get(
 				if (!deal) {
 					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
 				}
+				actualDealId = deal.id;
 			} else {
 				// Require authentication if no token
 				const userId = c.get("userId");
@@ -884,7 +886,7 @@ dealRouter.get(
 			}
 
 			const dealAccountingService = new DealAccountingService(c.env.db);
-			const balance = await dealAccountingService.getDealBalance(dealId);
+			const balance = await dealAccountingService.getDealBalance(actualDealId);
 
 			if (!balance) {
 				return c.json({ error: "Deal not found" }, 404);
@@ -958,6 +960,7 @@ dealRouter.get(
 		try {
 			const dealId = c.req.param("dealId");
 			const shareToken = c.req.query("token");
+			let actualDealId = dealId;
 
 			// Check public access first if token provided
 			if (shareToken) {
@@ -965,6 +968,7 @@ dealRouter.get(
 				if (!deal) {
 					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
 				}
+				actualDealId = deal.id;
 			} else {
 				// Require authentication if no token
 				const userId = c.get("userId");
@@ -974,7 +978,7 @@ dealRouter.get(
 			}
 
 			const dealAccountingService = new DealAccountingService(c.env.db);
-			const report = await dealAccountingService.generateReconciliationReport(dealId);
+			const report = await dealAccountingService.generateReconciliationReport(actualDealId);
 
 			if (!report) {
 				return c.json({ error: "Deal not found" }, 404);
@@ -2122,6 +2126,7 @@ dealRouter.get(
 			const dealId = c.req.param("dealId");
 			const shareToken = c.req.query("token");
 			const legalEntityId = c.req.query("legalEntityId");
+			let actualDealId = dealId;
 
 			// Check public access first if token provided
 			if (shareToken) {
@@ -2129,6 +2134,7 @@ dealRouter.get(
 				if (!deal) {
 					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
 				}
+				actualDealId = deal.id;
 			} else {
 				// Require authentication if no token
 				const userId = c.get("userId");
@@ -2169,7 +2175,7 @@ dealRouter.get(
 			const dealAccountingService = new DealAccountingService(c.env.db);
 
 			// Get transactions filtered by the requesting legal entity
-			const transactions = await dealAccountingService.getDealTransactions(dealId, legalEntityId);
+			const transactions = await dealAccountingService.getDealTransactions(actualDealId, legalEntityId);
 			if (!transactions) {
 				return c.json({ error: "Deal not found" }, 404);
 			}

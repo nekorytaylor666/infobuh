@@ -15,13 +15,18 @@ export const api = axios.create({
 
 // Add Supabase auth header interceptor
 api.interceptors.request.use(async (config) => {
-	const {
-		data: { session },
-		error,
-	} = await supabase.auth.getSession();
+	// Skip adding auth header for public share requests (those with token query param)
+	const hasShareToken = config.params?.token;
 
-	if (session?.access_token) {
-		config.headers.Authorization = `Bearer ${session.access_token}`;
+	if (!hasShareToken) {
+		const {
+			data: { session },
+			error,
+		} = await supabase.auth.getSession();
+
+		if (session?.access_token) {
+			config.headers.Authorization = `Bearer ${session.access_token}`;
+		}
 	}
 
 	return config;
