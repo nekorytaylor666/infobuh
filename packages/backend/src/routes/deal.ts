@@ -13,6 +13,7 @@ import {
 	documentsFlutter,
 	documentFlutterZodSchema,
 	documentPayloadSchema,
+	documentSignaturesFlutter,
 	type DocumentPayload,
 	inArray,
 	or,
@@ -2184,6 +2185,90 @@ dealRouter.get(
 		} catch (error) {
 			console.error("Error getting deal transactions:", error);
 			return c.json({ error: "Failed to get deal transactions" }, 500);
+		}
+	},
+);
+
+// Get signatures for a document in a public deal
+dealRouter.get(
+	"/:dealId/documents/:documentId/signatures",
+	describeRoute({
+		description: "Get signatures for a document in a deal. Supports public access with valid share token.",
+		tags: ["Deals", "Documents", "Signatures"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string" },
+				description: "UUID of the deal or share token",
+			},
+			{
+				name: "documentId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document",
+			},
+			{
+				name: "token",
+				in: "query",
+				required: false,
+				schema: { type: "string" },
+				description: "Public share token for unauthenticated access",
+			},
+		],
+		responses: {
+			200: {
+				description: "List of document signatures",
+				content: { "application/json": {} },
+			},
+			404: { description: "Deal or document not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	async (c) => {
+		try {
+			const { dealId, documentId } = c.req.param();
+			const shareToken = c.req.query("token");
+
+			let actualDealId = dealId;
+
+			// Validate share token for public access
+			if (shareToken) {
+				const deal = await validateShareToken(c.env.db, dealId);
+				if (!deal) {
+					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
+				}
+				actualDealId = deal.id;
+			}
+
+			// Verify document belongs to the deal
+			const association = await c.env.db.query.dealDocumentsFlutter.findFirst({
+				where: and(
+					eq(dealDocumentsFlutter.dealId, actualDealId),
+					eq(dealDocumentsFlutter.documentFlutterId, documentId),
+				),
+			});
+
+			if (!association) {
+				return c.json({ error: "Document not found in this deal" }, 404);
+			}
+
+			// Fetch signatures for the document
+			const signatures = await c.env.db.query.documentSignaturesFlutter.findMany({
+				where: eq(documentSignaturesFlutter.documentFlutterId, documentId),
+				with: {
+					signer: true,
+					legalEntity: true,
+				},
+				orderBy: [desc(documentSignaturesFlutter.signedAt)],
+			});
+
+			return c.json(signatures);
+		} catch (error) {
+			console.error("Error fetching document signatures:", error);
+			return c.json({ error: "Failed to fetch document signatures" }, 500);
 		}
 	},
 );
