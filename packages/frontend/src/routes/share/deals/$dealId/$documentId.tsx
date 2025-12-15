@@ -252,7 +252,7 @@ export function DealDocumentPageComponent() {
               </Link>
               <CompanyLogo />
               <span className="font-medium text-sm sm:text-base text-foreground">
-                {data.clientName || document.receiverName || "Клиент"}
+                {document.receiverName || "Клиент"}
               </span>
             </div>
           </div>
