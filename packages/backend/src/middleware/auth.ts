@@ -9,6 +9,27 @@ export async function authMiddleware(c: Context, next: Next) {
 		await next();
 		return;
 	}
+
+	// Allow public access for share token requests
+	const shareToken = c.req.query("token");
+	const path = c.req.path;
+
+	// List of endpoints that support public access with share token
+	const publicShareEndpoints = [
+		/^\/deals\/[^/]+$/,                    // GET /deals/:id
+		/^\/deals\/[^/]+\/balance$/,           // GET /deals/:dealId/balance
+		/^\/deals\/[^/]+\/reconciliation$/,    // GET /deals/:dealId/reconciliation
+		/^\/deals\/[^/]+\/transactions$/,      // GET /deals/:dealId/transactions
+		/^\/deals\/[^/]+\/documents$/,         // GET /deals/:dealId/documents
+		/^\/deals\/[^/]+\/documents\/[^/]+$/,  // GET /deals/:dealId/documents/:documentId
+	];
+
+	// Skip auth if share token is provided and endpoint supports it
+	if (shareToken && publicShareEndpoints.some(pattern => pattern.test(path))) {
+		await next();
+		return;
+	}
+
 	const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = env<{
 		SUPABASE_URL: string;
 		SUPABASE_SERVICE_ROLE_KEY: string;
