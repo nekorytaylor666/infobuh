@@ -21,13 +21,11 @@ type Signature = {
 interface DocumentsSectionProps {
   documents: DocumentFlutter[];
   dealId: string;
-  legalEntityId: string; // добавь
 }
 
 interface DocumentCardProps {
   doc: DocumentFlutter;
   dealId: string;
-  legalEntityId: string;
 }
 
 function buildSignatureLabel(signatures: Signature[]) {
@@ -48,7 +46,7 @@ function buildSignatureLabel(signatures: Signature[]) {
   return `Подписано: ${uniq[0]} +${uniq.length - 1}`;
 }
 
-const DocumentCard: React.FC<DocumentCardProps> = ({ doc, dealId, legalEntityId }) => {
+const DocumentCard: React.FC<DocumentCardProps> = ({ doc, dealId }) => {
   const [signatureLabel, setSignatureLabel] = useState<string>("Загрузка подписей...");
   const [signatureOk, setSignatureOk] = useState<boolean>(false);
 
@@ -57,8 +55,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, dealId, legalEntityId 
 
     async function load() {
       try {
-        const res = await api.get(`/documents_flutter/getSignatures/${doc.id}`, {
-          params: { legalEntityId }
+        const res = await api.get(`/deals/${dealId}/documents/${doc.id}/signatures`, {
+          params: { token: dealId }
         });
 
 
@@ -79,7 +77,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, dealId, legalEntityId 
     return () => {
       alive = false;
     };
-  }, [doc.id, legalEntityId]);
+  }, [doc.id, dealId]);
 
   return (
     <Link
@@ -106,7 +104,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, dealId, legalEntityId 
   );
 };
 
-export function DocumentsSection({ documents, dealId, legalEntityId }: DocumentsSectionProps) {
+export function DocumentsSection({ documents, dealId }: DocumentsSectionProps) {
   return (
     <Card>
       <CardHeader>
@@ -130,7 +128,6 @@ export function DocumentsSection({ documents, dealId, legalEntityId }: Documents
                 key={doc.id}
                 doc={doc}
                 dealId={dealId}
-                legalEntityId={legalEntityId}
               />
             ))}
           </AnimatedGroup>
