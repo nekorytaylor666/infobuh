@@ -1,0 +1,204 @@
+.business-hero {
+  width: 100%;
+  height: 100svh;
+  background: white;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgb(213, 213, 213);
+}
+
+.business-hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+  padding: 40px 20px;
+  display: flex;
+  align-items: center;
+  gap: 60px;
+}
+
+/* Текст слева */
+.business-hero-content {
+  flex: 1;
+  text-align: left;
+}
+
+.business-hero-kicker {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.business-hero-title {
+  font-family: 'Nyght Serif', serif;
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 1.1;
+  color: #000;
+  max-width: 560px;
+}
+
+.business-hero-subtitle {
+  margin-top: 18px;
+  font-size: 18px;
+  color: #4b5563;
+  max-width: 460px;
+}
+
+/* Макет в белом квадрате */
+.business-hero-mockup {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.mockup-box {
+  background: url('../../assets/bgmockup.jpg');
+  background-size: cover;
+  border-radius: 30px;
+  padding: 26px;
+  padding-bottom: 0;  /* убран паддинг снизу */
+  box-shadow: 0 4px 40px rgba(0,0,0,0.07);
+  max-width: 480px;
+  width: 100%;
+}
+
+.mockup-box img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Мобилка */
+.mobile-mockup {
+  display: none;
+}
+
+.business-hero-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 30px;
+}
+
+.hero-btn-outline-light {
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid #0f172a;
+  background: transparent;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.hero-btn-outline-light:hover {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.hero-btn-filled-light {
+  padding: 14px 28px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid #0f172a;
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.hero-btn-filled-light:hover {
+  opacity: 0.85;
+}
+
+
+@media (max-width: 768px) {
+  .business-hero {
+    height: 100svh;
+    width: 100%;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    border-bottom: 1px solid rgb(213, 213, 213);
+  }
+
+  .business-hero-inner {
+    flex: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 90px 20px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .business-hero-content {
+    flex: 0; /* контент не растягивается */
+    text-align: left;
+  }
+
+  .business-hero-kicker {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .business-hero-title {
+    font-size: 32px;
+    line-height: 1.15;
+    max-width: none;
+  }
+
+  .business-hero-subtitle {
+    font-size: 16px;
+    margin-top: 14px;
+    max-width: none;
+  }
+
+  .business-hero-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 24px;
+  }
+
+  /* макап сверху, растягивается по высоте */
+  .mobile-mockup {
+    display: flex;
+    flex: 1;              /* забирает всё оставшееся место */
+    width: 100%;
+    justify-content: center;
+    min-height: 0;
+    order: 2;             /* если надо, чтобы шёл после текста */
+  }
+
+  .desktop-mockup {
+    display: none;
+  }
+
+  .mockup-box {
+    background: url('../../assets/bgmockup.jpg');
+    background-size: cover;
+    background-position: center;
+    border-radius: 16px;
+    padding: 16px;
+    padding-bottom: 0;
+    box-shadow: 0 4px 40px rgba(0, 0, 0, 0.07);
+    max-width: 420px;
+    width: 100%;
+    height: 100%;          /* растягиваем по высоте */
+    display: flex;
+  }
+
+  .mockup-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;   /* картинка растёт по высоте, но не режется */
+    display: block;
+  }
+}

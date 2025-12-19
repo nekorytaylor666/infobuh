@@ -1,0 +1,164 @@
+.ps-section {
+  background: #ffffff;
+  padding: 120px 90px 80px;
+}
+
+.ps-inner {
+  margin: 0 auto;
+}
+
+/* Лейблы — маленькие, не кричат */
+
+.ps-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ps-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6f6f6f;
+    
+  border-radius: 20px;
+  border: 1px solid #c8c8c8;
+  padding: 4px 8px;
+}
+
+/* Заголовок */
+
+.ps-title {
+  font-family: "Nyght Serif", serif;
+  font-size: 52px;
+  width: 70%;
+  font-weight: 400;
+  line-height: 1.15;
+  color: #020617;
+  margin: 30px 0;
+}
+
+/* Лейаут: проблемы | решения */
+
+/* Колонки */
+
+.ps-column {
+  padding: 0;
+}
+
+.ps-title2 {
+  font-size: 36px;
+  margin-top: 60px;
+  font-family: "Nyght Serif", serif;
+}
+
+.ps-column-heading {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  color: #6b7280;
+}
+
+/* Списки — без карточек, только аккуратные строки */
+
+.ps-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.ps-list-item {
+  font-weight: 500;
+  line-height: 1.2  ;
+  position: relative;
+  font-size: 20px;
+  color: #111827;
+  padding: 14px 16px 13px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #fefefe;
+}
+
+/* маркер */
+
+/* решения — немного “плотнее” и без доп. акцентов */
+
+.ps-list--solutions .ps-list-item {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+/* Убираем буллеты */
+
+.ps-list-item::before {
+  content: none;
+}
+
+/* Интро над решениями */
+
+.ps-solution-intro {
+  font-size: 14px;
+  margin-bottom: 14px;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+/* Футер */
+
+.ps-footer {
+  margin-top: 30px;
+  font-size: 15px;
+  color: #4b5563;
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+/* Мобилка */
+
+@media (max-width: 768px) {
+  .ps-section {
+    padding: 40px 20px 50px;
+  }
+
+  .ps-inner {
+    max-width: 100%;
+  }
+
+  .ps-title {
+    font-size: 30px;
+    margin-bottom: 20px;
+    width: 100%;
+    margin-top: 30px;
+  }
+
+  .ps-title2 {
+    font-size: 18px;
+    margin-top: 30px;
+    font-family: "Nyght Serif", serif;
+  }
+
+  .ps-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .ps-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ps-list-item {
+    font-size: 18px;
+  }
+
+  .ps-footer {
+    font-size: 14px;
+  }
+}

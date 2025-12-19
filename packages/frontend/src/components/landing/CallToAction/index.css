@@ -1,0 +1,117 @@
+.startnow {
+  padding: 90px 20px;
+  border-top: 1px solid rgb(233, 233, 233);
+}
+
+.startnow-img {
+  object-fit: cover;
+  width: 30%;
+  margin-bottom: 30px;
+}
+
+.startnow-inner {
+  max-width: 880px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.startnow-title {
+  font-family: 'Nyght Serif', serif;
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1.15;
+  margin-bottom: 20px;
+  color: #111827;
+}
+
+.startnow-sub {
+  font-size: 17px;
+  color: #4b5563;
+  margin-bottom: 36px;
+}
+
+/* Кнопки магазинов */
+
+.startnow-stores {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 48px;
+}
+
+.startnow-store-btn {
+  padding: 12px 20px;
+  background: #111827;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.startnow-store-btn:hover {
+  background: #1f2937;
+}
+
+/* WhatsApp блок */
+
+.startnow-help {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 26px 24px 30px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  text-align: center;
+}
+
+.startnow-help-text {
+  font-size: 15px;
+  line-height: 1.55;
+  color: #374151;
+  margin-bottom: 20px;
+}
+
+.startnow-whatsapp-btn {
+  display: inline-block;
+  background: #0a9572;
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.startnow-whatsapp-btn:hover {
+  background: #1ebe5d;
+}
+
+/* Мобилка */
+
+@media (max-width: 768px) {
+  .startnow-img {
+    width: 70%;
+  }
+  .startnow {
+    padding: 60px 16px;
+  }
+
+  .startnow-title {
+    font-size: 28px;
+  }
+
+  .startnow-sub {
+    font-size: 15px;
+  }
+
+  .startnow-help {
+    padding: 20px 18px 26px;
+  }
+
+  .startnow-whatsapp-btn,
+  .startnow-store-btn {
+    padding: 11px 16px;
+    font-size: 14px;
+  }
+}

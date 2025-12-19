@@ -1,0 +1,145 @@
+.pricing-section {
+  background: #000000;
+  color: #ffffff;
+  width: 100%;
+  padding: 90px 90px 130px 90px;
+}
+
+.pricing-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+/* ===== ОСНОВНЫЕ ТАРИФЫ ===== */
+
+.pricing-grid {
+  display: flex;
+  gap: 24px;
+}
+
+.pricing-card {
+  flex: 1;
+  min-width: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 24px;
+  padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pricing-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pricing-price {
+  font-family: 'Nyght Serif', serif;
+  margin-top: 14px;
+  font-size: 34px;
+  font-weight: 500;
+}
+
+.pricing-features {
+  margin-top: 24px;
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.pricing-button {
+  margin-top: 28px;
+  align-self: flex-start;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: transparent;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== ДОП УСЛУГИ ===== */
+
+.pricing-extra-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin-top: 30px;
+}
+
+.pricing-extra-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pricing-extra-card {
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pricing-extra-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.pricing-extra-name {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.pricing-extra-price {
+  font-size: 16px;
+  font-weight: 500;
+  opacity: 0.8;
+  font-family: 'Nyght Serif', serif;
+}
+
+.pricing-extra-text {
+  font-size: 15px;
+  line-height: 1.6;
+  opacity: 0.75;
+  max-width: 700px;
+}
+
+.pricing-extra-button {
+  align-self: flex-start;
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: transparent;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== МОБИЛКА ===== */
+
+@media (max-width: 900px) {
+  .pricing-section {
+    padding: 80px 20px 200px 20px;
+  }
+
+  .pricing-grid {
+    flex-direction: column;
+    gap: 36px;
+  }
+
+  .pricing-price {
+    font-size: 28px;
+  }
+}

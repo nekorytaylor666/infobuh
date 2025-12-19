@@ -8,219 +8,351 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as LegalRouteImport } from './routes/legal'
+import { Route as DealAccountingRouteImport } from './routes/deal-accounting'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as ShareRouteRouteImport } from './routes/share/route'
+import { Route as PreviewRouteRouteImport } from './routes/preview/route'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as BusinessesIndexRouteImport } from './routes/businesses/index'
+import { Route as BusinessesBusinessIdRouteImport } from './routes/businesses/$businessId'
+import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as AuthSignRouteImport } from './routes/auth/sign'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as ShareDealsDealIdIndexRouteImport } from './routes/share/deals/$dealId/index'
+import { Route as PreviewDealsShareTokenIndexRouteImport } from './routes/preview/deals/$shareToken/index'
+import { Route as ShareDealsDealIdDocumentIdRouteImport } from './routes/share/deals/$dealId/$documentId'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as PrivacyPolicyImport } from './routes/privacy-policy'
-import { Route as OnboardingImport } from './routes/onboarding'
-import { Route as LegalImport } from './routes/legal'
-import { Route as DealAccountingImport } from './routes/deal-accounting'
-import { Route as AboutImport } from './routes/about'
-import { Route as ShareRouteImport } from './routes/share/route'
-import { Route as PreviewRouteImport } from './routes/preview/route'
-import { Route as IndexImport } from './routes/index'
-import { Route as AuthSignupImport } from './routes/auth/signup'
-import { Route as AuthSignImport } from './routes/auth/sign'
-import { Route as AuthLoginImport } from './routes/auth/login'
-import { Route as ShareDealsDealIdIndexImport } from './routes/share/deals/$dealId/index'
-import { Route as PreviewDealsShareTokenIndexImport } from './routes/preview/deals/$shareToken/index'
-import { Route as ShareDealsDealIdDocumentIdImport } from './routes/share/deals/$dealId/$documentId'
-
-// Create/Update Routes
-
-const PrivacyPolicyRoute = PrivacyPolicyImport.update({
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
   id: '/privacy-policy',
   path: '/privacy-policy',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const OnboardingRoute = OnboardingImport.update({
+const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const LegalRoute = LegalImport.update({
+const LegalRoute = LegalRouteImport.update({
   id: '/legal',
   path: '/legal',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const DealAccountingRoute = DealAccountingImport.update({
+const DealAccountingRoute = DealAccountingRouteImport.update({
   id: '/deal-accounting',
   path: '/deal-accounting',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AboutRoute = AboutImport.update({
+const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ShareRouteRoute = ShareRouteImport.update({
+const ShareRouteRoute = ShareRouteRouteImport.update({
   id: '/share',
   path: '/share',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const PreviewRouteRoute = PreviewRouteImport.update({
+const PreviewRouteRoute = PreviewRouteRouteImport.update({
   id: '/preview',
   path: '/preview',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AuthSignupRoute = AuthSignupImport.update({
+const BusinessesIndexRoute = BusinessesIndexRouteImport.update({
+  id: '/businesses/',
+  path: '/businesses/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BusinessesBusinessIdRoute = BusinessesBusinessIdRouteImport.update({
+  id: '/businesses/$businessId',
+  path: '/businesses/$businessId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/auth/signup',
   path: '/auth/signup',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AuthSignRoute = AuthSignImport.update({
+const AuthSignRoute = AuthSignRouteImport.update({
   id: '/auth/sign',
   path: '/auth/sign',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AuthLoginRoute = AuthLoginImport.update({
+const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ShareDealsDealIdIndexRoute = ShareDealsDealIdIndexImport.update({
+const ShareDealsDealIdIndexRoute = ShareDealsDealIdIndexRouteImport.update({
   id: '/deals/$dealId/',
   path: '/deals/$dealId/',
   getParentRoute: () => ShareRouteRoute,
 } as any)
-
 const PreviewDealsShareTokenIndexRoute =
-  PreviewDealsShareTokenIndexImport.update({
+  PreviewDealsShareTokenIndexRouteImport.update({
     id: '/deals/$shareToken/',
     path: '/deals/$shareToken/',
     getParentRoute: () => PreviewRouteRoute,
   } as any)
-
-const ShareDealsDealIdDocumentIdRoute = ShareDealsDealIdDocumentIdImport.update(
-  {
+const ShareDealsDealIdDocumentIdRoute =
+  ShareDealsDealIdDocumentIdRouteImport.update({
     id: '/deals/$dealId/$documentId',
     path: '/deals/$dealId/$documentId',
     getParentRoute: () => ShareRouteRoute,
-  } as any,
-)
+  } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/preview': typeof PreviewRouteRouteWithChildren
+  '/share': typeof ShareRouteRouteWithChildren
+  '/about': typeof AboutRoute
+  '/deal-accounting': typeof DealAccountingRoute
+  '/legal': typeof LegalRoute
+  '/onboarding': typeof OnboardingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/sign': typeof AuthSignRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/businesses/$businessId': typeof BusinessesBusinessIdRoute
+  '/businesses': typeof BusinessesIndexRoute
+  '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
+  '/preview/deals/$shareToken': typeof PreviewDealsShareTokenIndexRoute
+  '/share/deals/$dealId': typeof ShareDealsDealIdIndexRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/preview': typeof PreviewRouteRouteWithChildren
+  '/share': typeof ShareRouteRouteWithChildren
+  '/about': typeof AboutRoute
+  '/deal-accounting': typeof DealAccountingRoute
+  '/legal': typeof LegalRoute
+  '/onboarding': typeof OnboardingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/sign': typeof AuthSignRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/businesses/$businessId': typeof BusinessesBusinessIdRoute
+  '/businesses': typeof BusinessesIndexRoute
+  '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
+  '/preview/deals/$shareToken': typeof PreviewDealsShareTokenIndexRoute
+  '/share/deals/$dealId': typeof ShareDealsDealIdIndexRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/preview': typeof PreviewRouteRouteWithChildren
+  '/share': typeof ShareRouteRouteWithChildren
+  '/about': typeof AboutRoute
+  '/deal-accounting': typeof DealAccountingRoute
+  '/legal': typeof LegalRoute
+  '/onboarding': typeof OnboardingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/sign': typeof AuthSignRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/businesses/$businessId': typeof BusinessesBusinessIdRoute
+  '/businesses/': typeof BusinessesIndexRoute
+  '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
+  '/preview/deals/$shareToken/': typeof PreviewDealsShareTokenIndexRoute
+  '/share/deals/$dealId/': typeof ShareDealsDealIdIndexRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/preview'
+    | '/share'
+    | '/about'
+    | '/deal-accounting'
+    | '/legal'
+    | '/onboarding'
+    | '/privacy-policy'
+    | '/auth/login'
+    | '/auth/sign'
+    | '/auth/signup'
+    | '/businesses/$businessId'
+    | '/businesses'
+    | '/share/deals/$dealId/$documentId'
+    | '/preview/deals/$shareToken'
+    | '/share/deals/$dealId'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/preview'
+    | '/share'
+    | '/about'
+    | '/deal-accounting'
+    | '/legal'
+    | '/onboarding'
+    | '/privacy-policy'
+    | '/auth/login'
+    | '/auth/sign'
+    | '/auth/signup'
+    | '/businesses/$businessId'
+    | '/businesses'
+    | '/share/deals/$dealId/$documentId'
+    | '/preview/deals/$shareToken'
+    | '/share/deals/$dealId'
+  id:
+    | '__root__'
+    | '/'
+    | '/preview'
+    | '/share'
+    | '/about'
+    | '/deal-accounting'
+    | '/legal'
+    | '/onboarding'
+    | '/privacy-policy'
+    | '/auth/login'
+    | '/auth/sign'
+    | '/auth/signup'
+    | '/businesses/$businessId'
+    | '/businesses/'
+    | '/share/deals/$dealId/$documentId'
+    | '/preview/deals/$shareToken/'
+    | '/share/deals/$dealId/'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  PreviewRouteRoute: typeof PreviewRouteRouteWithChildren
+  ShareRouteRoute: typeof ShareRouteRouteWithChildren
+  AboutRoute: typeof AboutRoute
+  DealAccountingRoute: typeof DealAccountingRoute
+  LegalRoute: typeof LegalRoute
+  OnboardingRoute: typeof OnboardingRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthSignRoute: typeof AuthSignRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+  BusinessesBusinessIdRoute: typeof BusinessesBusinessIdRoute
+  BusinessesIndexRoute: typeof BusinessesIndexRoute
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/preview': {
-      id: '/preview'
-      path: '/preview'
-      fullPath: '/preview'
-      preLoaderRoute: typeof PreviewRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/share': {
-      id: '/share'
-      path: '/share'
-      fullPath: '/share'
-      preLoaderRoute: typeof ShareRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutImport
-      parentRoute: typeof rootRoute
-    }
-    '/deal-accounting': {
-      id: '/deal-accounting'
-      path: '/deal-accounting'
-      fullPath: '/deal-accounting'
-      preLoaderRoute: typeof DealAccountingImport
-      parentRoute: typeof rootRoute
-    }
-    '/legal': {
-      id: '/legal'
-      path: '/legal'
-      fullPath: '/legal'
-      preLoaderRoute: typeof LegalImport
-      parentRoute: typeof rootRoute
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
       fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/privacy-policy': {
-      id: '/privacy-policy'
-      path: '/privacy-policy'
-      fullPath: '/privacy-policy'
-      preLoaderRoute: typeof PrivacyPolicyImport
-      parentRoute: typeof rootRoute
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginImport
-      parentRoute: typeof rootRoute
+    '/deal-accounting': {
+      id: '/deal-accounting'
+      path: '/deal-accounting'
+      fullPath: '/deal-accounting'
+      preLoaderRoute: typeof DealAccountingRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/auth/sign': {
-      id: '/auth/sign'
-      path: '/auth/sign'
-      fullPath: '/auth/sign'
-      preLoaderRoute: typeof AuthSignImport
-      parentRoute: typeof rootRoute
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share': {
+      id: '/share'
+      path: '/share'
+      fullPath: '/share'
+      preLoaderRoute: typeof ShareRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview': {
+      id: '/preview'
+      path: '/preview'
+      fullPath: '/preview'
+      preLoaderRoute: typeof PreviewRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/businesses/': {
+      id: '/businesses/'
+      path: '/businesses'
+      fullPath: '/businesses'
+      preLoaderRoute: typeof BusinessesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/businesses/$businessId': {
+      id: '/businesses/$businessId'
+      path: '/businesses/$businessId'
+      fullPath: '/businesses/$businessId'
+      preLoaderRoute: typeof BusinessesBusinessIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth/signup': {
       id: '/auth/signup'
       path: '/auth/signup'
       fullPath: '/auth/signup'
-      preLoaderRoute: typeof AuthSignupImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/share/deals/$dealId/$documentId': {
-      id: '/share/deals/$dealId/$documentId'
-      path: '/deals/$dealId/$documentId'
-      fullPath: '/share/deals/$dealId/$documentId'
-      preLoaderRoute: typeof ShareDealsDealIdDocumentIdImport
-      parentRoute: typeof ShareRouteImport
+    '/auth/sign': {
+      id: '/auth/sign'
+      path: '/auth/sign'
+      fullPath: '/auth/sign'
+      preLoaderRoute: typeof AuthSignRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/preview/deals/$shareToken/': {
-      id: '/preview/deals/$shareToken/'
-      path: '/deals/$shareToken'
-      fullPath: '/preview/deals/$shareToken'
-      preLoaderRoute: typeof PreviewDealsShareTokenIndexImport
-      parentRoute: typeof PreviewRouteImport
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/share/deals/$dealId/': {
       id: '/share/deals/$dealId/'
       path: '/deals/$dealId'
       fullPath: '/share/deals/$dealId'
-      preLoaderRoute: typeof ShareDealsDealIdIndexImport
-      parentRoute: typeof ShareRouteImport
+      preLoaderRoute: typeof ShareDealsDealIdIndexRouteImport
+      parentRoute: typeof ShareRouteRoute
+    }
+    '/preview/deals/$shareToken/': {
+      id: '/preview/deals/$shareToken/'
+      path: '/deals/$shareToken'
+      fullPath: '/preview/deals/$shareToken'
+      preLoaderRoute: typeof PreviewDealsShareTokenIndexRouteImport
+      parentRoute: typeof PreviewRouteRoute
+    }
+    '/share/deals/$dealId/$documentId': {
+      id: '/share/deals/$dealId/$documentId'
+      path: '/deals/$dealId/$documentId'
+      fullPath: '/share/deals/$dealId/$documentId'
+      preLoaderRoute: typeof ShareDealsDealIdDocumentIdRouteImport
+      parentRoute: typeof ShareRouteRoute
     }
   }
 }
-
-// Create and export the route tree
 
 interface PreviewRouteRouteChildren {
   PreviewDealsShareTokenIndexRoute: typeof PreviewDealsShareTokenIndexRoute
@@ -248,124 +380,6 @@ const ShareRouteRouteWithChildren = ShareRouteRoute._addFileChildren(
   ShareRouteRouteChildren,
 )
 
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/preview': typeof PreviewRouteRouteWithChildren
-  '/share': typeof ShareRouteRouteWithChildren
-  '/about': typeof AboutRoute
-  '/deal-accounting': typeof DealAccountingRoute
-  '/legal': typeof LegalRoute
-  '/onboarding': typeof OnboardingRoute
-  '/privacy-policy': typeof PrivacyPolicyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/sign': typeof AuthSignRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
-  '/preview/deals/$shareToken': typeof PreviewDealsShareTokenIndexRoute
-  '/share/deals/$dealId': typeof ShareDealsDealIdIndexRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/preview': typeof PreviewRouteRouteWithChildren
-  '/share': typeof ShareRouteRouteWithChildren
-  '/about': typeof AboutRoute
-  '/deal-accounting': typeof DealAccountingRoute
-  '/legal': typeof LegalRoute
-  '/onboarding': typeof OnboardingRoute
-  '/privacy-policy': typeof PrivacyPolicyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/sign': typeof AuthSignRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
-  '/preview/deals/$shareToken': typeof PreviewDealsShareTokenIndexRoute
-  '/share/deals/$dealId': typeof ShareDealsDealIdIndexRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/preview': typeof PreviewRouteRouteWithChildren
-  '/share': typeof ShareRouteRouteWithChildren
-  '/about': typeof AboutRoute
-  '/deal-accounting': typeof DealAccountingRoute
-  '/legal': typeof LegalRoute
-  '/onboarding': typeof OnboardingRoute
-  '/privacy-policy': typeof PrivacyPolicyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/sign': typeof AuthSignRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/share/deals/$dealId/$documentId': typeof ShareDealsDealIdDocumentIdRoute
-  '/preview/deals/$shareToken/': typeof PreviewDealsShareTokenIndexRoute
-  '/share/deals/$dealId/': typeof ShareDealsDealIdIndexRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/preview'
-    | '/share'
-    | '/about'
-    | '/deal-accounting'
-    | '/legal'
-    | '/onboarding'
-    | '/privacy-policy'
-    | '/auth/login'
-    | '/auth/sign'
-    | '/auth/signup'
-    | '/share/deals/$dealId/$documentId'
-    | '/preview/deals/$shareToken'
-    | '/share/deals/$dealId'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/preview'
-    | '/share'
-    | '/about'
-    | '/deal-accounting'
-    | '/legal'
-    | '/onboarding'
-    | '/privacy-policy'
-    | '/auth/login'
-    | '/auth/sign'
-    | '/auth/signup'
-    | '/share/deals/$dealId/$documentId'
-    | '/preview/deals/$shareToken'
-    | '/share/deals/$dealId'
-  id:
-    | '__root__'
-    | '/'
-    | '/preview'
-    | '/share'
-    | '/about'
-    | '/deal-accounting'
-    | '/legal'
-    | '/onboarding'
-    | '/privacy-policy'
-    | '/auth/login'
-    | '/auth/sign'
-    | '/auth/signup'
-    | '/share/deals/$dealId/$documentId'
-    | '/preview/deals/$shareToken/'
-    | '/share/deals/$dealId/'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  PreviewRouteRoute: typeof PreviewRouteRouteWithChildren
-  ShareRouteRoute: typeof ShareRouteRouteWithChildren
-  AboutRoute: typeof AboutRoute
-  DealAccountingRoute: typeof DealAccountingRoute
-  LegalRoute: typeof LegalRoute
-  OnboardingRoute: typeof OnboardingRoute
-  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthSignRoute: typeof AuthSignRoute
-  AuthSignupRoute: typeof AuthSignupRoute
-}
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PreviewRouteRoute: PreviewRouteRouteWithChildren,
@@ -378,83 +392,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthSignRoute: AuthSignRoute,
   AuthSignupRoute: AuthSignupRoute,
+  BusinessesBusinessIdRoute: BusinessesBusinessIdRoute,
+  BusinessesIndexRoute: BusinessesIndexRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/preview",
-        "/share",
-        "/about",
-        "/deal-accounting",
-        "/legal",
-        "/onboarding",
-        "/privacy-policy",
-        "/auth/login",
-        "/auth/sign",
-        "/auth/signup"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/preview": {
-      "filePath": "preview/route.tsx",
-      "children": [
-        "/preview/deals/$shareToken/"
-      ]
-    },
-    "/share": {
-      "filePath": "share/route.tsx",
-      "children": [
-        "/share/deals/$dealId/$documentId",
-        "/share/deals/$dealId/"
-      ]
-    },
-    "/about": {
-      "filePath": "about.tsx"
-    },
-    "/deal-accounting": {
-      "filePath": "deal-accounting.tsx"
-    },
-    "/legal": {
-      "filePath": "legal.tsx"
-    },
-    "/onboarding": {
-      "filePath": "onboarding.tsx"
-    },
-    "/privacy-policy": {
-      "filePath": "privacy-policy.tsx"
-    },
-    "/auth/login": {
-      "filePath": "auth/login.tsx"
-    },
-    "/auth/sign": {
-      "filePath": "auth/sign.tsx"
-    },
-    "/auth/signup": {
-      "filePath": "auth/signup.tsx"
-    },
-    "/share/deals/$dealId/$documentId": {
-      "filePath": "share/deals/$dealId/$documentId.tsx",
-      "parent": "/share"
-    },
-    "/preview/deals/$shareToken/": {
-      "filePath": "preview/deals/$shareToken/index.tsx",
-      "parent": "/preview"
-    },
-    "/share/deals/$dealId/": {
-      "filePath": "share/deals/$dealId/index.tsx",
-      "parent": "/share"
-    }
-  }
-}
-ROUTE_MANIFEST_END */
