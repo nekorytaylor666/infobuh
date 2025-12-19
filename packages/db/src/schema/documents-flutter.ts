@@ -138,14 +138,10 @@ export const documentSignaturesFlutter = pgTable(
 		documentFlutterId: uuid("document_flutter_id")
 			.references(() => documentsFlutter.id, { onDelete: "cascade" })
 			.notNull(),
-		signerId: uuid("signer_id")
-			.references(() => profile.id)
-			.notNull(),
+		signerId: uuid("signer_id").references(() => profile.id), // nullable for public signatures
 		cms: text("cms").notNull(),
 		signedAt: timestamp("signed_at").defaultNow().notNull(),
-		legalEntityId: uuid("legal_entity_id")
-			.references(() => legalEntities.id)
-			.notNull(),
+		legalEntityId: uuid("legal_entity_id").references(() => legalEntities.id), // nullable for public signatures
 
 		// Fields from verifier service
 		isValid: boolean("is_valid"),

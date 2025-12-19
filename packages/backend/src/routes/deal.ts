@@ -37,6 +37,31 @@ import { DealAccountingService } from "../lib/accounting-service/deal-accounting
 
 const dealRouter = new Hono<HonoEnv>();
 
+const NCALAYER_URL = "https://signer.infobuh.com";
+
+// Utility function to extract storage path from public URL or return as-is if it's already a path
+function extractStoragePath(filePathOrUrl: string): string {
+	if (!filePathOrUrl) return filePathOrUrl;
+
+	// If it's a full URL, extract the storage path
+	if (filePathOrUrl.startsWith('http')) {
+		try {
+			const url = new URL(filePathOrUrl);
+			// Extract path after '/storage/v1/object/public/documents/'
+			const pathSegments = url.pathname.split('/');
+			const documentsIndex = pathSegments.indexOf('documents');
+			if (documentsIndex !== -1 && documentsIndex < pathSegments.length - 1) {
+				return pathSegments.slice(documentsIndex + 1).join('/');
+			}
+		} catch (error) {
+			console.warn('Failed to parse URL for storage path extraction:', error);
+		}
+	}
+
+	// If it's already a storage path, return as-is
+	return filePathOrUrl;
+}
+
 // Helper function to merge documentPayload.data into fields
 function mergeDocumentFields(doc: any): any {
 	const fields = doc.fields || {};
@@ -2269,6 +2294,268 @@ dealRouter.get(
 		} catch (error) {
 			console.error("Error fetching document signatures:", error);
 			return c.json({ error: "Failed to fetch document signatures" }, 500);
+		}
+	},
+);
+
+// Schema for signing request
+const signDocumentSchema = z.object({
+	key: z.string().min(1, "Key is required"), // base64 encoded .p12
+	password: z.string().min(1, "Password is required"),
+});
+
+// Sign a document in a public deal
+dealRouter.post(
+	"/:dealId/documents/:documentId/sign",
+	describeRoute({
+		description: "Sign a document in a deal using EDS certificate. Supports public access with valid share token.",
+		tags: ["Deals", "Documents", "Signatures"],
+		parameters: [
+			{
+				name: "dealId",
+				in: "path",
+				required: true,
+				schema: { type: "string" },
+				description: "UUID of the deal or share token",
+			},
+			{
+				name: "documentId",
+				in: "path",
+				required: true,
+				schema: { type: "string", format: "uuid" },
+				description: "UUID of the document",
+			},
+			{
+				name: "token",
+				in: "query",
+				required: false,
+				schema: { type: "string" },
+				description: "Public share token for unauthenticated access",
+			},
+		],
+		request: {
+			body: {
+				content: {
+					"application/json": {
+						schema: signDocumentSchema,
+					},
+				},
+			},
+		},
+		responses: {
+			200: {
+				description: "Document signed successfully",
+				content: { "application/json": {} },
+			},
+			400: { description: "Invalid input or signing failed" },
+			404: { description: "Deal or document not found" },
+			500: { description: "Internal server error" },
+		},
+	}),
+	zValidator("json", signDocumentSchema),
+	async (c) => {
+		try {
+			const { dealId, documentId } = c.req.param();
+			const shareToken = c.req.query("token");
+			const { key, password } = c.req.valid("json");
+
+			let actualDealId = dealId;
+			let dealReceiverBin: string | null = null;
+
+			// Validate share token for public access
+			if (shareToken) {
+				const deal = await validateShareToken(c.env.db, dealId);
+				if (!deal) {
+					return c.json({ error: "Invalid share token or deal not publicly accessible" }, 404);
+				}
+				actualDealId = deal.id;
+				dealReceiverBin = deal.receiverBin;
+			} else {
+				// Fetch deal to get receiverBin for authenticated access
+				const deal = await c.env.db.query.deals.findFirst({
+					where: eq(deals.id, dealId),
+				});
+				if (deal) {
+					dealReceiverBin = deal.receiverBin;
+				}
+			}
+
+			// Verify document belongs to the deal
+			const association = await c.env.db.query.dealDocumentsFlutter.findFirst({
+				where: and(
+					eq(dealDocumentsFlutter.dealId, actualDealId),
+					eq(dealDocumentsFlutter.documentFlutterId, documentId),
+				),
+			});
+
+			if (!association) {
+				return c.json({ error: "Document not found in this deal" }, 404);
+			}
+
+			// Get document details
+			const docInfo = await c.env.db.query.documentsFlutter.findFirst({
+				where: eq(documentsFlutter.id, documentId),
+				with: {
+					legalEntity: true,
+				},
+			});
+
+			if (!docInfo) {
+				return c.json({ error: "Document not found" }, 404);
+			}
+
+			// Download from the correct bucket & file path
+			const storagePath = extractStoragePath(docInfo.filePath);
+			const { data: fileData, error: storageError } = await c.env.supabase.storage
+				.from("documents")
+				.download(storagePath);
+
+			if (storageError || !fileData) {
+				console.error("Supabase download error:", storageError);
+				return c.json({ error: "Failed to get file from storage" }, 500);
+			}
+
+			// Convert file to base64
+			const fileBuffer = await fileData.arrayBuffer();
+			const base64Data = Buffer.from(fileBuffer).toString("base64");
+
+			// Build request for NCALayer
+			const signRequest = {
+				data: base64Data,
+				signers: [
+					{
+						key,
+						password,
+						keyAlias: null
+					}
+				]
+			};
+
+			// Send to NCALayer
+			const response = await fetch(`${NCALAYER_URL}/cms/sign`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(signRequest),
+			});
+
+			if (!response.ok) {
+				let errorData: { message?: string } = {};
+				try {
+					errorData = await response.json();
+				} catch (parseError) {
+					console.error("Failed to parse NCALayer error response:", parseError);
+				}
+				console.error("NCALayer signing error:", response.status, errorData);
+				return c.json({
+					error: errorData?.message || `NCALayer responded with status: ${response.status}`,
+				}, 400);
+			}
+
+			const ncaLayerResult = await response.json();
+
+			if (!ncaLayerResult.cms) {
+				console.error("NCALayer response missing CMS data:", ncaLayerResult);
+				return c.json({ error: "No CMS data received from NCALayer" }, 500);
+			}
+
+			// Verify signature
+			const verifierResponse = await fetch(`${NCALAYER_URL}/cms/verify`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ cms: ncaLayerResult.cms }),
+			});
+
+			if (!verifierResponse.ok) {
+				let verifierErrorData: { message?: string } = {};
+				try {
+					verifierErrorData = await verifierResponse.json();
+				} catch (parseError) {
+					console.error("Failed to parse verifier error response:", parseError);
+				}
+				console.error("Verifier service error:", verifierResponse.status, verifierErrorData);
+				return c.json({
+					error: verifierErrorData?.message || `Verifier service responded with status: ${verifierResponse.status}`,
+				}, 500);
+			}
+
+			const verifierResult = await verifierResponse.json();
+			const signerInfo = verifierResult.signers?.[0]?.certificates?.[0];
+			const tspInfo = verifierResult.signers?.[0]?.tsp;
+
+			// Validate that the signer is the counterparty of the deal (check BIN)
+			const signerBin = signerInfo?.subject?.bin;
+			if (dealReceiverBin && signerBin) {
+				if (signerBin !== dealReceiverBin) {
+					return c.json({
+						error: "Подписание запрещено",
+						message: `Только контрагент сделки (БИН: ${dealReceiverBin}) может подписать этот документ. Ваш БИН: ${signerBin}`,
+					}, 403);
+				}
+			} else if (dealReceiverBin && !signerBin) {
+				// Signer certificate doesn't have a BIN - might be an individual with IIN
+				const signerIin = signerInfo?.subject?.iin;
+				if (signerIin) {
+					// Check if IIN matches (for individual counterparties)
+					if (signerIin !== dealReceiverBin) {
+						return c.json({
+							error: "Подписание запрещено",
+							message: `Только контрагент сделки (БИН/ИИН: ${dealReceiverBin}) может подписать этот документ. Ваш ИИН: ${signerIin}`,
+						}, 403);
+					}
+				} else {
+					return c.json({
+						error: "Подписание запрещено",
+						message: "Не удалось определить БИН/ИИН из сертификата подписи",
+					}, 403);
+				}
+			}
+
+			// Insert signature record (signerId and legalEntityId are null for public signatures)
+			const [signature] = await c.env.db
+				.insert(documentSignaturesFlutter)
+				.values({
+					documentFlutterId: documentId,
+					signerId: null, // Public signature - no user account
+					cms: ncaLayerResult.cms,
+					signedAt: new Date(),
+					legalEntityId: null, // Public signature - no legal entity context
+					// Populate from verifierResult
+					isValid: verifierResult.valid,
+					notBefore: signerInfo?.notBefore ? new Date(signerInfo.notBefore) : null,
+					notAfter: signerInfo?.notAfter ? new Date(signerInfo.notAfter) : null,
+					keyUsage: signerInfo?.keyUsage,
+					serialNumber: signerInfo?.serialNumber,
+					signAlg: signerInfo?.signAlg,
+					signature: signerInfo?.signature,
+					subjectCommonName: signerInfo?.subject?.commonName,
+					subjectLastName: signerInfo?.subject?.lastName,
+					subjectSurName: signerInfo?.subject?.surName,
+					subjectEmail: signerInfo?.subject?.email,
+					subjectOrganization: signerInfo?.subject?.organization,
+					subjectIin: signerInfo?.subject?.iin,
+					subjectBin: signerInfo?.subject?.bin,
+					subjectCountry: signerInfo?.subject?.country,
+					subjectLocality: signerInfo?.subject?.locality,
+					subjectState: signerInfo?.subject?.state,
+					issuerCommonName: signerInfo?.issuer?.commonName,
+					issuerOrganization: signerInfo?.issuer?.organization,
+					issuerIin: signerInfo?.issuer?.iin,
+					issuerBin: signerInfo?.issuer?.bin,
+					tspSerialNumber: tspInfo?.serialNumber,
+					tspGenTime: tspInfo?.genTime ? new Date(tspInfo.genTime) : null,
+					tspPolicy: tspInfo?.policy,
+					tspHashAlgorithm: tspInfo?.tspHashAlgorithm,
+					tspHash: tspInfo?.hash,
+				})
+				.returning();
+
+			return c.json(signature);
+		} catch (error) {
+			console.error("Error signing document:", error);
+			return c.json({
+				error: "Failed to sign document",
+				message: error instanceof Error ? error.message : "Unknown error"
+			}, 500);
 		}
 	},
 );

@@ -1,4 +1,4 @@
-import { getDealDocument } from "@/lib/api";
+import { getDealDocument, signDealDocument, getDealDocumentSignatures, type DocumentSignature } from "@/lib/api";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,310 @@ import {
   MessageCircle,
   Signature,
   ArrowLeft,
+  Upload,
+  X,
+  Loader2,
+  CheckCircle,
+  Key,
+  ShieldCheck,
+  ShieldAlert,
+  FileSignature,
+  RefreshCw,
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PdfViewer } from "@/components/documents/components/pdf-viewer";
+import { Label } from "@/components/ui/label";
+
+const SIGNING_KEY_CACHE_KEY = "cached_signing_key";
+
+// Helper function to convert file to base64
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove the data URL prefix (e.g., "data:application/x-pkcs12;base64,")
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+interface SignDocumentFormProps {
+  onSign: (credentials: { key: string; password: string }) => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+  success: boolean;
+}
+
+function SignDocumentForm({ onSign, isLoading, error, success }: SignDocumentFormProps) {
+  const [cachedKeyBase64, setCachedKeyBase64] = useState<string | null>(null);
+  const [keyFileName, setKeyFileName] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+
+  // Load cached key from localStorage on mount
+  useEffect(() => {
+    const cached = localStorage.getItem(SIGNING_KEY_CACHE_KEY);
+    if (cached) {
+      setCachedKeyBase64(cached);
+      setKeyFileName("Сохраненный ключ");
+    }
+  }, []);
+
+  // Handle file upload -> convert to base64 -> cache in localStorage
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const base64 = await fileToBase64(file);
+      localStorage.setItem(SIGNING_KEY_CACHE_KEY, base64);
+      setCachedKeyBase64(base64);
+      setKeyFileName(file.name);
+    } catch (err) {
+      console.error("Failed to read key file:", err);
+    }
+  }, []);
+
+  // Clear cached key
+  const handleClearKey = useCallback(() => {
+    localStorage.removeItem(SIGNING_KEY_CACHE_KEY);
+    setCachedKeyBase64(null);
+    setKeyFileName(null);
+  }, []);
+
+  // Submit signing request
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cachedKeyBase64 && password) {
+      await onSign({ key: cachedKeyBase64, password });
+    }
+  }, [cachedKeyBase64, password, onSign]);
+
+  if (success) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 gap-4">
+        <CheckCircle className="h-16 w-16 text-green-500" />
+        <h3 className="text-lg font-medium">Документ подписан</h3>
+        <p className="text-sm text-muted-foreground text-center">
+          Документ успешно подписан электронной подписью
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
+      <div className="text-center mb-2">
+        <h3 className="text-lg font-medium">Подписать документ</h3>
+        <p className="text-sm text-muted-foreground">
+          Загрузите ключ ЭЦП (.p12) и введите пароль
+        </p>
+      </div>
+
+      {/* Key file upload */}
+      <div className="space-y-2">
+        <Label htmlFor="key-file">Ключ ЭЦП (.p12)</Label>
+        {cachedKeyBase64 ? (
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+            <Key className="h-5 w-5 text-muted-foreground" />
+            <span className="flex-1 text-sm truncate">{keyFileName}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleClearKey}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="relative">
+            <input
+              id="key-file"
+              type="file"
+              accept=".p12,.pfx"
+              onChange={handleFileChange}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg hover:border-primary transition-colors">
+              <Upload className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Выберите файл ключа
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Password input */}
+      <div className="space-y-2">
+        <Label htmlFor="password">Пароль от ключа</Label>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Введите пароль"
+          disabled={isLoading}
+        />
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Submit button */}
+      <Button
+        type="submit"
+        disabled={!cachedKeyBase64 || !password || isLoading}
+        className="w-full"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Подписание...
+          </>
+        ) : (
+          <>
+            <Signature className="h-4 w-4 mr-2" />
+            Подписать
+          </>
+        )}
+      </Button>
+    </form>
+  );
+}
+
+// Format date for display
+function formatDate(dateString: string | null): string {
+  if (!dateString) return "—";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Get signer display name from signature
+function getSignerName(sig: DocumentSignature): string {
+  // Try to build name from certificate subject
+  if (sig.subjectLastName || sig.subjectSurName) {
+    const parts = [sig.subjectLastName, sig.subjectSurName].filter(Boolean);
+    if (parts.length > 0) return parts.join(" ");
+  }
+  if (sig.subjectCommonName) return sig.subjectCommonName;
+  if (sig.subjectOrganization) return sig.subjectOrganization;
+  if (sig.signer?.fullName) return sig.signer.fullName;
+  return "Неизвестный подписант";
+}
+
+interface SignaturesSectionProps {
+  signatures: DocumentSignature[];
+  isLoading: boolean;
+  onRefresh: () => void;
+}
+
+function SignaturesSection({ signatures, isLoading, onRefresh }: SignaturesSectionProps) {
+  if (isLoading) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Загрузка подписей...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (signatures.length === 0) {
+    return (
+      <div className="p-4 text-center">
+        <FileSignature className="h-12 w-12 mx-auto text-muted-foreground/50 mb-2" />
+        <p className="text-sm text-muted-foreground">Документ не подписан</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium flex items-center gap-2">
+          <FileSignature className="h-4 w-4" />
+          Подписи ({signatures.length})
+        </h4>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={onRefresh}
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {signatures.map((sig) => (
+          <div
+            key={sig.id}
+            className="p-3 rounded-lg border bg-muted/30 space-y-2"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {getSignerName(sig)}
+                </p>
+                {(sig.subjectIin || sig.subjectBin) && (
+                  <p className="text-xs text-muted-foreground">
+                    {sig.subjectIin ? `ИИН: ${sig.subjectIin}` : `БИН: ${sig.subjectBin}`}
+                  </p>
+                )}
+              </div>
+              {sig.isValid !== null && (
+                <Badge
+                  variant={sig.isValid ? "default" : "destructive"}
+                  className="flex items-center gap-1 shrink-0"
+                >
+                  {sig.isValid ? (
+                    <>
+                      <ShieldCheck className="h-3 w-3" />
+                      <span>Валидна</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldAlert className="h-3 w-3" />
+                      <span>Невалидна</span>
+                    </>
+                  )}
+                </Badge>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <p>Подписано: {formatDate(sig.signedAt)}</p>
+              {sig.subjectOrganization && (
+                <p className="truncate">Организация: {sig.subjectOrganization}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/share/deals/$dealId/$documentId")({
   component: DealDocumentPageComponent,
@@ -119,7 +415,7 @@ const mockComments = [
 ];
 
 export function DealDocumentPageComponent() {
-  const { dealId } = Route.useParams();
+  const { dealId, documentId } = Route.useParams();
   const { document, pdfUrl, pdfError } = Route.useLoaderData();
 
   const data = {
@@ -133,6 +429,59 @@ export function DealDocumentPageComponent() {
   const [isDesktopCommentsVisible, setIsDesktopCommentsVisible] =
     useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  // Signing state
+  const [isSigningLoading, setIsSigningLoading] = useState(false);
+  const [signingError, setSigningError] = useState<string | null>(null);
+  const [signingSuccess, setSigningSuccess] = useState(false);
+
+  // Signatures state
+  const [signatures, setSignatures] = useState<DocumentSignature[]>([]);
+  const [signaturesLoading, setSignaturesLoading] = useState(true);
+
+  // Fetch signatures
+  const fetchSignatures = useCallback(async () => {
+    setSignaturesLoading(true);
+    try {
+      const sigs = await getDealDocumentSignatures(dealId, documentId, dealId);
+      setSignatures(sigs);
+    } catch (err) {
+      console.error("Failed to fetch signatures:", err);
+    } finally {
+      setSignaturesLoading(false);
+    }
+  }, [dealId, documentId]);
+
+  // Fetch signatures on mount
+  useEffect(() => {
+    fetchSignatures();
+  }, [fetchSignatures]);
+
+  // Handle document signing
+  const handleSign = useCallback(async (credentials: { key: string; password: string }) => {
+    setIsSigningLoading(true);
+    setSigningError(null);
+
+    try {
+      // dealId is the share token in this context
+      await signDealDocument(dealId, documentId, dealId, credentials);
+      setSigningSuccess(true);
+      // Refresh signatures after successful signing
+      fetchSignatures();
+    } catch (err: unknown) {
+      console.error("Signing error:", err);
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { error?: string; message?: string } } };
+        setSigningError(axiosError.response?.data?.error || axiosError.response?.data?.message || "Ошибка при подписании документа");
+      } else if (err instanceof Error) {
+        setSigningError(err.message);
+      } else {
+        setSigningError("Неизвестная ошибка при подписании");
+      }
+    } finally {
+      setIsSigningLoading(false);
+    }
+  }, [dealId, documentId, fetchSignatures]);
 
   const handleDownload = () => {
     if (pdfUrl) {
@@ -309,20 +658,38 @@ export function DealDocumentPageComponent() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="flex flex-col gap-1 items-center h-auto p-1.5 rounded-md"
-                  onClick={() => {}}
+                  className="flex flex-col gap-1 items-center h-auto p-1.5 rounded-md relative"
                 >
                   <Signature className="h-5 w-5" />
                   <span className="text-xs md:text-sm font-medium">
                     Подписать
                   </span>
+                  {signatures.length > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                      {signatures.length}
+                    </span>
+                  )}
                 </Button>
               </SheetTrigger>
               <SheetContent
                 side="bottom"
-                className="bg-card p-0 h-[70vh] flex flex-col border-t"
+                className="bg-card p-0 h-[80vh] flex flex-col border-t"
               >
-                asdf
+                <ScrollArea className="flex-1">
+                  <SignaturesSection
+                    signatures={signatures}
+                    isLoading={signaturesLoading}
+                    onRefresh={fetchSignatures}
+                  />
+                  <div className="border-t">
+                    <SignDocumentForm
+                      onSign={handleSign}
+                      isLoading={isSigningLoading}
+                      error={signingError}
+                      success={signingSuccess}
+                    />
+                  </div>
+                </ScrollArea>
               </SheetContent>
             </Sheet>
           ) : (
@@ -331,17 +698,35 @@ export function DealDocumentPageComponent() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="flex flex-col gap-1 items-center h-auto p-1.5 rounded-md"
-                  onClick={() => {}}
+                  className="flex flex-col gap-1 items-center h-auto p-1.5 rounded-md relative"
                 >
                   <Signature className="h-5 w-5" />
                   <span className="text-xs md:text-sm font-medium">
                     Подписать
                   </span>
+                  {signatures.length > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                      {signatures.length}
+                    </span>
+                  )}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-card p-4 sm:max-w-[425px]">
-                asdf
+              <DialogContent className="bg-card p-0 sm:max-w-[425px] max-h-[80vh] overflow-hidden flex flex-col">
+                <ScrollArea className="flex-1">
+                  <SignaturesSection
+                    signatures={signatures}
+                    isLoading={signaturesLoading}
+                    onRefresh={fetchSignatures}
+                  />
+                  <div className="border-t">
+                    <SignDocumentForm
+                      onSign={handleSign}
+                      isLoading={isSigningLoading}
+                      error={signingError}
+                      success={signingSuccess}
+                    />
+                  </div>
+                </ScrollArea>
               </DialogContent>
             </Dialog>
           )}

@@ -132,3 +132,4 @@ GET /deals/{dealId}/transactions
 **Без дублей:** ✓  
 **Транзакционность:** ✓
 
+

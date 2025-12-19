@@ -133,3 +133,55 @@ export async function getDealDocument(dealId: string, documentId: string, shareT
 	const response = await api.get<DealDocuments>(url);
 	return response.data;
 }
+
+export async function signDealDocument(
+	dealId: string,
+	documentId: string,
+	shareToken: string,
+	credentials: { key: string; password: string }
+) {
+	const response = await api.post(
+		`/deals/${dealId}/documents/${documentId}/sign?token=${shareToken}`,
+		credentials
+	);
+	return response.data;
+}
+
+export interface DocumentSignature {
+	id: string;
+	documentFlutterId: string;
+	signerId: string | null;
+	cms: string;
+	signedAt: string;
+	legalEntityId: string | null;
+	isValid: boolean | null;
+	notBefore: string | null;
+	notAfter: string | null;
+	subjectCommonName: string | null;
+	subjectLastName: string | null;
+	subjectSurName: string | null;
+	subjectEmail: string | null;
+	subjectOrganization: string | null;
+	subjectIin: string | null;
+	subjectBin: string | null;
+	signer?: {
+		id: string;
+		fullName: string | null;
+	} | null;
+	legalEntity?: {
+		id: string;
+		name: string;
+	} | null;
+}
+
+export async function getDealDocumentSignatures(
+	dealId: string,
+	documentId: string,
+	shareToken?: string
+): Promise<DocumentSignature[]> {
+	const url = shareToken
+		? `/deals/${dealId}/documents/${documentId}/signatures?token=${shareToken}`
+		: `/deals/${dealId}/documents/${documentId}/signatures`;
+	const response = await api.get<DocumentSignature[]>(url);
+	return response.data;
+}
