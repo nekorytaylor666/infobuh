@@ -102,10 +102,12 @@ function SignDocumentForm({ onSign, isLoading, error, success }: SignDocumentFor
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 gap-4">
-        <CheckCircle className="h-16 w-16 text-green-500" />
-        <h3 className="text-lg font-medium">Документ подписан</h3>
-        <p className="text-sm text-muted-foreground text-center">
+      <div className="flex flex-col items-center justify-center p-6 sm:p-8 gap-4">
+        <div className="h-20 w-20 sm:h-16 sm:w-16 rounded-full bg-green-100 flex items-center justify-center">
+          <CheckCircle className="h-12 w-12 sm:h-10 sm:w-10 text-green-500" />
+        </div>
+        <h3 className="text-xl sm:text-lg font-medium">Документ подписан</h3>
+        <p className="text-base sm:text-sm text-muted-foreground text-center">
           Документ успешно подписан электронной подписью
         </p>
       </div>
@@ -113,29 +115,31 @@ function SignDocumentForm({ onSign, isLoading, error, success }: SignDocumentFor
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
-      <div className="text-center mb-2">
-        <h3 className="text-lg font-medium">Подписать документ</h3>
-        <p className="text-sm text-muted-foreground">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-4 p-5 sm:p-4">
+      <div className="text-center mb-1">
+        <h3 className="text-xl sm:text-lg font-medium">Подписать документ</h3>
+        <p className="text-base sm:text-sm text-muted-foreground mt-1">
           Загрузите ключ ЭЦП (.p12) и введите пароль
         </p>
       </div>
 
       {/* Key file upload */}
       <div className="space-y-2">
-        <Label htmlFor="key-file">Ключ ЭЦП (.p12)</Label>
+        <Label htmlFor="key-file" className="text-base sm:text-sm">Ключ ЭЦП (.p12)</Label>
         {cachedKeyBase64 ? (
-          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-            <Key className="h-5 w-5 text-muted-foreground" />
-            <span className="flex-1 text-sm truncate">{keyFileName}</span>
+          <div className="flex items-center gap-3 p-4 sm:p-3 bg-muted rounded-xl sm:rounded-lg">
+            <div className="h-10 w-10 sm:h-8 sm:w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Key className="h-5 w-5 sm:h-4 sm:w-4 text-primary" />
+            </div>
+            <span className="flex-1 text-base sm:text-sm truncate">{keyFileName}</span>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-10 w-10 sm:h-8 sm:w-8 shrink-0"
               onClick={handleClearKey}
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5 sm:h-4 sm:w-4" />
             </Button>
           </div>
         ) : (
@@ -147,10 +151,12 @@ function SignDocumentForm({ onSign, isLoading, error, success }: SignDocumentFor
               onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
-            <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg hover:border-primary transition-colors">
-              <Upload className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                Выберите файл ключа
+            <div className="flex flex-col items-center justify-center gap-3 p-6 sm:p-4 border-2 border-dashed rounded-xl sm:rounded-lg hover:border-primary active:border-primary active:bg-muted/50 transition-colors">
+              <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center">
+                <Upload className="h-6 w-6 sm:h-5 sm:w-5 text-muted-foreground" />
+              </div>
+              <span className="text-base sm:text-sm text-muted-foreground text-center">
+                Нажмите, чтобы выбрать файл ключа
               </span>
             </div>
           </div>
@@ -159,7 +165,7 @@ function SignDocumentForm({ onSign, isLoading, error, success }: SignDocumentFor
 
       {/* Password input */}
       <div className="space-y-2">
-        <Label htmlFor="password">Пароль от ключа</Label>
+        <Label htmlFor="password" className="text-base sm:text-sm">Пароль от ключа</Label>
         <Input
           id="password"
           type="password"
@@ -167,12 +173,13 @@ function SignDocumentForm({ onSign, isLoading, error, success }: SignDocumentFor
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Введите пароль"
           disabled={isLoading}
+          className="h-12 sm:h-10 text-base sm:text-sm rounded-xl sm:rounded-lg"
         />
       </div>
 
       {/* Error message */}
       {error && (
-        <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+        <div className="p-4 sm:p-3 bg-destructive/10 text-destructive rounded-xl sm:rounded-lg text-base sm:text-sm">
           {error}
         </div>
       )}
@@ -181,16 +188,16 @@ function SignDocumentForm({ onSign, isLoading, error, success }: SignDocumentFor
       <Button
         type="submit"
         disabled={!cachedKeyBase64 || !password || isLoading}
-        className="w-full"
+        className="w-full h-12 sm:h-10 text-base sm:text-sm rounded-xl sm:rounded-lg"
       >
         {isLoading ? (
           <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="h-5 w-5 sm:h-4 sm:w-4 mr-2 animate-spin" />
             Подписание...
           </>
         ) : (
           <>
-            <Signature className="h-4 w-4 mr-2" />
+            <Signature className="h-5 w-5 sm:h-4 sm:w-4 mr-2" />
             Подписать
           </>
         )}
@@ -234,10 +241,10 @@ interface SignaturesSectionProps {
 function SignaturesSection({ signatures, isLoading, onRefresh }: SignaturesSectionProps) {
   if (isLoading) {
     return (
-      <div className="p-4">
-        <div className="flex items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Загрузка подписей...</span>
+      <div className="p-6 sm:p-4">
+        <div className="flex items-center justify-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" />
+          <span className="text-base sm:text-sm">Загрузка подписей...</span>
         </div>
       </div>
     );
@@ -245,42 +252,44 @@ function SignaturesSection({ signatures, isLoading, onRefresh }: SignaturesSecti
 
   if (signatures.length === 0) {
     return (
-      <div className="p-4 text-center">
-        <FileSignature className="h-12 w-12 mx-auto text-muted-foreground/50 mb-2" />
-        <p className="text-sm text-muted-foreground">Документ не подписан</p>
+      <div className="p-6 sm:p-4 text-center">
+        <div className="h-16 w-16 sm:h-12 sm:w-12 mx-auto rounded-full bg-muted flex items-center justify-center mb-3">
+          <FileSignature className="h-8 w-8 sm:h-6 sm:w-6 text-muted-foreground/50" />
+        </div>
+        <p className="text-base sm:text-sm text-muted-foreground">Документ не подписан</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-5 sm:p-4 space-y-4 sm:space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium flex items-center gap-2">
-          <FileSignature className="h-4 w-4" />
+        <h4 className="text-base sm:text-sm font-medium flex items-center gap-2">
+          <FileSignature className="h-5 w-5 sm:h-4 sm:w-4" />
           Подписи ({signatures.length})
         </h4>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-10 w-10 sm:h-8 sm:w-8"
           onClick={onRefresh}
         >
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="h-5 w-5 sm:h-4 sm:w-4" />
         </Button>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-3 sm:space-y-2">
         {signatures.map((sig) => (
           <div
             key={sig.id}
-            className="p-3 rounded-lg border bg-muted/30 space-y-2"
+            className="p-4 sm:p-3 rounded-xl sm:rounded-lg border bg-muted/30 space-y-3 sm:space-y-2"
           >
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-3 sm:gap-2">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
+                <p className="text-base sm:text-sm font-medium truncate">
                   {getSignerName(sig)}
                 </p>
                 {(sig.subjectIin || sig.subjectBin) && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm sm:text-xs text-muted-foreground mt-0.5">
                     {sig.subjectIin ? `ИИН: ${sig.subjectIin}` : `БИН: ${sig.subjectBin}`}
                   </p>
                 )}
@@ -288,23 +297,23 @@ function SignaturesSection({ signatures, isLoading, onRefresh }: SignaturesSecti
               {sig.isValid !== null && (
                 <Badge
                   variant={sig.isValid ? "default" : "destructive"}
-                  className="flex items-center gap-1 shrink-0"
+                  className="flex items-center gap-1.5 sm:gap-1 shrink-0 h-7 sm:h-6 px-2.5 sm:px-2"
                 >
                   {sig.isValid ? (
                     <>
-                      <ShieldCheck className="h-3 w-3" />
-                      <span>Валидна</span>
+                      <ShieldCheck className="h-4 w-4 sm:h-3 sm:w-3" />
+                      <span className="text-sm sm:text-xs">Валидна</span>
                     </>
                   ) : (
                     <>
-                      <ShieldAlert className="h-3 w-3" />
-                      <span>Невалидна</span>
+                      <ShieldAlert className="h-4 w-4 sm:h-3 sm:w-3" />
+                      <span className="text-sm sm:text-xs">Невалидна</span>
                     </>
                   )}
                 </Badge>
               )}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-sm sm:text-xs text-muted-foreground space-y-0.5">
               <p>Подписано: {formatDate(sig.signedAt)}</p>
               {sig.subjectOrganization && (
                 <p className="truncate">Организация: {sig.subjectOrganization}</p>
@@ -557,7 +566,7 @@ export function DealDocumentPageComponent() {
     <Button
       size="sm"
       variant="ghost"
-      className="flex flex-col items-center h-auto p-1.5 gap-1 rounded-md"
+      className="flex flex-col items-center h-auto py-2.5 sm:p-1.5 gap-1.5 sm:gap-1 rounded-xl sm:rounded-md active:bg-muted"
       onClick={
         isMobile
           ? undefined
@@ -571,8 +580,8 @@ export function DealDocumentPageComponent() {
             : "Показать комментарии"
       }
     >
-      <MessageCircle className="h-5 w-5" />
-      <span className="text-xs md:text-sm font-medium">Чат</span>
+      <MessageCircle className="h-6 w-6 sm:h-5 sm:w-5" />
+      <span className="text-sm sm:text-xs font-medium">Чат</span>
     </Button>
   );
 
@@ -628,29 +637,30 @@ export function DealDocumentPageComponent() {
       </div>
 
       {/* Persistent Bottom Pill Navbar */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 px-6 bg-transparent z-50">
-        <div className="max-w-xs mx-auto  justify-around items-center bg-card/95 backdrop-blur-sm p-2 grid grid-cols-3 gap-2 rounded-lg shadow-xl border border-border/50">
+      <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-3 px-6 bg-transparent z-50 safe-area-inset-bottom">
+        <div className="max-w-sm sm:max-w-xs mx-auto justify-around items-center bg-card/95 backdrop-blur-sm p-2.5 sm:p-2 grid grid-cols-3 gap-3 sm:gap-2 rounded-2xl sm:rounded-lg shadow-xl border border-border/50">
           {isMobile ? (
             <Sheet>
               <SheetTrigger asChild>{commentButtonNode}</SheetTrigger>
               <SheetContent
                 side="bottom"
-                className="bg-card p-0 h-[70vh] flex flex-col border-t"
+                className="bg-card p-0 h-[70vh] flex flex-col border-t rounded-t-2xl"
               >
+                <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mt-3 mb-1" />
                 <CommentsSectionContent />
               </SheetContent>
             </Sheet>
           ) : (
-            commentButtonNode // Desktop: Just the button, Sheet context is not needed here
+            commentButtonNode
           )}
           <Button
             size="sm"
             variant="ghost"
-            className="flex flex-col gap-1 items-center h-auto p-1.5 rounded-md"
+            className="flex flex-col gap-1.5 sm:gap-1 items-center h-auto py-2.5 sm:p-1.5 rounded-xl sm:rounded-md active:bg-muted"
             onClick={handleDownload}
           >
-            <Download className="h-5 w-5" />
-            <span className="text-xs md:text-sm font-medium">Скачать</span>
+            <Download className="h-6 w-6 sm:h-5 sm:w-5" />
+            <span className="text-sm sm:text-xs font-medium">Скачать</span>
           </Button>
           {isMobile ? (
             <Sheet>
@@ -658,14 +668,14 @@ export function DealDocumentPageComponent() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="flex flex-col gap-1 items-center h-auto p-1.5 rounded-md relative"
+                  className="flex flex-col gap-1.5 sm:gap-1 items-center h-auto py-2.5 sm:p-1.5 rounded-xl sm:rounded-md relative active:bg-muted"
                 >
-                  <Signature className="h-5 w-5" />
-                  <span className="text-xs md:text-sm font-medium">
+                  <Signature className="h-6 w-6 sm:h-5 sm:w-5" />
+                  <span className="text-sm sm:text-xs font-medium">
                     Подписать
                   </span>
                   {signatures.length > 0 && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 h-5 w-5 bg-primary text-primary-foreground text-xs font-medium rounded-full flex items-center justify-center shadow-sm">
                       {signatures.length}
                     </span>
                   )}
@@ -673,8 +683,9 @@ export function DealDocumentPageComponent() {
               </SheetTrigger>
               <SheetContent
                 side="bottom"
-                className="bg-card p-0 h-[80vh] flex flex-col border-t"
+                className="bg-card p-0 h-[85vh] flex flex-col border-t rounded-t-2xl"
               >
+                <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mt-3 mb-1" />
                 <ScrollArea className="flex-1">
                   <SignaturesSection
                     signatures={signatures}
@@ -689,6 +700,8 @@ export function DealDocumentPageComponent() {
                       success={signingSuccess}
                     />
                   </div>
+                  {/* Safe area padding for iOS home indicator */}
+                  <div className="h-6 pb-safe" />
                 </ScrollArea>
               </SheetContent>
             </Sheet>
