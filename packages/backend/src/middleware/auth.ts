@@ -23,6 +23,7 @@ export async function authMiddleware(c: Context, next: Next) {
 		/^\/deals\/[^/]+\/documents$/,         // GET /deals/:dealId/documents
 		/^\/deals\/[^/]+\/documents\/[^/]+$/,  // GET /deals/:dealId/documents/:documentId
 		/^\/deals\/[^/]+\/documents\/[^/]+\/signatures$/,  // GET /deals/:dealId/documents/:documentId/signatures
+		/^\/deals\/[^/]+\/documents\/[^/]+\/sign$/,  // POST /deals/:dealId/documents/:documentId/sign
 	];
 
 	// Skip auth if share token is provided and endpoint supports it
