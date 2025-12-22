@@ -26,6 +26,7 @@ import "zod-openapi/extend";
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { HTTPException } from "hono/http-exception";
 import { DealAccountingService } from "../lib/accounting-service/deal-accounting-service";
+import { sendNotificationToLegalEntityByBin } from "../services/notification";
 // COMMENTED OUT - Backend document generation removed
 // import { DocumentGenerationService, type DocumentType } from "../lib/accounting-service/document-generation-service";
 // import {
@@ -555,6 +556,29 @@ dealRouter.post(
 				}
 			}
 			*/
+
+			// Get sender's legal entity info for notification
+			const senderLegalEntity = await c.env.db.query.legalEntities.findFirst({
+				where: eq(legalEntities.id, legalEntityId),
+				columns: { name: true, bin: true },
+			});
+
+			// Send notification to receiver about new deal
+			if (senderLegalEntity) {
+				sendNotificationToLegalEntityByBin(c, {
+					receiverBin: dealData.receiverBin,
+					message: {
+						notification: {
+							title: "Новая сделка",
+							body: `${result.deal.title} от ${senderLegalEntity.name}`,
+						},
+						data: {
+							dealId: result.deal.id,
+							type: "new_deal",
+						},
+					},
+				});
+			}
 
 			return c.json({
 				...result,
@@ -2361,6 +2385,8 @@ dealRouter.post(
 
 			let actualDealId = dealId;
 			let dealReceiverBin: string | null = null;
+			let dealOwnerBin: string | null = null;
+			let dealTitle: string | null = null;
 
 			// Validate share token for public access
 			if (shareToken) {
@@ -2370,13 +2396,23 @@ dealRouter.post(
 				}
 				actualDealId = deal.id;
 				dealReceiverBin = deal.receiverBin;
+				dealTitle = deal.title;
+				// Get deal owner's BIN
+				const dealWithOwner = await c.env.db.query.deals.findFirst({
+					where: eq(deals.id, deal.id),
+					with: { legalEntity: { columns: { bin: true } } },
+				});
+				dealOwnerBin = dealWithOwner?.legalEntity?.bin || null;
 			} else {
 				// Fetch deal to get receiverBin for authenticated access
 				const deal = await c.env.db.query.deals.findFirst({
 					where: eq(deals.id, dealId),
+					with: { legalEntity: { columns: { bin: true } } },
 				});
 				if (deal) {
 					dealReceiverBin = deal.receiverBin;
+					dealTitle = deal.title;
+					dealOwnerBin = deal.legalEntity?.bin || null;
 				}
 			}
 
@@ -2548,6 +2584,29 @@ dealRouter.post(
 					tspHash: tspInfo?.hash,
 				})
 				.returning();
+
+			// Send notification to deal owner about signed document
+			if (dealOwnerBin && signerInfo?.subject) {
+				const signerName = signerInfo.subject.organization ||
+					`${signerInfo.subject.lastName || ''} ${signerInfo.subject.surName || ''}`.trim() ||
+					signerInfo.subject.commonName ||
+					'Контрагент';
+
+				sendNotificationToLegalEntityByBin(c, {
+					receiverBin: dealOwnerBin,
+					message: {
+						notification: {
+							title: "Документ подписан",
+							body: `Документ по сделке "${dealTitle || 'Сделка'}" подписан ${signerName}`,
+						},
+						data: {
+							dealId: actualDealId,
+							documentId: documentId,
+							type: "deal_document_signed",
+						},
+					},
+				});
+			}
 
 			return c.json(signature);
 		} catch (error) {
