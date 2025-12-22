@@ -42,6 +42,7 @@ export const profile = pgTable("profile", {
 
 export const profileRelations = relations(profile, ({ many }) => ({
 	legalEntities: many(legalEntities),
+	fcmTokens: many(fcmTokens),
 }));
 
 export const onboardingStatus = pgTable("onboarding_status", {
