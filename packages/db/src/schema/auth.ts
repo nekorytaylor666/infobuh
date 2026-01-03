@@ -24,6 +24,10 @@ import {
 	documentFlutterPins,
 	documentFlutterReadStatus,
 } from "./documents-flutter";
+import { paymentIntent } from "./payment/payment-intent";
+import { paymentOrder } from "./payment/payment-order";
+import { paymentWays } from "./payment/paymen-ways";
+
 
 const authSchema = pgSchema("auth");
 
@@ -43,6 +47,9 @@ export const profile = pgTable("profile", {
 export const profileRelations = relations(profile, ({ many }) => ({
 	legalEntities: many(legalEntities),
 	fcmTokens: many(fcmTokens),
+	paymentIntents: many(paymentIntent),
+	paymentOrders: many(paymentOrder),
+	paymentWays: many(paymentWays)
 }));
 
 export const onboardingStatus = pgTable("onboarding_status", {
